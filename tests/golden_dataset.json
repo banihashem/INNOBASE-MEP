@@ -1,0 +1,281 @@
+{
+  "testSuite": "MEP-light™ Golden Dataset — Company Alpha / Offering X",
+  "description": "Machine-verified expected outputs using the exact scores from the AI Studio prototype. All values are validated against the scoring engine implementation.",
+  "companyName": "Alpha Food Tech",
+  "offeringName": "Offering X / Kashkam",
+  "markets": [
+    { "id": "uae", "name": "UAE" },
+    { "id": "iraq", "name": "Iraq" },
+    { "id": "germany", "name": "Germany" },
+    { "id": "canada", "name": "Canada" },
+    { "id": "azerbaijan", "name": "Azerbaijan" }
+  ],
+  "marketScores": {
+    "uae": {
+      "marketId": "uae",
+      "scores": {
+        "marketAttractiveness": 4,
+        "offeringFit": 4,
+        "channelAccess": 4,
+        "operationalFeasibility": 3,
+        "strategicValue": 4,
+        "financialLogic": 4,
+        "brandTrustTransferability": 3,
+        "competitiveIntensity": 4,
+        "regulatoryComplexity": 3
+      },
+      "evidenceBasis": "Market reports",
+      "evidenceConfidence": "High"
+    },
+    "iraq": {
+      "marketId": "iraq",
+      "scores": {
+        "marketAttractiveness": 3,
+        "offeringFit": 4,
+        "channelAccess": 3,
+        "operationalFeasibility": 4,
+        "strategicValue": 3,
+        "financialLogic": 3,
+        "brandTrustTransferability": 4,
+        "competitiveIntensity": 3,
+        "regulatoryComplexity": 4
+      },
+      "evidenceBasis": "Expert judgment",
+      "evidenceConfidence": "Medium"
+    },
+    "germany": {
+      "marketId": "germany",
+      "scores": {
+        "marketAttractiveness": 5,
+        "offeringFit": 3,
+        "channelAccess": 3,
+        "operationalFeasibility": 2,
+        "strategicValue": 5,
+        "financialLogic": 3,
+        "brandTrustTransferability": 3,
+        "competitiveIntensity": 5,
+        "regulatoryComplexity": 4
+      },
+      "evidenceBasis": "Market reports",
+      "evidenceConfidence": "Medium"
+    },
+    "canada": {
+      "marketId": "canada",
+      "scores": {
+        "marketAttractiveness": 4,
+        "offeringFit": 3,
+        "channelAccess": 3,
+        "operationalFeasibility": 2,
+        "strategicValue": 4,
+        "financialLogic": 3,
+        "brandTrustTransferability": 3,
+        "competitiveIntensity": 4,
+        "regulatoryComplexity": 4
+      },
+      "evidenceBasis": "Desk research / assumptions only",
+      "evidenceConfidence": "Low"
+    },
+    "azerbaijan": {
+      "marketId": "azerbaijan",
+      "scores": {
+        "marketAttractiveness": 3,
+        "offeringFit": 4,
+        "channelAccess": 3,
+        "operationalFeasibility": 4,
+        "strategicValue": 3,
+        "financialLogic": 3,
+        "brandTrustTransferability": 4,
+        "competitiveIntensity": 2,
+        "regulatoryComplexity": 3
+      },
+      "evidenceBasis": "Internal experience",
+      "evidenceConfidence": "High"
+    }
+  },
+  "expectedResults": {
+    "_verification_formula": {
+      "feasibility": "(channelAccess * 0.35) + (adjustedRegulatory * 0.30) + (operationalFeasibility * 0.35)",
+      "opportunity": "(marketAttractiveness * 0.70) + (adjustedCompetitive * 0.30)",
+      "offeringFit": "(offeringFit * 0.65) + (brandTrust * 0.35)",
+      "composite": "(opp*0.25 + fit*0.20 + feas*0.25 + str*0.10 + fin*0.20) * 20"
+    },
+    "uae": {
+      "adjustedCompetitiveIntensity": 2,
+      "adjustedRegulatoryComplexity": 3,
+      "categoryScores": {
+        "opportunity": 3.4,
+        "offeringFit": 3.65,
+        "feasibility": 3.35,
+        "strategic": 4,
+        "financial": 4
+      },
+      "expansionPotentialScore": 72,
+      "riskExposure": 3.5,
+      "riskLevel": "Medium",
+      "tier": "Tier B: Promising",
+      "evidenceConfidenceScore": 90,
+      "evidenceConfidenceLabel": "Reliable",
+      "warnings": []
+    },
+    "iraq": {
+      "adjustedCompetitiveIntensity": 3,
+      "adjustedRegulatoryComplexity": 2,
+      "categoryScores": {
+        "opportunity": 3.0,
+        "offeringFit": 4.0,
+        "feasibility": 3.05,
+        "strategic": 3,
+        "financial": 3
+      },
+      "expansionPotentialScore": 64,
+      "riskExposure": 3.5,
+      "riskLevel": "Medium",
+      "tier": "Tier B: Promising",
+      "evidenceConfidenceScore": 60,
+      "evidenceConfidenceLabel": "Needs Validation",
+      "warnings": []
+    },
+    "germany": {
+      "adjustedCompetitiveIntensity": 1,
+      "adjustedRegulatoryComplexity": 2,
+      "categoryScores": {
+        "opportunity": 3.8,
+        "offeringFit": 3.0,
+        "feasibility": 2.35,
+        "strategic": 5,
+        "financial": 3
+      },
+      "expansionPotentialScore": 65,
+      "riskExposure": 4.5,
+      "riskLevel": "High",
+      "tier": "Tier B: Promising",
+      "evidenceConfidenceScore": 60,
+      "evidenceConfidenceLabel": "Needs Validation",
+      "warnings": []
+    },
+    "canada": {
+      "adjustedCompetitiveIntensity": 2,
+      "adjustedRegulatoryComplexity": 2,
+      "categoryScores": {
+        "opportunity": 3.4,
+        "offeringFit": 3.0,
+        "feasibility": 2.35,
+        "strategic": 4,
+        "financial": 3
+      },
+      "expansionPotentialScore": 61,
+      "riskExposure": 4.0,
+      "riskLevel": "High",
+      "tier": "Tier B: Promising",
+      "evidenceConfidenceScore": 30,
+      "evidenceConfidenceLabel": "Assumption-Based",
+      "warnings": []
+    },
+    "azerbaijan": {
+      "adjustedCompetitiveIntensity": 4,
+      "adjustedRegulatoryComplexity": 3,
+      "categoryScores": {
+        "opportunity": 3.3,
+        "offeringFit": 4.0,
+        "feasibility": 3.35,
+        "strategic": 3,
+        "financial": 3
+      },
+      "expansionPotentialScore": 67,
+      "riskExposure": 2.5,
+      "riskLevel": "Medium",
+      "tier": "Tier B: Promising",
+      "evidenceConfidenceScore": 90,
+      "evidenceConfidenceLabel": "Reliable",
+      "warnings": []
+    }
+  },
+  "edgeCases": {
+    "allOnes": {
+      "description": "All dimensions scored at minimum (1). Tests floor behavior. Note: negative dims at 1 invert to 5, boosting feasibility.",
+      "scores": {
+        "marketAttractiveness": 1,
+        "offeringFit": 1,
+        "channelAccess": 1,
+        "operationalFeasibility": 1,
+        "strategicValue": 1,
+        "financialLogic": 1,
+        "brandTrustTransferability": 1,
+        "competitiveIntensity": 1,
+        "regulatoryComplexity": 1
+      },
+      "evidenceConfidence": "Unknown",
+      "expected": {
+        "adjustedCompetitiveIntensity": 5,
+        "adjustedRegulatoryComplexity": 5,
+        "categoryScores": {
+          "opportunity": 2.2,
+          "offeringFit": 1.0,
+          "feasibility": 2.2,
+          "strategic": 1,
+          "financial": 1
+        },
+        "expansionPotentialScore": 32,
+        "tier": "Tier C: Do not prioritize"
+      }
+    },
+    "allFives": {
+      "description": "All dimensions scored at maximum (5). Tests ceiling behavior. Note: negative dimensions at 5 invert to 1.",
+      "scores": {
+        "marketAttractiveness": 5,
+        "offeringFit": 5,
+        "channelAccess": 5,
+        "operationalFeasibility": 5,
+        "strategicValue": 5,
+        "financialLogic": 5,
+        "brandTrustTransferability": 5,
+        "competitiveIntensity": 5,
+        "regulatoryComplexity": 5
+      },
+      "evidenceConfidence": "High",
+      "expected": {
+        "adjustedCompetitiveIntensity": 1,
+        "adjustedRegulatoryComplexity": 1,
+        "categoryScores": {
+          "opportunity": 3.8,
+          "offeringFit": 5.0,
+          "feasibility": 3.8,
+          "strategic": 5,
+          "financial": 5
+        },
+        "expansionPotentialScore": 88,
+        "tier": "Tier A: Priority"
+      }
+    },
+    "highScoreLowConfidence": {
+      "description": "High expansion potential with Low confidence — must trigger Low-Confidence Hypothesis and cap to Tier B.",
+      "scores": {
+        "marketAttractiveness": 5,
+        "offeringFit": 5,
+        "channelAccess": 5,
+        "operationalFeasibility": 5,
+        "strategicValue": 5,
+        "financialLogic": 5,
+        "brandTrustTransferability": 5,
+        "competitiveIntensity": 1,
+        "regulatoryComplexity": 1
+      },
+      "evidenceConfidence": "Low",
+      "expected": {
+        "adjustedCompetitiveIntensity": 5,
+        "adjustedRegulatoryComplexity": 5,
+        "categoryScores": {
+          "opportunity": 5.0,
+          "offeringFit": 5.0,
+          "feasibility": 5.0,
+          "strategic": 5,
+          "financial": 5
+        },
+        "expansionPotentialScore": 100,
+        "rawTier": "Tier A: Priority",
+        "tier": "Tier B: Promising",
+        "warningCode": "LOW_CONFIDENCE_HYPOTHESIS"
+      }
+    }
+  }
+}

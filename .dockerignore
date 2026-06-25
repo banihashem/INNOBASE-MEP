@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+.env.local
+.env.example
+.vscode
+.agents
+.antigravity
+node_modules
+dist
+tests
+metadata.json
+README.md
+Dockerfile.backend
