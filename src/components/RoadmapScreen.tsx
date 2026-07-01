@@ -97,7 +97,7 @@ export default function RoadmapScreen({
       regulatoryComplexity: 3,
     },
     dimensionEvidence: {},
-    evidenceBasis: "Desk research / assumptions only",
+    evidenceBasis: "Expert Judgment",
     evidenceConfidence: "Low" as const,
   };
 
@@ -105,18 +105,26 @@ export default function RoadmapScreen({
 
   // Recommended Entry Pathway
   const getEntryPathway = () => {
-    if (selectedStrategy === "innovation") {
+    if (selectedStrategy === "replication") {
       return {
         title: "Partner-Led Controlled Market Validation",
         description:
-          "For innovation-led entries (Kashkam profile), partner with a local distributor who handles compliance and shelf placement while you focus on brand positioning and consumer testing.",
+          "For replication-based entries, partner with a local distributor who handles compliance and placement while you focus on brand positioning and customer testing.",
         icon: <Route className="w-6 h-6 text-indigo-400" />,
       };
     }
+    if (selectedStrategy === "adaptation") {
+      return {
+        title: "Adaptation-Led Entry",
+        description:
+          "For localized adaptation strategies, partner with market-entry specialists who can guide product adjustments, regulatory compliance, and initial channel penetration.",
+        icon: <ArrowUpRight className="w-6 h-6 text-indigo-400" />,
+      };
+    }
     return {
-      title: "Distributor-Led Entry",
+      title: "Development-Led Entry",
       description:
-        "For core pantry and regional volume strategies, leverage an established local distributor with existing retail relationships to minimize operational risk and accelerate time-to-shelf.",
+        "For market-specific development strategies, consider a phased approach: validate demand with a pilot version before committing to full-scale production.",
       icon: <ArrowUpRight className="w-6 h-6 text-indigo-400" />,
     };
   };
@@ -191,7 +199,7 @@ export default function RoadmapScreen({
     Object.keys(s) as Array<keyof DimensionScores>
   )
     .filter((k) => {
-      const basis = dimEvidence[k] || "Desk research / assumptions only";
+      const basis = dimEvidence[k] || "Expert Judgment";
       return (EVIDENCE_BASIS_SCORE_MAP[basis] || 25) < 60;
     })
     .map((k) => ({
@@ -286,7 +294,7 @@ export default function RoadmapScreen({
             ) : (
               <Download className="w-3.5 h-3.5" />
             )}
-            <span>{isDownloadingPDF ? 'Generating...' : 'Download Executive Prioritisation PDF'}</span>
+            <span>{isDownloadingPDF ? 'Generating...' : 'Download Strategic Prioritisation Report (PDF)'}</span>
           </button>
         </div>
       </div>
@@ -629,7 +637,7 @@ export default function RoadmapScreen({
             Ready to prepare {offeringName} for {activeMarket.name}?
           </h3>
           <p className="text-sm text-slate-400">
-            Transition to the Product Preparation Workspace to validate regulatory compliance, logistics feasibility, and commercial economics.
+            Transition to the Entry Readiness Workspace to validate regulatory compliance, logistics feasibility, and commercial economics.
           </p>
         </div>
         <button
@@ -637,7 +645,7 @@ export default function RoadmapScreen({
           className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl flex items-center space-x-3 transition-all cursor-pointer shadow-md shadow-emerald-600/20 shrink-0"
           id="proceed-to-prep-btn"
         >
-          <span>Proceed to Product Preparation Workspace</span>
+          <span>Proceed to Entry Readiness Workspace</span>
           <ArrowRight className="w-5 h-5" />
         </button>
       </div>

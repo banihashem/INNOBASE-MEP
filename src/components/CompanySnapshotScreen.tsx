@@ -110,32 +110,15 @@ export default function CompanySnapshotScreen({ data, onChange, appMode }: Props
 
   // Dynamic organizational context summary
   const getContextSummary = () => {
-    const parts: string[] = [];
-    if (data.exportExperience === "No Experience") {
-      parts.push(
-        "As a first-time exporter, the company faces steep learning curves in customs, compliance, and partner identification."
-      );
-    } else if (data.exportExperience === "Active International Exporter") {
-      parts.push(
-        "Established export operations provide logistical and compliance advantages that reduce entry-risk in new markets."
-      );
-    } else {
-      parts.push(
-        "Limited export experience suggests the organization may benefit from a distributor-led entry model to mitigate operational risk."
-      );
+    const name = data.businessName || "Client Company";
+    const capabilities = data.internalCapabilities || "[capabilities not yet specified]";
+    const constraints = data.knownConstraints || "[constraints not yet specified]";
+
+    if (!data.businessName.trim()) {
+      return "Complete the fields above to generate a context summary.";
     }
 
-    if (data.knownConstraints) {
-      parts.push(
-        `Key headwinds identified: ${data.knownConstraints}. These should be factored into feasibility scoring and risk assessment.`
-      );
-    }
-    if (data.internalCapabilities) {
-      parts.push(
-        `Core capabilities (${data.internalCapabilities}) can be leveraged to reduce time-to-market and strengthen positioning.`
-      );
-    }
-    return parts.join(" ");
+    return `${name} is being assessed as a business with selected capabilities in ${capabilities}. Its expansion decision is shaped by several known constraints, including ${constraints}. These factors will be considered when evaluating market attractiveness, feasibility, evidence confidence, and entry-readiness.`;
   };
 
   return (
@@ -165,7 +148,7 @@ export default function CompanySnapshotScreen({ data, onChange, appMode }: Props
           <input
             type="text"
             className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
-            placeholder="e.g. Alpha Food Tech"
+            placeholder="e.g. Client Company"
             value={data.businessName}
             onChange={(e) => handleFieldChange("businessName", e.target.value)}
             id="business-name-input"
@@ -246,15 +229,15 @@ export default function CompanySnapshotScreen({ data, onChange, appMode }: Props
             </label>
             {renderEvidenceToggle("internalCapabilities")}
           </div>
-          <input
-            type="text"
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
-            placeholder="e.g. modular packaging lines, proprietary shelf-life extension technology"
+          <textarea
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors min-h-24 resize-y"
+            placeholder="Example: production capacity, export experience, brand strength, distribution network..."
             value={data.internalCapabilities}
             onChange={(e) =>
               handleFieldChange("internalCapabilities", e.target.value)
             }
             id="internal-capabilities-input"
+            rows={3}
           />
         </div>
 
@@ -266,15 +249,15 @@ export default function CompanySnapshotScreen({ data, onChange, appMode }: Props
             </label>
             {renderEvidenceToggle("knownConstraints")}
           </div>
-          <input
-            type="text"
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
-            placeholder="e.g. limited localized brand recognition, high initial shipping costs"
+          <textarea
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors min-h-24 resize-y"
+            placeholder="Example: regulatory uncertainty, limited market evidence, pricing pressure, logistics complexity..."
             value={data.knownConstraints}
             onChange={(e) =>
               handleFieldChange("knownConstraints", e.target.value)
             }
             id="known-constraints-input"
+            rows={3}
           />
         </div>
       </div>

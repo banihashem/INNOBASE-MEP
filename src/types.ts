@@ -38,6 +38,7 @@ export interface Market {
   name: string;
   description: string;
   isDefault: boolean;
+  type?: "Country" | "Market Bloc" | "Region";
 }
 
 export interface DimensionScores {
@@ -53,17 +54,25 @@ export interface DimensionScores {
 }
 
 export type EvidenceBasis =
-  | "Past sales / direct evidence"
-  | "Market reports"
-  | "Expert judgment"
-  | "Desk research / assumptions only";
+  | "Direct Evidence"
+  | "Market Reports"
+  | "Expert Judgment";
 
 export const EVIDENCE_BASIS_OPTIONS: EvidenceBasis[] = [
-  "Past sales / direct evidence",
-  "Market reports",
-  "Expert judgment",
-  "Desk research / assumptions only",
+  "Direct Evidence",
+  "Market Reports",
+  "Expert Judgment",
 ];
+
+/** Descriptive tooltips for each evidence basis category */
+export const EVIDENCE_BASIS_DESCRIPTIONS: Record<EvidenceBasis, string> = {
+  "Direct Evidence":
+    "Supported by internal data, sales history, customer/partner interviews, or pilot results.",
+  "Market Reports":
+    "Supported by published research, trade databases, or industry studies.",
+  "Expert Judgment":
+    "Based on advisory expertise, management experience, or informed interpretation.",
+};
 
 export interface MarketScoreInput {
   marketId: string;
@@ -90,6 +99,7 @@ export interface StrategyProfile {
   name: string;
   tagline: string;
   description: string;
+  bestUsed: string;
   targetGroups: string;
   likelyChannels: string;
   validationPriorities: string;
@@ -97,43 +107,49 @@ export interface StrategyProfile {
 
 export const STRATEGY_PROFILES: StrategyProfile[] = [
   {
-    id: "pantry",
-    name: "Core Pantry Expansion",
-    tagline: "Core Pantry",
+    id: "replication",
+    name: "Core Offering Replication",
+    tagline: "Replication",
     description:
-      "Familiar food products for regional and ethnic retail. Low adaptation need, high operational feasibility.",
+      "Test an existing product/offering in the target market with minimal adaptation.",
+    bestUsed:
+      "Best used when the offering already has demand signals, diaspora appeal, or clear transferability.",
     targetGroups:
-      "Diaspora communities, traditional trade shoppers, value-driven regional buyers",
+      "Example: end consumers, business buyers, early adopters",
     likelyChannels:
-      "Specialty grocery stores, regional distributors, ethnic supermarkets",
+      "Example: distributors, retail, direct sales",
     validationPriorities:
-      "Verify local distributor margins and product shelf-life certification rules",
+      "Example: demand, pricing, regulatory fit",
   },
   {
-    id: "regional",
-    name: "Regional Volume Expansion",
-    tagline: "Regional Volume",
+    id: "adaptation",
+    name: "Localized Offering Adaptation",
+    tagline: "Adaptation",
     description:
-      "Products with higher familiarity in nearby geographic markets. Medium adaptation, high volume logic.",
+      "Test an existing offering after adapting it to local market needs, regulations, channels, or consumer expectations.",
+    bestUsed:
+      "Best used when local customer behavior or price sensitivity require modification.",
     targetGroups:
-      "Mainstream households, cost-conscious families, mass retailers",
+      "Example: end consumers, business buyers, early adopters",
     likelyChannels:
-      "National retail chains, hypermarkets, bulk wholesalers",
+      "Example: distributors, retail, direct sales",
     validationPriorities:
-      "Assess cross-border logistics costs, customs clearance times, and trade promotion slotting fees",
+      "Example: demand, pricing, regulatory fit",
   },
   {
-    id: "innovation",
-    name: "Innovation-Led Snack Expansion (Kashkam Profile)",
-    tagline: "Innovation-Led",
+    id: "development",
+    name: "Market-Specific Offering Development",
+    tagline: "Development",
     description:
-      "New-to-market snack products with broader positioning potential. High brand transferability challenges, high adaptation need, requires partner-led validation.",
+      "Test a newly developed, bundled, reformulated, or repositioned offering designed specifically for the target market.",
+    bestUsed:
+      "Best used when existing offerings are insufficient but internal capabilities translate well.",
     targetGroups:
-      "Gen Z & Millennials, health-conscious professionals, premium impulse shoppers",
+      "Example: end consumers, business buyers, early adopters",
     likelyChannels:
-      "Convenience store chains, high-end organic grocers, direct-to-consumer digital channels",
+      "Example: distributors, retail, direct sales",
     validationPriorities:
-      "Test pricing elasticity against local alternatives, evaluate cold-chain or specialized storage requirements",
+      "Example: demand, pricing, regulatory fit",
   },
 ];
 
@@ -144,34 +160,23 @@ export const DEFAULT_MARKETS: Market[] = [
     description:
       "Regional trade hub, premium retail, high competitor density.",
     isDefault: true,
+    type: "Country",
   },
   {
-    id: "iraq",
-    name: "Iraq",
+    id: "eu",
+    name: "EU",
     description:
-      "Regional proximity, cultural/product familiarity, volume potential.",
+      "Large single market with harmonized regulations and diverse consumer segments.",
     isDefault: true,
+    type: "Market Bloc",
   },
   {
-    id: "germany",
-    name: "Germany",
+    id: "north-america",
+    name: "North America",
     description:
-      "Diaspora and ethnic retail potential, but higher regulatory complexity.",
+      "High purchasing power, mature distribution infrastructure, competitive landscape.",
     isDefault: true,
-  },
-  {
-    id: "canada",
-    name: "Canada",
-    description:
-      "Diaspora-led validation potential and online/ethnic retail possibilities.",
-    isDefault: true,
-  },
-  {
-    id: "azerbaijan",
-    name: "Azerbaijan",
-    description:
-      "Geographic closeness, cultural adjacency, manageable test market.",
-    isDefault: true,
+    type: "Region",
   },
 ];
 
@@ -179,11 +184,11 @@ export const STEPS = [
   { id: 1, label: "Decision Setup", phase: "diagnostic" as const },
   { id: 2, label: "Company Snapshot", phase: "diagnostic" as const },
   { id: 3, label: "Product Strategy", phase: "diagnostic" as const },
-  { id: 4, label: "Market Shortlist", phase: "diagnostic" as const },
+  { id: 4, label: "Potential Markets", phase: "diagnostic" as const },
   { id: 5, label: "Score & Evidence", phase: "diagnostic" as const },
   { id: 6, label: "Dashboard", phase: "diagnostic" as const },
   { id: 7, label: "Roadmap", phase: "diagnostic" as const },
-  { id: 8, label: "Product Prep", phase: "preparation" as const },
+  { id: 8, label: "Entry Readiness", phase: "preparation" as const },
 ];
 
 // ─── Product Preparation Space Types ─────────────────────
@@ -260,20 +265,19 @@ export const DEFAULT_DIMENSION_EVIDENCE: Record<
   keyof DimensionScores,
   EvidenceBasis
 > = {
-  marketAttractiveness: "Desk research / assumptions only",
-  offeringFit: "Desk research / assumptions only",
-  channelAccess: "Desk research / assumptions only",
-  operationalFeasibility: "Desk research / assumptions only",
-  strategicValue: "Desk research / assumptions only",
-  financialLogic: "Desk research / assumptions only",
-  brandTrustTransferability: "Desk research / assumptions only",
-  competitiveIntensity: "Desk research / assumptions only",
-  regulatoryComplexity: "Desk research / assumptions only",
+  marketAttractiveness: "Expert Judgment",
+  offeringFit: "Expert Judgment",
+  channelAccess: "Expert Judgment",
+  operationalFeasibility: "Expert Judgment",
+  strategicValue: "Expert Judgment",
+  financialLogic: "Expert Judgment",
+  brandTrustTransferability: "Expert Judgment",
+  competitiveIntensity: "Expert Judgment",
+  regulatoryComplexity: "Expert Judgment",
 };
 
 // ─── Demo Scenario Scores ────────────────────────────────────────────
-// Option A = UAE, Option B = Germany, Option C = Iraq,
-// Option D = Canada, Option E = Azerbaijan
+// Option A = UAE, Option B = EU, Option C = North America
 export const DEMO_MARKET_SCORES: Record<string, MarketScoreInput> = {
   uae: {
     marketId: "uae",
@@ -289,48 +293,21 @@ export const DEMO_MARKET_SCORES: Record<string, MarketScoreInput> = {
       regulatoryComplexity: 2,
     },
     dimensionEvidence: {
-      marketAttractiveness: "Market reports",
-      offeringFit: "Market reports",
-      channelAccess: "Expert judgment",
-      operationalFeasibility: "Expert judgment",
-      strategicValue: "Market reports",
-      financialLogic: "Market reports",
-      brandTrustTransferability: "Expert judgment",
-      competitiveIntensity: "Market reports",
-      regulatoryComplexity: "Market reports",
+      marketAttractiveness: "Market Reports",
+      offeringFit: "Market Reports",
+      channelAccess: "Expert Judgment",
+      operationalFeasibility: "Expert Judgment",
+      strategicValue: "Market Reports",
+      financialLogic: "Market Reports",
+      brandTrustTransferability: "Expert Judgment",
+      competitiveIntensity: "Market Reports",
+      regulatoryComplexity: "Market Reports",
     },
-    evidenceBasis: "Market reports",
+    evidenceBasis: "Market Reports",
     evidenceConfidence: "Medium",
   },
-  iraq: {
-    marketId: "iraq",
-    scores: {
-      marketAttractiveness: 3,
-      offeringFit: 4,
-      channelAccess: 3,
-      operationalFeasibility: 3,
-      strategicValue: 3,
-      financialLogic: 3,
-      brandTrustTransferability: 4,
-      competitiveIntensity: 3,
-      regulatoryComplexity: 3,
-    },
-    dimensionEvidence: {
-      marketAttractiveness: "Expert judgment",
-      offeringFit: "Expert judgment",
-      channelAccess: "Desk research / assumptions only",
-      operationalFeasibility: "Expert judgment",
-      strategicValue: "Expert judgment",
-      financialLogic: "Expert judgment",
-      brandTrustTransferability: "Expert judgment",
-      competitiveIntensity: "Expert judgment",
-      regulatoryComplexity: "Expert judgment",
-    },
-    evidenceBasis: "Expert judgment",
-    evidenceConfidence: "Medium",
-  },
-  germany: {
-    marketId: "germany",
+  eu: {
+    marketId: "eu",
     scores: {
       marketAttractiveness: 5,
       offeringFit: 3,
@@ -343,21 +320,21 @@ export const DEMO_MARKET_SCORES: Record<string, MarketScoreInput> = {
       regulatoryComplexity: 3,
     },
     dimensionEvidence: {
-      marketAttractiveness: "Market reports",
-      offeringFit: "Desk research / assumptions only",
-      channelAccess: "Expert judgment",
-      operationalFeasibility: "Desk research / assumptions only",
-      strategicValue: "Market reports",
-      financialLogic: "Desk research / assumptions only",
-      brandTrustTransferability: "Desk research / assumptions only",
-      competitiveIntensity: "Market reports",
-      regulatoryComplexity: "Market reports",
+      marketAttractiveness: "Market Reports",
+      offeringFit: "Expert Judgment",
+      channelAccess: "Expert Judgment",
+      operationalFeasibility: "Expert Judgment",
+      strategicValue: "Market Reports",
+      financialLogic: "Expert Judgment",
+      brandTrustTransferability: "Expert Judgment",
+      competitiveIntensity: "Market Reports",
+      regulatoryComplexity: "Market Reports",
     },
-    evidenceBasis: "Market reports",
+    evidenceBasis: "Market Reports",
     evidenceConfidence: "Medium",
   },
-  canada: {
-    marketId: "canada",
+  "north-america": {
+    marketId: "north-america",
     scores: {
       marketAttractiveness: 4,
       offeringFit: 3,
@@ -370,44 +347,17 @@ export const DEMO_MARKET_SCORES: Record<string, MarketScoreInput> = {
       regulatoryComplexity: 5,
     },
     dimensionEvidence: {
-      marketAttractiveness: "Desk research / assumptions only",
-      offeringFit: "Desk research / assumptions only",
-      channelAccess: "Desk research / assumptions only",
-      operationalFeasibility: "Desk research / assumptions only",
-      strategicValue: "Desk research / assumptions only",
-      financialLogic: "Desk research / assumptions only",
-      brandTrustTransferability: "Desk research / assumptions only",
-      competitiveIntensity: "Desk research / assumptions only",
-      regulatoryComplexity: "Desk research / assumptions only",
+      marketAttractiveness: "Expert Judgment",
+      offeringFit: "Expert Judgment",
+      channelAccess: "Expert Judgment",
+      operationalFeasibility: "Expert Judgment",
+      strategicValue: "Expert Judgment",
+      financialLogic: "Expert Judgment",
+      brandTrustTransferability: "Expert Judgment",
+      competitiveIntensity: "Expert Judgment",
+      regulatoryComplexity: "Expert Judgment",
     },
-    evidenceBasis: "Desk research / assumptions only",
-    evidenceConfidence: "Low",
-  },
-  azerbaijan: {
-    marketId: "azerbaijan",
-    scores: {
-      marketAttractiveness: 2,
-      offeringFit: 3,
-      channelAccess: 4,
-      operationalFeasibility: 4,
-      strategicValue: 2,
-      financialLogic: 3,
-      brandTrustTransferability: 2,
-      competitiveIntensity: 2,
-      regulatoryComplexity: 2,
-    },
-    dimensionEvidence: {
-      marketAttractiveness: "Expert judgment",
-      offeringFit: "Expert judgment",
-      channelAccess: "Expert judgment",
-      operationalFeasibility: "Expert judgment",
-      strategicValue: "Expert judgment",
-      financialLogic: "Desk research / assumptions only",
-      brandTrustTransferability: "Expert judgment",
-      competitiveIntensity: "Expert judgment",
-      regulatoryComplexity: "Expert judgment",
-    },
-    evidenceBasis: "Expert judgment",
+    evidenceBasis: "Expert Judgment",
     evidenceConfidence: "Low",
   },
 };
@@ -422,8 +372,7 @@ export const CONFIDENCE_SCORE_MAP: Record<string, number> = {
 
 // Evidence basis quality mapping (for per-dimension aggregation)
 export const EVIDENCE_BASIS_SCORE_MAP: Record<string, number> = {
-  "Past sales / direct evidence": 95,
-  "Market reports": 75,
-  "Expert judgment": 55,
-  "Desk research / assumptions only": 25,
+  "Direct Evidence": 95,
+  "Market Reports": 75,
+  "Expert Judgment": 55,
 };

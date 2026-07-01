@@ -46,7 +46,7 @@ export default function ProductStrategyScreen({
           <input
             type="text"
             className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
-            placeholder='e.g. "Offering X" or "Kashkam"'
+            placeholder="e.g. Selected Offering"
             value={data.offeringName}
             onChange={(e) => onChange({ offeringName: e.target.value })}
             id="offering-name-input"
@@ -102,6 +102,10 @@ export default function ProductStrategyScreen({
               );
             })}
           </div>
+
+          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            These options represent increasing levels of complexity. Replication is the simplest; Development assumes the highest adaptation cost and market-specific investment.
+          </p>
         </div>
 
         {/* Consultant Mode: custom adaptation notes */}
@@ -132,7 +136,7 @@ export default function ProductStrategyScreen({
           <div className="flex items-center space-x-2">
             <Compass className="w-4 h-4 text-indigo-400" />
             <h3 className="text-sm uppercase font-semibold text-indigo-400 tracking-wider">
-              Active Strategy Profile: {data.offeringName || "Offering"}
+              Active Strategy Profile: {selectedProfile.name}
             </h3>
           </div>
 
@@ -152,7 +156,7 @@ export default function ProductStrategyScreen({
             <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider block">
-                  Target Shopper Groups
+                  Target Customer Groups
                 </span>
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {selectedProfile.targetGroups}
@@ -161,7 +165,7 @@ export default function ProductStrategyScreen({
 
               <div className="space-y-2 border-t md:border-t-0 md:border-l border-slate-800/80 md:pl-6 pt-4 md:pt-0">
                 <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider block">
-                  Likely Channels
+                  Likely Entry Channels
                 </span>
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {selectedProfile.likelyChannels}

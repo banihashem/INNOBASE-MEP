@@ -49,14 +49,14 @@ async function testPDFGeneration() {
   console.log("────────────────────────────────────────────────────────────\n");
 
   const payload = {
-    companyName: "Somayeh F&B",
+    companyName: "Client Company",
     sector: "Food & Beverage Manufacturing",
     domesticMarketSize: "$8M annual revenue",
     exportExperience: "Limited/Indirect Exporting",
     internalCapabilities: "Modular packaging, shelf-life technology",
     knownConstraints: "High shipping costs, limited brand recognition",
-    offeringName: "Kashkam",
-    selectedStrategy: "innovation",
+    offeringName: "Selected Offering",
+    selectedStrategy: "replication",
     decisionMode: "compare",
     expansionHorizon: "12 months",
     strategicObjective: "Identify the most practical growth opportunity",
@@ -71,8 +71,8 @@ async function testPDFGeneration() {
         discrepancyAlert: false,
       },
       {
-        marketId: "iraq",
-        name: "Iraq",
+        marketId: "eu",
+        name: "EU",
         potentialScore: 62,
         tier: "Tier B: Promising",
         riskLevel: "Medium",

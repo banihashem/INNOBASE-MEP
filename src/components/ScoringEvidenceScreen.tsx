@@ -126,18 +126,18 @@ export default function ScoringEvidenceScreen({
       regulatoryComplexity: 3,
     },
     dimensionEvidence: {
-      marketAttractiveness: "Desk research / assumptions only",
-      offeringFit: "Desk research / assumptions only",
-      channelAccess: "Desk research / assumptions only",
-      operationalFeasibility: "Desk research / assumptions only",
-      strategicValue: "Desk research / assumptions only",
-      financialLogic: "Desk research / assumptions only",
-      brandTrustTransferability: "Desk research / assumptions only",
-      competitiveIntensity: "Desk research / assumptions only",
-      regulatoryComplexity: "Desk research / assumptions only",
+      marketAttractiveness: "Expert Judgment" as EvidenceBasis,
+      offeringFit: "Expert Judgment" as EvidenceBasis,
+      channelAccess: "Expert Judgment" as EvidenceBasis,
+      operationalFeasibility: "Expert Judgment" as EvidenceBasis,
+      strategicValue: "Expert Judgment" as EvidenceBasis,
+      financialLogic: "Expert Judgment" as EvidenceBasis,
+      brandTrustTransferability: "Expert Judgment" as EvidenceBasis,
+      competitiveIntensity: "Expert Judgment" as EvidenceBasis,
+      regulatoryComplexity: "Expert Judgment" as EvidenceBasis,
     },
-    evidenceBasis: "Desk research / assumptions only",
-    evidenceConfidence: "Low",
+    evidenceBasis: "Expert Judgment",
+    evidenceConfidence: "Low" as MarketScoreInput["evidenceConfidence"],
   };
 
   const handleSliderChange = (
@@ -271,47 +271,18 @@ export default function ScoringEvidenceScreen({
               </p>
             </div>
 
-            {/* Overall Confidence Control */}
+            {/* Overall Confidence — Read-Only Computed */}
             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-3 min-w-[260px]">
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                  Overall Confidence
+                  Overall Confidence <span className="text-[9px] text-slate-600 font-normal ml-1">(System-Computed)</span>
                 </label>
-                <div className="flex bg-slate-900 p-0.5 rounded border border-slate-800/80">
-                  {(
-                    ["High", "Medium", "Low", "Unknown"] as const
-                  ).map((conf) => {
-                    const isSel =
-                      currentScoreInput.evidenceConfidence === conf;
-                    let style =
-                      "text-slate-500 hover:text-slate-300";
-                    if (isSel) {
-                      if (conf === "High")
-                        style =
-                          "bg-emerald-950/80 text-emerald-400 border border-emerald-900/60 font-semibold";
-                      else if (conf === "Medium")
-                        style =
-                          "bg-amber-950/80 text-amber-400 border border-amber-900/60 font-semibold";
-                      else if (conf === "Low")
-                        style =
-                          "bg-orange-950/80 text-orange-400 border border-orange-900/60 font-semibold";
-                      else
-                        style =
-                          "bg-rose-950/80 text-rose-400 border border-rose-900/60 font-semibold";
-                    }
-
-                    return (
-                      <button
-                        key={conf}
-                        type="button"
-                        onClick={() => handleConfidenceChange(conf)}
-                        className={`text-[10px] uppercase flex-1 py-1 rounded transition-all text-center cursor-pointer ${style}`}
-                      >
-                        {conf === "Unknown" ? "Unk" : conf}
-                      </button>
-                    );
-                  })}
+                <div className={`px-3 py-2 rounded border text-sm font-semibold text-center ${getConfidenceColor(currentScoreInput.evidenceConfidence)}`}>
+                  {currentScoreInput.evidenceConfidence}
                 </div>
+                <p className="text-[10px] text-slate-500 leading-relaxed mt-1">
+                  Based on the evidence sources and validation status across the selected criteria.
+                </p>
               </div>
             </div>
           </div>
@@ -322,7 +293,7 @@ export default function ScoringEvidenceScreen({
               const val = currentScoreInput.scores[dim.key] ?? 3;
               const dimEvidence =
                 currentScoreInput.dimensionEvidence?.[dim.key] ||
-                "Desk research / assumptions only";
+                "Expert Judgment";
 
               return (
                 <div

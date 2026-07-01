@@ -62,7 +62,7 @@ export default function ComparativeDashboardScreen({
         regulatoryComplexity: 3,
       },
       dimensionEvidence: {},
-      evidenceBasis: "Desk research / assumptions only",
+      evidenceBasis: "Expert Judgment",
       evidenceConfidence: "Low" as const,
     };
 
@@ -105,7 +105,7 @@ export default function ComparativeDashboardScreen({
     const dimEvidence = input.dimensionEvidence || {};
     const dimKeys = Object.keys(s) as Array<keyof typeof s>;
     const evidenceScores = dimKeys.map((k) => {
-      const basis = dimEvidence[k] || "Desk research / assumptions only";
+      const basis = dimEvidence[k] || "Expert Judgment";
       return EVIDENCE_BASIS_SCORE_MAP[basis] || 25;
     });
     const avgDimEvidence =
@@ -277,17 +277,17 @@ export default function ComparativeDashboardScreen({
             </div>
             <div>
               <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-400 block font-mono">
-                Top Priority Target Market
+                Leading Validation Candidate
               </span>
               <h3 className="text-2xl font-bold font-display text-white mt-0.5">
                 {sortedResults[0].name}
               </h3>
               <p className="text-xs text-slate-400 max-w-xl">
-                Highest strategic alignment at{" "}
+                This option currently scores highest under the available assumptions and evidence at{" "}
                 <strong className="text-indigo-300">
                   {sortedResults[0].potentialScore}/100
                 </strong>
-                . Evidence confidence:{" "}
+                , but it should be validated before major investment. Evidence confidence:{" "}
                 <strong>{sortedResults[0].evidenceConfidenceScore}/100</strong>.
                 {sortedResults[0].discrepancyAlert && (
                   <span className="text-amber-400 ml-1">

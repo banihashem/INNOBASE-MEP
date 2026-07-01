@@ -29,34 +29,36 @@ export default function DecisionSetupScreen({
   appMode,
 }: Props) {
   const getDecisionStatement = () => {
-    const org = businessName || "Company Alpha";
-    const horizon = data.expansionHorizon || "[Expansion Horizon]";
-    const objective =
-      data.strategicObjective || "[Strategic Objective]";
+    const org = businessName || "Client Company";
 
-    const modeMap: Record<DecisionMode, string> = {
+    const modeText: Record<string, string> = {
       compare:
-        "compare several possible markets and choose the best product-market-channel combination",
-      assess_one: "assess one target market",
-      entry_mode: "select the best entry mode",
-      readiness: "assess expansion readiness",
+        "comparing selected markets to identify the most practical product-market-channel pathway",
+      assess_one: "assessing one target market for entry feasibility",
+      entry_mode: "selecting the best entry mode for its target market",
+      readiness: "assessing its overall expansion readiness",
     };
 
-    const modeText = modeMap[data.decisionMode] || modeMap.compare;
+    const horizon = data.expansionHorizon || "";
+    const objective = data.strategicObjective || "";
+    const mode = data.decisionMode || "compare";
 
-    return `${org} is initiating a ${modeText} within a ${horizon} timeline to achieve the following objective: "${objective}". This frames the boundaries of the MEP-light™ evaluation.`;
+    // Show placeholder until all required fields are filled
+    if (!horizon.trim() || !objective.trim()) {
+      return "Your decision statement will appear here after the required fields are completed.";
+    }
+
+    return `${org} is ${modeText[mode] || modeText.compare} within a ${horizon} expansion horizon. The stated strategic objective is: "${objective}".`;
   };
 
   return (
     <div className="space-y-8 animate-fade-slide-in" id="decision-setup-container">
       <div>
         <h2 className="text-2xl font-semibold font-display text-white tracking-tight">
-          Decision Framing & Objective Setup
+          Decision Statement
         </h2>
-        <p className="text-sm text-slate-400 mt-1">
-          Establish the formal boundaries, timeline, and core intent of this
-          expansion project. This dynamic statement will guide downstream
-          scoping.
+        <p className="text-sm text-slate-400 mt-0.5">
+          This statement defines the scope of the MEP-light™ assessment.
         </p>
       </div>
 

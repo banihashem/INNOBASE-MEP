@@ -23,7 +23,7 @@ import ComparativeDashboardScreen from "./components/ComparativeDashboardScreen"
 import { CalculatedResult } from "./components/ComparativeDashboardScreen";
 import RoadmapScreen from "./components/RoadmapScreen";
 import ExportBriefModal from "./components/ExportBriefModal";
-import ProductPrepSpace from "./components/ProductPrepSpace";
+import EntryReadinessWorkspace from "./components/EntryReadinessWorkspace";
 import {
   ChevronLeft,
   ChevronRight,
@@ -44,7 +44,7 @@ const DEMO_DECISION_SETUP: DecisionSetup = {
 };
 
 const DEMO_COMPANY_SNAPSHOT: CompanySnapshot = {
-  businessName: "Alpha Food Tech",
+  businessName: "Client Company",
   sector: "Food & Beverage Manufacturing",
   domesticMarketSize: "$15M annual revenue, 8% market share",
   exportExperience: "Limited/Indirect Exporting",
@@ -63,8 +63,8 @@ const DEMO_COMPANY_SNAPSHOT: CompanySnapshot = {
 };
 
 const DEMO_PRODUCT_STRATEGY: ProductStrategy = {
-  offeringName: "Offering X / Kashkam",
-  selectedStrategy: "innovation",
+  offeringName: "Selected Offering",
+  selectedStrategy: "replication",
   customAdaptationNotes: "",
 };
 
@@ -106,10 +106,8 @@ export default function App() {
 
   const [selectedMarketIds, setSelectedMarketIds] = useState<string[]>([
     "uae",
-    "iraq",
-    "germany",
-    "canada",
-    "azerbaijan",
+    "eu",
+    "north-america",
   ]);
 
   const [customMarkets, setCustomMarkets] = useState<Market[]>([]);
@@ -137,7 +135,7 @@ export default function App() {
       setCompanySnapshot(BLANK_COMPANY_SNAPSHOT);
       setProductStrategy({
         offeringName: "",
-        selectedStrategy: "pantry",
+        selectedStrategy: "replication",
         customAdaptationNotes: "",
       });
       setSelectedMarketIds([]);
@@ -154,10 +152,8 @@ export default function App() {
       setProductStrategy(DEMO_PRODUCT_STRATEGY);
       setSelectedMarketIds([
         "uae",
-        "iraq",
-        "germany",
-        "canada",
-        "azerbaijan",
+        "eu",
+        "north-america",
       ]);
       setCustomMarkets([]);
       setMarketScores(DEMO_MARKET_SCORES);
@@ -283,7 +279,7 @@ export default function App() {
           regulatoryComplexity: 3,
         },
         dimensionEvidence: { ...DEFAULT_DIMENSION_EVIDENCE },
-        evidenceBasis: "Desk research / assumptions only",
+        evidenceBasis: "Expert Judgment",
         evidenceConfidence: "Low",
       },
     }));
@@ -333,7 +329,7 @@ export default function App() {
           regulatoryComplexity: 3,
         },
         dimensionEvidence: { ...DEFAULT_DIMENSION_EVIDENCE },
-        evidenceBasis: "Desk research / assumptions only",
+        evidenceBasis: "Expert Judgment",
         evidenceConfidence: "Low",
       };
       return {
@@ -499,8 +495,8 @@ export default function App() {
         const eScores = dimKeys.map(
           (k) =>
             EVIDENCE_BASIS_SCORE_MAP[
-              dimEvidence[k] || "Desk research / assumptions only"
-            ] || 25
+              dimEvidence[k] || "Expert Judgment"
+            ] || 55
         );
         const avgDim =
           eScores.reduce((a, b) => a + b, 0) / eScores.length;
@@ -694,7 +690,7 @@ export default function App() {
             )}
 
             {currentStep === 8 && (
-              <ProductPrepSpace
+              <EntryReadinessWorkspace
                 market={allMarkets.find((m) => m.id === prepMarketId) || allMarkets[0]}
                 offeringName={productStrategy.offeringName}
                 businessName={companySnapshot.businessName}

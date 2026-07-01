@@ -163,8 +163,8 @@ def _build_cover_page(styles, data: dict) -> list:
     elements.append(Spacer(1, 12))
 
     # Subtitle
-    company = _safe(data.get("companyName", "Company"))
-    offering = _safe(data.get("offeringName", "Offering"))
+    company = _safe(data.get("companyName", "Client Company"))
+    offering = _safe(data.get("offeringName", "Selected Offering"))
     elements.append(Paragraph(
         f"Strategic Market Entry Diagnostics for<br/>"
         f"<b>{company}</b> \u2014 {offering}",
@@ -220,8 +220,8 @@ def _build_executive_summary(styles, data: dict) -> list:
     ))
 
     objective = _safe(data.get("strategicObjective", "Not specified"))
-    company = _safe(data.get("companyName", "Company"))
-    offering = _safe(data.get("offeringName", "Offering"))
+    company = _safe(data.get("companyName", "Client Company"))
+    offering = _safe(data.get("offeringName", "Selected Offering"))
 
     elements.append(Paragraph(
         f"<b>{company}</b> engaged the MEP-light\u2122 diagnostic system to evaluate "
@@ -240,8 +240,10 @@ def _build_executive_summary(styles, data: dict) -> list:
         top_score = top.get("potentialScore", 0)
         top_tier = _safe(top.get("tier", "N/A"))
         elements.append(Paragraph(
-            f"<b>Top Priority Market:</b> {top_name} with an Expansion Potential "
-            f"Score of <b>{top_score}/100</b> ({top_tier}).",
+            f"<b>Leading Validation Candidate:</b> {top_name} with an Expansion Potential "
+            f"Score of <b>{top_score}/100</b> ({top_tier}). This option currently scores "
+            f"highest under the available assumptions and evidence, but it should be "
+            f"validated before major investment.",
             styles["MepBody"],
         ))
 

@@ -63,7 +63,7 @@ export default function MarketShortlistScreen({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold font-display text-white tracking-tight">
-            Market Shortlist Selection
+            Potential Markets
           </h2>
           <p className="text-sm text-slate-400 mt-1">
             Select 3 to 5 markets to compare. Click any card to view
@@ -188,6 +188,11 @@ export default function MarketShortlistScreen({
                     <span className="text-lg font-semibold text-slate-100 font-display">
                       {market.name}
                     </span>
+                    {market.type && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                        {market.type}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center space-x-1.5 opacity-60 group-hover:opacity-100 transition-opacity">

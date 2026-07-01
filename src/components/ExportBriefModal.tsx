@@ -135,7 +135,7 @@ export default function ExportBriefModal({
               </h2>
               <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5">
                 <p className="text-sm text-slate-200 leading-relaxed">
-                  <strong>{companySnapshot.businessName || "Company"}</strong> is
+                  <strong>{companySnapshot.businessName || "Client Company"}</strong> is
                   initiating a strategic initiative to{" "}
                   <em>{getDecisionModeLabel(decisionSetup.decisionMode).toLowerCase()}</em>{" "}
                   within a <strong>{decisionSetup.expansionHorizon}</strong>{" "}
