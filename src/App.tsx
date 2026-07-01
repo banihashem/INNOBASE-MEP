@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   AppMode,
   DecisionSetup,
@@ -12,6 +12,8 @@ import {
   DEFAULT_DIMENSION_EVIDENCE,
   DEMO_MARKET_SCORES,
 } from "./types";
+import LandingPage from "./components/LandingPage";
+import "./landing.css";
 import StepProgress from "./components/StepProgress";
 import ConsultantNotes from "./components/ConsultantNotes";
 import DecisionSetupScreen from "./components/DecisionSetupScreen";
@@ -85,7 +87,53 @@ const BLANK_COMPANY_SNAPSHOT: CompanySnapshot = {
   },
 };
 
+// ─── Auth State ────────────────────────────────────────────────────
+interface AuthUser {
+  email: string;
+  name: string;
+  picture: string;
+  sub: string;
+}
+
 export default function App() {
+  // Authentication state — persisted to sessionStorage
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('mep_auth') === 'true';
+    } catch { return false; }
+  });
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
+    try {
+      const stored = sessionStorage.getItem('mep_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  });
+
+  const handleSignIn = (user: AuthUser) => {
+    setIsAuthenticated(true);
+    setAuthUser(user);
+    sessionStorage.setItem('mep_auth', 'true');
+    sessionStorage.setItem('mep_user', JSON.stringify(user));
+  };
+
+  const handleSignOut = () => {
+    setIsAuthenticated(false);
+    setAuthUser(null);
+    sessionStorage.removeItem('mep_auth');
+    sessionStorage.removeItem('mep_user');
+  };
+
+  // ─── If not authenticated, show Landing Page ──────────
+  if (!isAuthenticated) {
+    return <LandingPage onSignIn={handleSignIn} isAuthenticated={false} />;
+  }
+
+  // ─── Authenticated App Below ──────────────────────────
+  return <AuthenticatedApp authUser={authUser} onSignOut={handleSignOut} />;
+}
+
+// ─── Authenticated App (Wizard) ───────────────────────────────────
+function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; onSignOut: () => void }) {
   const [appMode, setAppMode] = useState<AppMode>("demo");
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [maxUnlockedStep, setMaxUnlockedStep] = useState<number>(1);
@@ -765,11 +813,22 @@ export default function App() {
 
       {/* ─── Footer ──────────────────────────────────────── */}
       <footer className="border-t border-slate-900 bg-slate-950 py-6 mt-16 text-center text-xs text-slate-500 font-mono">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between flex-wrap gap-2">
           <p>
             © 2026 Market Entry Prioritizer • MEP-light™ Diagnostic
-            System • Proprietary Enterprise Strategy Tool • v1.6.0
+            System • Proprietary Enterprise Strategy Tool • v2.0.0
           </p>
+          {authUser && (
+            <div className="flex items-center gap-3">
+              <span className="text-slate-600">{authUser.email}</span>
+              <button
+                onClick={onSignOut}
+                className="text-slate-500 hover:text-slate-300 transition-colors text-xs border border-slate-800 px-3 py-1 rounded hover:border-slate-600"
+              >
+                Sign Out
+              </button>
+            </div>
+          )}
         </div>
       </footer>
 
