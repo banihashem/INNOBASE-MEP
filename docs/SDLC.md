@@ -9,7 +9,10 @@
 | **Cloud Run (PDF)** | `mep-light-pdf-service` (europe-west2) | Python PDF generator |
 | **GCP Project** | `innobase-mep-light` | All cloud resources |
 | **AI Studio** | [App Preview](https://aistudio.google.com/apps/b9f591d8-fdd2-4449-bed4-309134a9fc91) | AI Studio integration |
-| **Production URL** | https://market-entry-prioritizer-52156375400.europe-west2.run.app | Public endpoint |
+| **Custom Domain** | https://mep.innobase.app | Public-facing URL (Cloudflare) |
+| **Cloud Run URL** | https://market-entry-prioritizer-52156375400.europe-west2.run.app | Origin (behind Cloudflare) |
+| **Cloudflare Worker** | `mep-proxy` (Workers & Pages) | Reverse proxy: mep.innobase.app → Cloud Run |
+| **Cloudflare DNS** | `mep` CNAME → Cloud Run (Proxied) | DNS routing via Cloudflare |
 
 ---
 
