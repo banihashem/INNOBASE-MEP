@@ -74,7 +74,7 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "healthy",
     service: "MEP-light™ Scoring Engine API",
-    version: "3.0.0",
+    version: "3.1.0",
     timestamp: new Date().toISOString(),
   });
 });

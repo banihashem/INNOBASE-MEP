@@ -44,8 +44,11 @@ const AUTH_STORAGE_KEY = "mep_v3_auth";
 const USER_STORAGE_KEY = "mep_v3_user";
 const TOKEN_STORAGE_KEY = "mep_v3_token";
 
-// Google Client ID — replace with real one for production
-export const GOOGLE_CLIENT_ID = "52156375400-placeholder.apps.googleusercontent.com";
+// Google Client ID — injected at build time by Vite from GOOGLE_CLIENT_ID env var
+declare const __GOOGLE_CLIENT_ID__: string;
+export const GOOGLE_CLIENT_ID = (typeof __GOOGLE_CLIENT_ID__ !== 'undefined' && __GOOGLE_CLIENT_ID__)
+  ? __GOOGLE_CLIENT_ID__
+  : "52156375400-placeholder.apps.googleusercontent.com";
 
 /**
  * Check if we have a real (non-placeholder) Google Client ID configured.
