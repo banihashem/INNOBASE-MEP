@@ -768,7 +768,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4">
           <p>
             © 2026 Market Entry Prioritizer • MEP-light™ Diagnostic
-            System • Proprietary Enterprise Strategy Tool
+            System • Proprietary Enterprise Strategy Tool • v1.6.0
           </p>
         </div>
       </footer>

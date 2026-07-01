@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # ─── Application ──────────────────────────────────────────────
     app_name: str = "MEP-light™ Enterprise API"
-    app_version: str = "2.0.0"
+    app_version: str = "2.1.0"
     debug: bool = False
     log_level: str = "INFO"
 

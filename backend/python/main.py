@@ -29,8 +29,10 @@ from .database import init_db, SessionLocal
 from .scoring_routes import router as scoring_router
 from .rag_routes import router as rag_router
 from .pdf_routes import router as pdf_router
+from .user_routes import router as user_router
 from .metrics import metrics_router, OIDC_AUTH_FAILURES
 from .rag import seed_sample_data
+from . import users  # Ensure User model is registered for init_db
 
 
 # ─── Application Lifecycle ────────────────────────────────────────────
@@ -110,6 +112,7 @@ async def track_auth_failures(request: Request, call_next):
 app.include_router(scoring_router)
 app.include_router(rag_router)
 app.include_router(pdf_router)
+app.include_router(user_router)
 app.include_router(metrics_router)
 
 
