@@ -4,6 +4,72 @@ All notable changes to the MEP-light™ system are documented in this file.
 
 ---
 
+## [3.0.0] — 2026-07-01
+
+### 🚀 Production-Ready Upgrade
+
+Major upgrade transitioning MEP-light™ from MVP to production-grade software.
+
+#### Architecture
+- **AuthProvider**: Centralized authentication context (`AuthProvider` + `useAuth` hook) replacing ad-hoc `sessionStorage` checks
+- **ToastProvider**: Global toast notification system (`success`, `warning`, `error`, `info` variants) replacing `alert()` calls
+- **ErrorBoundary**: React error boundary wrapping the entire app with recovery UI
+- **Code Splitting**: All 9 step components lazy-loaded via `React.lazy()` + `Suspense`
+
+#### Performance
+- Bundle split into 15 chunks (was single 369 KB file):
+  - Main: 237 KB → 73 KB gzipped
+  - Vendor (React): 3.9 KB
+  - Icons (Lucide): 35.5 KB
+  - Step components: 4-35 KB each (loaded on demand)
+- Vite `manualChunks` configuration for optimal vendor separation
+
+#### Session Persistence
+- `usePersistedState` hook: debounced localStorage sync with schema versioning
+- Session index: tracks up to 20 sessions with company name, step, completion %
+- `SessionManager` modal: resume, create new, delete past sessions
+- Auto-save every 3 seconds (debounced, non-blocking)
+
+#### Observability
+- Frontend telemetry: batched event tracking (`sendBeacon`), Do Not Track compliant
+- Backend request ID middleware for log correlation
+- Response time monitoring (>1s flagged as slow)
+- Telemetry endpoint: `POST /api/telemetry`
+- Structured JSON logging for all telemetry events
+
+#### API Hardening
+- `apiClient.ts`: typed HTTP client with 3-retry exponential backoff
+- Request timeout handling (15s default, 30s for PDF)
+- `ApiClientError` class with HTTP status codes
+- Health check endpoint updated to v3.0.0
+
+#### UX
+- Session Manager button in header toolbar
+- Animated step skeleton loader during lazy-load
+- Toast notifications for save confirmations, errors, session actions
+
+#### Verification
+- 108 scoring engine tests: **PASS**
+- 23 product prep tests: **PASS**
+- Build: **zero errors**, 15 chunks produced
+- Mathematical scoring integrity: **preserved**
+
+---
+
+## [2.0.0] — 2026-07-01
+
+### 🚀 Landing Page & Auth Gate
+
+- Premium dark-mode landing page with glassmorphism design
+- Hero section with animated gradient orbs and floating score cards
+- 6-card bento feature grid with micro-animations
+- 3-step methodology flow: Define → Score → Decide
+- Authentication gate: unauthenticated → landing page, authenticated → wizard
+- Google Sign-In CTA with real OAuth flow preparation
+- Deployed to `mep.innobase.app` via Cloudflare Worker reverse proxy
+
+---
+
 ## [1.5.1] — 2026-07-01
 
 ### 🔧 Refactored — Sector-Agnostic Neutralization

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, lazy, Suspense, useCallback } from "react";
 import {
   AppMode,
   DecisionSetup,
@@ -12,25 +12,39 @@ import {
   DEFAULT_DIMENSION_EVIDENCE,
   DEMO_MARKET_SCORES,
 } from "./types";
+import { AuthProvider, useAuth } from "./lib/auth";
+import type { AuthUser } from "./lib/auth";
+import { ToastProvider, useToast } from "./components/Toast";
+import ErrorBoundary from "./components/ErrorBoundary";
 import LandingPage from "./components/LandingPage";
 import "./landing.css";
 import StepProgress from "./components/StepProgress";
 import ConsultantNotes from "./components/ConsultantNotes";
-import DecisionSetupScreen from "./components/DecisionSetupScreen";
-import CompanySnapshotScreen from "./components/CompanySnapshotScreen";
-import ProductStrategyScreen from "./components/ProductStrategyScreen";
-import MarketShortlistScreen from "./components/MarketShortlistScreen";
-import ScoringEvidenceScreen from "./components/ScoringEvidenceScreen";
-import ComparativeDashboardScreen from "./components/ComparativeDashboardScreen";
+import StepSkeleton from "./components/StepSkeleton";
+import SessionManager from "./components/SessionManager";
+import { usePersistedState, upsertSessionMeta, generateSessionId, deleteSession as deleteSessionFromStorage } from "./hooks/usePersistedState";
+import { initTelemetry, track } from "./lib/telemetry";
+import { apiClient } from "./lib/apiClient";
+
+// Lazy-loaded step components for code splitting
+const DecisionSetupScreen = lazy(() => import("./components/DecisionSetupScreen"));
+const CompanySnapshotScreen = lazy(() => import("./components/CompanySnapshotScreen"));
+const ProductStrategyScreen = lazy(() => import("./components/ProductStrategyScreen"));
+const MarketShortlistScreen = lazy(() => import("./components/MarketShortlistScreen"));
+const ScoringEvidenceScreen = lazy(() => import("./components/ScoringEvidenceScreen"));
+const ComparativeDashboardScreen = lazy(() => import("./components/ComparativeDashboardScreen"));
+const RoadmapScreen = lazy(() => import("./components/RoadmapScreen"));
+const ExportBriefModal = lazy(() => import("./components/ExportBriefModal"));
+const EntryReadinessWorkspace = lazy(() => import("./components/EntryReadinessWorkspace"));
+
 import { CalculatedResult } from "./components/ComparativeDashboardScreen";
-import RoadmapScreen from "./components/RoadmapScreen";
-import ExportBriefModal from "./components/ExportBriefModal";
-import EntryReadinessWorkspace from "./components/EntryReadinessWorkspace";
 import {
   ChevronLeft,
   ChevronRight,
   Beaker,
   BriefcaseBusiness,
+  FolderOpen,
+  Save,
 } from "lucide-react";
 import {
   EVIDENCE_BASIS_SCORE_MAP,
@@ -87,53 +101,49 @@ const BLANK_COMPANY_SNAPSHOT: CompanySnapshot = {
   },
 };
 
-// ─── Auth State ────────────────────────────────────────────────────
-interface AuthUser {
-  email: string;
-  name: string;
-  picture: string;
-  sub: string;
-}
+// ─── App Root ─────────────────────────────────────────────────────
 
 export default function App() {
-  // Authentication state — persisted to sessionStorage
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    try {
-      return sessionStorage.getItem('mep_auth') === 'true';
-    } catch { return false; }
-  });
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
-    try {
-      const stored = sessionStorage.getItem('mep_user');
-      return stored ? JSON.parse(stored) : null;
-    } catch { return null; }
-  });
+  // Initialize telemetry on mount
+  useEffect(() => {
+    initTelemetry();
+  }, []);
 
-  const handleSignIn = (user: AuthUser) => {
-    setIsAuthenticated(true);
-    setAuthUser(user);
-    sessionStorage.setItem('mep_auth', 'true');
-    sessionStorage.setItem('mep_user', JSON.stringify(user));
-  };
+  return (
+    <AuthProvider>
+      <ToastProvider>
+        <ErrorBoundary fallbackTitle="MEP-light™ encountered an error">
+          <AppRouter />
+        </ErrorBoundary>
+      </ToastProvider>
+    </AuthProvider>
+  );
+}
 
-  const handleSignOut = () => {
-    setIsAuthenticated(false);
-    setAuthUser(null);
-    sessionStorage.removeItem('mep_auth');
-    sessionStorage.removeItem('mep_user');
-  };
+function AppRouter() {
+  const { user, isAuthenticated, isLoading, signIn, signOut } = useAuth();
 
-  // ─── If not authenticated, show Landing Page ──────────
-  if (!isAuthenticated) {
-    return <LandingPage onSignIn={handleSignIn} isAuthenticated={false} />;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
-  // ─── Authenticated App Below ──────────────────────────
-  return <AuthenticatedApp authUser={authUser} onSignOut={handleSignOut} />;
+  if (!isAuthenticated) {
+    return <LandingPage onSignIn={signIn} isAuthenticated={false} />;
+  }
+
+  return <AuthenticatedApp authUser={user} onSignOut={signOut} />;
 }
 
 // ─── Authenticated App (Wizard) ───────────────────────────────────
 function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; onSignOut: () => void }) {
+  const toast = useToast();
+  const [sessionId] = useState(() => generateSessionId());
+  const [showSessionManager, setShowSessionManager] = useState(false);
+
   const [appMode, setAppMode] = useState<AppMode>("demo");
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [maxUnlockedStep, setMaxUnlockedStep] = useState<number>(1);
@@ -503,6 +513,22 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
     }
   };
 
+  // ─── Auto-save session metadata ──────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      upsertSessionMeta({
+        id: sessionId,
+        companyName: companySnapshot.businessName || "Untitled Assessment",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        currentStep,
+        totalSteps: 7,
+        completionPct: Math.round((Math.max(currentStep - 1, 0) / 7) * 100),
+      });
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [sessionId, companySnapshot.businessName, currentStep]);
+
   // ─── Calculate results for Export Brief ──────────────────
   const calculatedResults: CalculatedResult[] = useMemo(() => {
     return activeSelectedMarkets
@@ -608,13 +634,21 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
                   v{__APP_VERSION__}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 mt-0.5">
+              <p className="text-[11px] text-slate-500 font-mono leading-none">
                 Market Entry Prioritizer & Strategic Diagnostics Engine
               </p>
             </div>
           </div>
-
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
+            {/* Session Manager Button */}
+            <button
+              onClick={() => setShowSessionManager(true)}
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-600 px-3 py-1.5 rounded-lg transition"
+              title="Manage Sessions"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+              Sessions
+            </button>
             {/* Mode Toggle */}
             <button
               onClick={handleModeToggle}
@@ -656,7 +690,8 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
             showPrepPhase={showPrepPhase}
           />
 
-          {/* Active Screen — animated key swap */}
+          {/* Active Screen — lazy-loaded with Suspense */}
+          <Suspense fallback={<StepSkeleton />}>
           <div className="min-h-[480px]" key={currentStep}>
             {currentStep === 1 && (
               <DecisionSetupScreen
@@ -746,6 +781,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
               />
             )}
           </div>
+          </Suspense>
         </div>
 
         {/* ─── Notes & Action Bar ────────────────────────── */}
@@ -816,13 +852,16 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between flex-wrap gap-2">
           <p>
             © 2026 Market Entry Prioritizer • MEP-light™ Diagnostic
-            System • Proprietary Enterprise Strategy Tool • v2.0.0
+            System • Proprietary Enterprise Strategy Tool • v3.0.0
           </p>
           {authUser && (
             <div className="flex items-center gap-3">
               <span className="text-slate-600">{authUser.email}</span>
               <button
-                onClick={onSignOut}
+                onClick={() => {
+                  track.signOut();
+                  onSignOut();
+                }}
                 className="text-slate-500 hover:text-slate-300 transition-colors text-xs border border-slate-800 px-3 py-1 rounded hover:border-slate-600"
               >
                 Sign Out
@@ -833,17 +872,38 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       </footer>
 
       {/* ─── Export Brief Modal ───────────────────────────── */}
-      <ExportBriefModal
-        isOpen={exportBriefOpen}
-        onClose={() => setExportBriefOpen(false)}
-        decisionSetup={decisionSetup}
-        companySnapshot={companySnapshot}
-        productStrategy={productStrategy}
-        selectedMarkets={activeSelectedMarkets}
-        marketScores={marketScores}
-        results={calculatedResults}
-        consultantNotes={consultantNotes}
-        selectedRoadmapMarketId={selectedRoadmapMarketId}
+      <Suspense fallback={null}>
+        <ExportBriefModal
+          isOpen={exportBriefOpen}
+          onClose={() => setExportBriefOpen(false)}
+          decisionSetup={decisionSetup}
+          companySnapshot={companySnapshot}
+          productStrategy={productStrategy}
+          selectedMarkets={activeSelectedMarkets}
+          marketScores={marketScores}
+          results={calculatedResults}
+          consultantNotes={consultantNotes}
+          selectedRoadmapMarketId={selectedRoadmapMarketId}
+        />
+      </Suspense>
+
+      {/* ─── Session Manager ─────────────────────────────── */}
+      <SessionManager
+        currentSessionId={sessionId}
+        isOpen={showSessionManager}
+        onClose={() => setShowSessionManager(false)}
+        onResumeSession={(id) => {
+          toast.info(`Resuming session...`);
+          track.sessionResumed(id);
+        }}
+        onStartNew={() => {
+          toast.success("New assessment session started");
+          track.sessionStarted(sessionId);
+        }}
+        onDeleteSession={(id) => {
+          deleteSessionFromStorage(id);
+          toast.info("Session deleted");
+        }}
       />
     </div>
   );

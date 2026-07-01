@@ -1,7 +1,7 @@
 {
   "name": "mep-light",
   "private": true,
-  "version": "2.0.0",
+  "version": "3.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -14,6 +14,7 @@
     "test:golden": "node --import tsx tests/golden_scenario_somayeh.ts",
     "test:pdf": "node --import tsx tests/pdf_export.test.ts",
     "test:all": "npm run test && npm run test:prep && npm run test:golden",
+    "test:unit": "npx vitest run",
     "api": "node --import tsx backend/src/api_server.ts",
     "pdf-service": "python backend/pdf_service/app.py"
   },

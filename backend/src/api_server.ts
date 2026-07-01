@@ -48,13 +48,33 @@ app.use((_req: Request, res: Response, next: Function) => {
 
 app.use(express.json());
 
+// Request ID middleware for log correlation
+app.use((_req: Request, res: Response, next: Function) => {
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  res.setHeader("X-Request-ID", requestId);
+  (res as any).requestId = requestId;
+  next();
+});
+
+// Response time logging
+app.use((req: Request, res: Response, next: Function) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (duration > 1000) {
+      console.log(`[SLOW] ${req.method} ${req.path} — ${duration}ms`);
+    }
+  });
+  next();
+});
+
 // ─── Health Check ────────────────────────────────────────────────────
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "healthy",
     service: "MEP-light™ Scoring Engine API",
-    version: "1.4.0",
+    version: "3.0.0",
     timestamp: new Date().toISOString(),
   });
 });
@@ -283,6 +303,29 @@ function generateValidationRoadmap(
     phases,
   };
 }
+
+// ─── Telemetry Endpoint ──────────────────────────────────────────────
+
+app.post("/api/telemetry", (req: Request, res: Response) => {
+  try {
+    const { events } = req.body;
+    if (Array.isArray(events) && events.length > 0) {
+      // Log events for observability (structured JSON)
+      events.forEach((event: any) => {
+        console.log(JSON.stringify({
+          type: "telemetry",
+          action: event.action,
+          properties: event.properties || {},
+          timestamp: event.timestamp || new Date().toISOString(),
+          requestId: (res as any).requestId,
+        }));
+      });
+    }
+    res.status(204).send();
+  } catch {
+    res.status(204).send(); // Best-effort — never fail telemetry
+  }
+});
 
 // ─── Static Asset Serving ─────────────────────────────────────────────
 
