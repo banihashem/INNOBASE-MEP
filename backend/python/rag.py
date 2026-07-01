@@ -12,13 +12,14 @@ For SQLite fallback (local dev), uses keyword-based text search
 instead of vector similarity.
 """
 
+import os
 import re
 import uuid
 import logging
 from typing import Optional
 
 from sqlalchemy.orm import Session
-from sqlalchemy import text, func
+from sqlalchemy import text as sa_text, func
 
 from .models import DocumentChunk
 from .metrics import RAG_SEARCHES, RAG_SEARCH_LATENCY
@@ -26,11 +27,54 @@ import time
 
 logger = logging.getLogger("mep.rag")
 
-# ─── Constants ────────────────────────────────────────────────────────
+# ─── Constants ────────────────────────────────────────────────────────────────
 
 CHUNK_SIZE = 500        # tokens (approx words)
 CHUNK_OVERLAP = 0.10    # 10% overlap
 TOP_K_RESULTS = 5       # Max chunks returned per search
+EMBEDDING_MODEL = "text-embedding-004"
+EMBEDDING_DIM = 768
+
+
+# ─── Embedding Generation ───────────────────────────────────────────────────
+
+def _get_genai_client():
+    """Lazily initialize the Google GenAI client for embedding generation."""
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        return None
+    try:
+        from google import genai
+        return genai.Client(api_key=api_key)
+    except ImportError:
+        logger.warning("google-genai not installed — embedding disabled")
+        return None
+    except Exception as e:
+        logger.warning("Failed to initialize GenAI client: %s", e)
+        return None
+
+
+def generate_embedding(text_content: str) -> Optional[list[float]]:
+    """
+    Generate a 768-dimensional embedding vector using Google text-embedding-004.
+
+    Returns None if the API key is not configured or the call fails.
+    """
+    client = _get_genai_client()
+    if client is None:
+        return None
+
+    try:
+        result = client.models.embed_content(
+            model=EMBEDDING_MODEL,
+            contents=text_content,
+        )
+        if result and result.embeddings:
+            return result.embeddings[0].values
+        return None
+    except Exception as e:
+        logger.warning("Embedding generation failed: %s", e)
+        return None
 
 
 # ─── Document Chunking ───────────────────────────────────────────────
@@ -79,16 +123,21 @@ def ingest_document(
 
     Process:
       1. Chunk the document into overlapping segments
-      2. Store each chunk with metadata
-      3. (Future: Embed and store vector representations)
+      2. Generate embeddings via text-embedding-004 (if available)
+      3. Store each chunk with metadata and optional embedding vector
 
     Returns list of chunk IDs created.
     """
     chunks = chunk_text(content)
     chunk_ids = []
+    embedded_count = 0
 
     for chunk_text_content in chunks:
         chunk_id = str(uuid.uuid4())
+
+        # Attempt to generate embedding vector
+        embedding_vector = generate_embedding(chunk_text_content)
+
         doc_chunk = DocumentChunk(
             chunk_id=chunk_id,
             content=chunk_text_content,
@@ -96,8 +145,14 @@ def ingest_document(
             source_type=source_type,
             region=region,
             metadata_json=metadata or {},
-            embedding_text=chunk_text_content.lower(),  # Searchable text
+            embedding_text=chunk_text_content.lower(),  # Keyword fallback
         )
+
+        # Set pgvector embedding if available and model supports it
+        if embedding_vector and hasattr(doc_chunk, 'embedding'):
+            doc_chunk.embedding = embedding_vector
+            embedded_count += 1
+
         db.add(doc_chunk)
         chunk_ids.append(chunk_id)
 
@@ -107,6 +162,7 @@ def ingest_document(
         extra={
             "source": source,
             "chunks_created": len(chunk_ids),
+            "chunks_embedded": embedded_count,
             "source_type": source_type,
             "region": region,
         },
@@ -209,12 +265,54 @@ def _postgres_hybrid_search(
 ) -> list[dict]:
     """
     PostgreSQL-specific hybrid search using pgvector + tsvector.
-    Falls back to keyword search if embedding is unavailable.
-    """
-    # Full-text search using PostgreSQL tsvector
-    fts_query = " & ".join(query.split())
 
-    sql = text("""
+    Strategy:
+      1. Try vector similarity search (cosine distance) if embeddings exist
+      2. Run full-text search (BM25 via tsvector)
+      3. Merge and deduplicate results, preferring vector matches
+      4. Fall back to keyword search if both fail
+    """
+    results_map: dict[str, dict] = {}
+
+    # ─── Vector Similarity Search ─────────────────────────────────
+    query_embedding = generate_embedding(query)
+    if query_embedding:
+        try:
+            vector_sql = sa_text("""
+                SELECT
+                    chunk_id, content, source, source_type, region, metadata_json,
+                    1 - (embedding <=> :query_vec::vector) AS similarity
+                FROM document_chunks
+                WHERE embedding IS NOT NULL
+                    AND (:region IS NULL OR region = :region)
+                    AND (:source_type IS NULL OR source_type = :source_type)
+                ORDER BY embedding <=> :query_vec::vector
+                LIMIT :top_k
+            """)
+            rows = db.execute(vector_sql, {
+                "query_vec": str(query_embedding),
+                "region": region,
+                "source_type": source_type,
+                "top_k": top_k,
+            }).fetchall()
+
+            for row in rows:
+                results_map[row.chunk_id] = {
+                    "chunk_id": row.chunk_id,
+                    "content": row.content,
+                    "source": row.source,
+                    "source_type": row.source_type,
+                    "region": row.region,
+                    "relevance_score": float(row.similarity),
+                    "metadata": row.metadata_json or {},
+                    "search_type": "vector",
+                }
+        except Exception as e:
+            logger.warning("pgvector similarity search failed: %s", e)
+
+    # ─── Full-Text Search (BM25) ──────────────────────────────────
+    fts_query = " & ".join(query.split())
+    fts_sql = sa_text("""
         SELECT
             chunk_id, content, source, source_type, region, metadata_json,
             ts_rank_cd(to_tsvector('english', content), to_tsquery('english', :query)) AS rank
@@ -227,28 +325,39 @@ def _postgres_hybrid_search(
     """)
 
     try:
-        rows = db.execute(sql, {
+        rows = db.execute(fts_sql, {
             "query": fts_query,
             "region": region,
             "source_type": source_type,
             "top_k": top_k,
         }).fetchall()
 
-        return [
-            {
-                "chunk_id": row.chunk_id,
-                "content": row.content,
-                "source": row.source,
-                "source_type": row.source_type,
-                "region": row.region,
-                "relevance_score": float(row.rank),
-                "metadata": row.metadata_json or {},
-            }
-            for row in rows
-        ]
+        for row in rows:
+            if row.chunk_id not in results_map:
+                results_map[row.chunk_id] = {
+                    "chunk_id": row.chunk_id,
+                    "content": row.content,
+                    "source": row.source,
+                    "source_type": row.source_type,
+                    "region": row.region,
+                    "relevance_score": float(row.rank),
+                    "metadata": row.metadata_json or {},
+                    "search_type": "fts",
+                }
     except Exception as e:
-        logger.warning(f"PostgreSQL FTS search failed, falling back to keyword: {e}")
-        return keyword_search(db, query, region, source_type, top_k)
+        logger.warning("PostgreSQL FTS search failed: %s", e)
+
+    if results_map:
+        sorted_results = sorted(
+            results_map.values(),
+            key=lambda x: x["relevance_score"],
+            reverse=True,
+        )
+        return sorted_results[:top_k]
+
+    # Fallback to simple keyword search
+    logger.warning("Both vector and FTS search failed, falling back to keyword")
+    return keyword_search(db, query, region, source_type, top_k)
 
 
 # ─── Citation Stitching ──────────────────────────────────────────────

@@ -32,6 +32,7 @@ from .pdf_routes import router as pdf_router
 from .user_routes import router as user_router
 from .metrics import metrics_router, OIDC_AUTH_FAILURES
 from .rag import seed_sample_data
+from .finops import get_session_finops_status
 from . import users  # Ensure User model is registered for init_db
 
 
@@ -128,6 +129,12 @@ async def root():
         "charter": "Clarify Preparedness, Do Not Predict Success",
         "docs": "/api/v2/docs" if settings.debug else "disabled in production",
     }
+
+
+@app.get("/api/v2/finops/{session_id}")
+async def finops_status(session_id: str):
+    """Get FinOps budget and circuit breaker status for a session."""
+    return get_session_finops_status(session_id)
 
 
 # ─── ASGI Entry Point ────────────────────────────────────────────────

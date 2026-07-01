@@ -2,10 +2,11 @@
  * MEP-light™ — API Client
  * 
  * Typed HTTP client for backend communication with:
- *   - Automatic retry with exponential backoff
- *   - Auth header injection
+ *   - Automatic Bearer token injection from auth session
+ *   - Retry with exponential backoff
  *   - Graceful degradation (localStorage fallback when offline)
  *   - Request timeout handling
+ *   - User management API methods (Admin)
  */
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -25,11 +26,42 @@ export interface ApiError {
   status: number;
 }
 
+export interface UserProfile {
+  userId: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string;
+  role: string;
+  status: string;
+  companyName: string;
+  department: string;
+  title: string;
+  totalSessions: number;
+  lastLoginAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface UserListResponse {
+  users: UserProfile[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface UserStatsResponse {
+  byRole: Record<string, number>;
+  total: number;
+  roles: string[];
+  statuses: string[];
+}
+
 interface FetchOptions {
   method?: string;
   body?: unknown;
   timeout?: number;
   retries?: number;
+  skipAuth?: boolean;
 }
 
 // ─── Configuration ──────────────────────────────────────────────────
@@ -38,6 +70,17 @@ const API_BASE = "/api";
 const DEFAULT_TIMEOUT = 15000; // 15 seconds
 const DEFAULT_RETRIES = 3;
 const BACKOFF_BASE = 1000; // 1 second
+const TOKEN_STORAGE_KEY = "mep_v3_token";
+
+// ─── Auth Token Retrieval ───────────────────────────────────────────
+
+function getAuthToken(): string | null {
+  try {
+    return sessionStorage.getItem(TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
 
 // ─── Core Fetch with Retry ──────────────────────────────────────────
 
@@ -50,6 +93,7 @@ async function fetchWithRetry(
     body,
     timeout = DEFAULT_TIMEOUT,
     retries = DEFAULT_RETRIES,
+    skipAuth = false,
   } = options;
 
   let lastError: Error | null = null;
@@ -59,11 +103,21 @@ async function fetchWithRetry(
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+      // Build headers with optional auth
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (!skipAuth) {
+        const token = getAuthToken();
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+      }
+
       const response = await fetch(`${API_BASE}${url}`, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
@@ -120,7 +174,7 @@ export const apiClient = {
    * Health check.
    */
   async health(): Promise<{ status: string; version: string }> {
-    const res = await fetchWithRetry("/health", { retries: 1, timeout: 5000 });
+    const res = await fetchWithRetry("/health", { retries: 1, timeout: 5000, skipAuth: true });
     return res.json();
   },
 
@@ -159,5 +213,105 @@ export const apiClient = {
     } catch {
       return false;
     }
+  },
+
+  // ─── User Management API ────────────────────────────────────────
+
+  users: {
+    /**
+     * Get current authenticated user's profile.
+     * Auto-provisions on first login.
+     */
+    async me(): Promise<{ user: UserProfile }> {
+      const res = await fetchWithRetry("/v2/users/me");
+      return res.json();
+    },
+
+    /**
+     * List/search users (Admin only).
+     */
+    async list(params: {
+      q?: string;
+      role?: string;
+      status?: string;
+      company?: string;
+      limit?: number;
+      offset?: number;
+    } = {}): Promise<UserListResponse> {
+      const searchParams = new URLSearchParams();
+      if (params.q) searchParams.set("q", params.q);
+      if (params.role) searchParams.set("role", params.role);
+      if (params.status) searchParams.set("status", params.status);
+      if (params.company) searchParams.set("company", params.company);
+      if (params.limit) searchParams.set("limit", String(params.limit));
+      if (params.offset) searchParams.set("offset", String(params.offset));
+
+      const qs = searchParams.toString();
+      const res = await fetchWithRetry(`/v2/users${qs ? `?${qs}` : ""}`);
+      return res.json();
+    },
+
+    /**
+     * Get a user by ID (Admin only).
+     */
+    async getById(userId: string): Promise<{ user: UserProfile }> {
+      const res = await fetchWithRetry(`/v2/users/${userId}`);
+      return res.json();
+    },
+
+    /**
+     * Create a new user (Admin only).
+     */
+    async create(data: {
+      email: string;
+      role?: string;
+      displayName?: string;
+      companyName?: string;
+      department?: string;
+      title?: string;
+    }): Promise<{ success: boolean; user: UserProfile }> {
+      const res = await fetchWithRetry("/v2/users", {
+        method: "POST",
+        body: data,
+      });
+      return res.json();
+    },
+
+    /**
+     * Update a user (Admin only).
+     */
+    async update(userId: string, data: {
+      displayName?: string;
+      role?: string;
+      status?: string;
+      companyName?: string;
+      department?: string;
+      title?: string;
+      notes?: string;
+    }): Promise<{ success: boolean; user: UserProfile }> {
+      const res = await fetchWithRetry(`/v2/users/${userId}`, {
+        method: "PATCH",
+        body: data,
+      });
+      return res.json();
+    },
+
+    /**
+     * Deactivate a user (Admin only). Soft-delete.
+     */
+    async deactivate(userId: string): Promise<{ success: boolean; user: UserProfile }> {
+      const res = await fetchWithRetry(`/v2/users/${userId}`, {
+        method: "DELETE",
+      });
+      return res.json();
+    },
+
+    /**
+     * Get user statistics (Admin only).
+     */
+    async stats(): Promise<UserStatsResponse> {
+      const res = await fetchWithRetry("/v2/users/stats");
+      return res.json();
+    },
   },
 };

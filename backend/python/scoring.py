@@ -373,11 +373,17 @@ def run_certainty_guardrail(
         }
         alerts.append(alert)
 
-        logger.warning(
+        logger.critical(
             "CERTAINTY_GUARDRAIL_TRIGGERED for market %s. "
-            "Potential: %s, Confidence: %s",
+            "Potential: %s, Confidence: %s — Evidence Discrepancy Alert: "
+            "Classification capped to Tier B. Requires validation.",
             market_name, potential_score, confidence_score,
-            extra={"session_alert": "HIGH_POT_LOW_CONF"},
+            extra={
+                "session_alert": "HIGH_POT_LOW_CONF",
+                "guardrail": "certainty_guardrail",
+                "action": "tier_cap_to_B",
+                "badge": "Promising Hypothesis - Requires Validation",
+            },
         )
 
     return {

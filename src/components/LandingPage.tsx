@@ -15,9 +15,30 @@ import {
   Lock,
 } from "lucide-react";
 
-// ─── Google OIDC Auth Helpers ────────────────────────────────────────
+import { decodeGoogleJwt, GOOGLE_CLIENT_ID, isGoogleAuthConfigured } from "../lib/auth";
 
-const GOOGLE_CLIENT_ID = "52156375400-placeholder.apps.googleusercontent.com";
+// ─── Types ──────────────────────────────────────────────────────────
+
+// Declare google.accounts types for GIS
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: { credential: string }) => void;
+            auto_select?: boolean;
+            cancel_on_tap_outside?: boolean;
+          }) => void;
+          prompt: (notification?: (n: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => void) => void;
+          renderButton: (element: HTMLElement, config: { theme?: string; size?: string; width?: number; text?: string; shape?: string; logo_alignment?: string }) => void;
+          revoke: (email: string, callback: () => void) => void;
+        };
+      };
+    };
+  }
+}
 
 interface UserProfile {
   email: string;
@@ -29,7 +50,7 @@ interface UserProfile {
 // ─── Landing Page Component ─────────────────────────────────────────
 
 interface LandingPageProps {
-  onSignIn: (user: UserProfile) => void;
+  onSignIn: (user: UserProfile, token?: string) => void;
   isAuthenticated: boolean;
 }
 
@@ -37,6 +58,7 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
   const [isLoading, setIsLoading] = useState(false);
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
   const [scrollY, setScrollY] = useState(0);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -44,13 +66,59 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Initialize Google Identity Services when configured
+  useEffect(() => {
+    if (!isGoogleAuthConfigured()) return;
+    if (!window.google?.accounts?.id) return;
+
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleGoogleCredentialResponse,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    });
+  }, []);
+
+  /**
+   * Handle the credential response from Google Identity Services.
+   * The credential is a JWT id_token that we decode client-side
+   * and store for backend API authentication.
+   */
+  const handleGoogleCredentialResponse = (response: { credential: string }) => {
+    setIsLoading(true);
+    setAuthError(null);
+
+    const user = decodeGoogleJwt(response.credential);
+    if (user) {
+      onSignIn(user, response.credential);
+    } else {
+      setAuthError("Failed to decode authentication response. Please try again.");
+    }
+    setIsLoading(false);
+  };
+
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    // Simulate Google OIDC flow — in production this would redirect to Google
-    // For now, auto-provision a demo user
+    setAuthError(null);
+
+    // ─── Real Google OIDC Flow ─────────────────────────────
+    if (isGoogleAuthConfigured() && window.google?.accounts?.id) {
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // GIS popup was blocked or skipped — show error
+          setAuthError(
+            "Google sign-in popup was blocked. Please allow popups for this site, or try again."
+          );
+          setIsLoading(false);
+        }
+      });
+      return;
+    }
+
+    // ─── Demo Fallback (no valid Client ID) ────────────────
     setTimeout(() => {
       const demoUser: UserProfile = {
-        email: "user@innobase.app",
+        email: "consultant@innobase.app",
         name: "Strategy Consultant",
         picture: "",
         sub: "demo-user-id",

@@ -36,6 +36,8 @@ const ComparativeDashboardScreen = lazy(() => import("./components/ComparativeDa
 const RoadmapScreen = lazy(() => import("./components/RoadmapScreen"));
 const ExportBriefModal = lazy(() => import("./components/ExportBriefModal"));
 const EntryReadinessWorkspace = lazy(() => import("./components/EntryReadinessWorkspace"));
+const AdminPanel = lazy(() => import("./components/AdminPanel"));
+import UserProfileMenu from "./components/UserProfileMenu";
 
 import { CalculatedResult } from "./components/ComparativeDashboardScreen";
 import {
@@ -132,7 +134,7 @@ function AppRouter() {
   }
 
   if (!isAuthenticated) {
-    return <LandingPage onSignIn={signIn} isAuthenticated={false} />;
+    return <LandingPage onSignIn={(user, token) => signIn(user, token)} isAuthenticated={false} />;
   }
 
   return <AuthenticatedApp authUser={user} onSignOut={signOut} />;
@@ -143,6 +145,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   const toast = useToast();
   const [sessionId] = useState(() => generateSessionId());
   const [showSessionManager, setShowSessionManager] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   const [appMode, setAppMode] = useState<AppMode>("demo");
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -617,7 +620,20 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   }, [activeSelectedMarkets, marketScores]);
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col justify-between font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
+    <>
+    {/* ─── Admin Panel (full-screen overlay) ──────────── */}
+    {showAdminPanel && (
+      <Suspense fallback={
+        <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }>
+        <AdminPanel onBack={() => setShowAdminPanel(false)} />
+      </Suspense>
+    )}
+
+    {/* ─── Main App ──────────────────────────────────────── */}
+    <div className={`min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col justify-between font-sans selection:bg-indigo-500/30 selection:text-indigo-200 ${showAdminPanel ? 'hidden' : ''}`}>
       {/* ─── Header ──────────────────────────────────────── */}
       <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
@@ -672,10 +688,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
               )}
             </button>
 
-            <div className="hidden sm:flex items-center space-x-1.5 text-xs text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800/80">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="font-mono">WORKSPACE_SECURE</span>
-            </div>
+            <UserProfileMenu onOpenAdmin={() => setShowAdminPanel(true)} />
           </div>
         </div>
       </header>
@@ -906,5 +919,6 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         }}
       />
     </div>
+    </>
   );
 }

@@ -35,6 +35,7 @@ from reportlab.platypus import (
     HRFlowable,
 )
 from reportlab.graphics.shapes import Drawing, Rect, String
+from reportlab.graphics.charts.lineplots import LinePlot
 
 
 # ─── Color Constants ─────────────────────────────────────
@@ -46,6 +47,46 @@ WHITE = HexColor("#FFFFFF")
 LIGHT_GRAY = HexColor("#E2E8F0")
 INDIGO = HexColor("#4F46E5")
 SLATE = HexColor("#64748B")
+WAVE_COLOR = HexColor("#E53E3E")  # Crimson accent for wave
+
+
+def _build_wave_background() -> Drawing:
+    """
+    Create a subtle sinusoidal wave background decoration for the cover page.
+    Uses crimson accent color at low opacity for a refined corporate feel.
+    """
+    page_w = letter[0] - 2 * inch  # Account for margins
+    d = Drawing(page_w, 80)
+
+    # Generate two overlapping sine waves for visual depth
+    import math
+    points_wave1 = []
+    points_wave2 = []
+    num_points = 120
+
+    for i in range(num_points):
+        x = (i / (num_points - 1)) * page_w
+        # Primary wave — larger amplitude
+        y1 = 40 + 18 * math.sin((i / num_points) * 4 * math.pi)
+        points_wave1.append((x, y1))
+        # Secondary wave — smaller, phase-shifted
+        y2 = 40 + 10 * math.sin((i / num_points) * 4 * math.pi + 1.2)
+        points_wave2.append((x, y2))
+
+    from reportlab.graphics.shapes import PolyLine
+    wave1 = PolyLine(
+        [coord for pt in points_wave1 for coord in pt],
+        strokeColor=HexColor("#E53E3E40"),  # Low opacity crimson
+        strokeWidth=1.5,
+    )
+    wave2 = PolyLine(
+        [coord for pt in points_wave2 for coord in pt],
+        strokeColor=HexColor("#E53E3E25"),  # Even lower opacity
+        strokeWidth=1.0,
+    )
+    d.add(wave1)
+    d.add(wave2)
+    return d
 
 
 def _safe(text) -> str:
@@ -146,7 +187,12 @@ def _build_cover_page(styles, data: dict) -> list:
     elements = []
 
     # Spacer at top
-    elements.append(Spacer(1, 1.5 * inch))
+    elements.append(Spacer(1, 1.0 * inch))
+
+    # Subtle wave background decoration
+    elements.append(_build_wave_background())
+
+    elements.append(Spacer(1, 0.3 * inch))
 
     # Accent line
     elements.append(HRFlowable(

@@ -272,9 +272,14 @@ def get_or_create_user(
     avatar_url: str = "",
 ) -> User:
     """
-    Find existing user or auto-provision a new Viewer account.
+    Find existing user or auto-provision a new account.
     Called after successful OIDC authentication.
+
+    If SEED_ADMIN_EMAIL matches, auto-promotes to Administrator.
+    Otherwise, new users start as Viewer.
     """
+    from .config import settings
+
     user = get_user_by_email(db, email)
     if user:
         # Update last login
@@ -286,11 +291,17 @@ def get_or_create_user(
         db.commit()
         return user
 
-    # Auto-provision new user as Viewer
+    # Determine initial role — check seed admin email
+    initial_role = "Viewer"
+    if settings.seed_admin_email and email.lower() == settings.seed_admin_email.lower():
+        initial_role = "Administrator"
+        logger.info("Admin auto-seeding: %s promoted to Administrator", email)
+
+    # Auto-provision new user
     user = create_user(
         db=db,
         email=email,
-        role="Viewer",
+        role=initial_role,
         display_name=display_name,
         created_by="auto-provision",
     )
@@ -299,7 +310,10 @@ def get_or_create_user(
         db.commit()
         db.refresh(user)
 
-    logger.info("User auto-provisioned on first login", extra={"email": email})
+    logger.info("User auto-provisioned on first login", extra={
+        "email": email,
+        "role": initial_role,
+    })
     return user
 
 

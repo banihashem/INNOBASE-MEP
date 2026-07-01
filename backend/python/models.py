@@ -136,6 +136,14 @@ class MarketScore(Base):
 
 # ─── Document Chunks (pgvector RAG) ─────────────────────────────────
 
+# Conditionally import pgvector for embedding column
+try:
+    from pgvector.sqlalchemy import Vector
+    _HAS_PGVECTOR = True
+except ImportError:
+    _HAS_PGVECTOR = False
+
+
 class DocumentChunk(Base):
     """
     Stores embedded document chunks for the RAG pipeline.
@@ -151,9 +159,13 @@ class DocumentChunk(Base):
     region = Column(String(100), default="")        # UAE, Middle East, etc.
     metadata_json = Column(JSON, default=dict)
 
-    # For pgvector: embedding column is added via migration
-    # For SQLite: we use keyword search as fallback
-    embedding_text = Column(Text, default="")  # Searchable text representation
+    # For pgvector: 768-dimensional embedding vector (text-embedding-004 output)
+    # This column is only active when pgvector extension is available.
+    if _HAS_PGVECTOR:
+        embedding = Column(Vector(768), nullable=True)
+
+    # For SQLite / keyword fallback: searchable text representation
+    embedding_text = Column(Text, default="")
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 

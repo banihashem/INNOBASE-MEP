@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     enable_prometheus: bool = True
     log_file_path: str = "logs/app.json"
 
+    # ─── Admin Seeding ────────────────────────────────────────────
+    seed_admin_email: str = ""  # Auto-promote this email to Administrator
+
     @property
     def cors_origin_list(self) -> list[str]:
         """Parse comma-separated CORS origins into a list."""
