@@ -1,0 +1,333 @@
+### MEP-light™ Production System Architecture Blueprint
+
+This document defines the production-grade, enterprise-ready physical layer architecture for MEP-light™. It transitions the conceptual readiness framework into a secure, stateful, multi-tenant system designed for secure deployment on Google Cloud.
+
+```
+                                  [ USER BROWSER ]
+                                         │
+                            HTTPS (OpenID / Google ID)
+                                         │
+                             [ CLOUD FLUID GATEWAY ]
+                                         │
+                ┌────────────────────────┴────────────────────────┐
+                ▼                                                 ▼
+     [ FRONT-END SERVER ]                              [ BACK-END API SUITE ]
+  (React / Tailwind CSS / FSM)                     (Python FastAPI / secure router)
+                                                                  │
+                                      ┌───────────────────────────┼───────────────────────────┐
+                                      ▼                           ▼                           ▼
+                           [ SECURITY & OIDC GATE ]      [ ORCHESTRATION ENGINE ]     [ OBSERVABILITY ENGINE ]
+                             JWT Validation / RBAC        (Managed Agent Harness)     Cloud Logging / Alerts
+                                      │                           │                           │
+                                      │                           ├──────────────┐            │
+                                      ▼                           ▼              ▼            ▼
+                             [ RELATIONAL DB ]             [ VECTOR DB ]    [ PDF RENDER ] [ PROMETHEUS /
+                             (PostgreSQL Schema)           (pgvector / RAG) (ReportLab)      OPENTELEMETRY ]
+```
+
+---
+
+### 1. Unified Layered Product Architecture
+
+#### 1.1 Front-End Foundation (Client-Side)
+The front-end must be built as a robust, single-page application (SPA) using **React (TypeScript)** and **Tailwind CSS**. 
+
+*   **Deterministic Interaction State Machine:** Rather than permitting unstructured navigation, the UI is governed by a client-side Finite State Machine (FSM) utilizing libraries like `XState`. The state machine prevents invalid transition states (e.g., accessing the comparative dashboard before configuring target markets) and enforces strict validation gates on each screen.
+*   **State Machine Configurations:**
+    *   `SETUP` ➔ `SNAPSHOT` ➔ `STRATEGY` ➔ `MARKET_SHORTLIST` ➔ `SCORING` ➔ `DASHBOARD` ➔ `READINESS_WORKSPACE`.
+    *   Every transition caches active parameters in local state, ensuring full backward and forward compatibility with state preservation if a user alters input values.
+*   **Dual UI Presentation Modes:**
+    *   *Demo Mode:* Initiates a 7-to-10 minute pre-populated simulation run using the "Somayeh F&B" reference dataset to showcase system capabilities immediately.
+    *   *Consultant Mode:* Unlocks manual scoring sliders for the 9 core dimensions, editable strategic note-taking fields, custom weights, and decision override toggles.
+
+#### 1.2 Back-End API Architecture
+The back-end operates as a high-performance, asynchronous RESTful API built on **Python FastAPI**. This framework provides automatic OpenAPI documentation, strict type-checking via Pydantic, and native asynchronous concurrency to handle multi-turn agent processes without blocking network I/O.
+
+*   **Stateless Request Cycle:** All operational endpoints are stateless. Session context is either supplied within incoming JSON payloads or retrieved from database storage using dynamic session IDs passed in cryptographically signed client headers.
+*   **Input Delimiter Guardrails:** Intercepts incoming user text fields to sanitize data, screen for prompt injection anomalies, and strip executable characters before passing variables to model logic gates.
+
+#### 1.3 Database Architecture (Persistence Layer)
+A single **PostgreSQL** database cluster serves as the primary transaction and metadata ledger. This guarantees ACID compliance for audit trails and session tracking.
+
+```sql
+-- Core PostgreSQL Relational Schema for Enterprise State
+CREATE TABLE client_companies (
+    company_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_name VARCHAR(255) NOT NULL DEFAULT 'Client Company',
+    sector VARCHAR(100) NOT NULL,
+    capabilities TEXT,
+    constraints TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_sessions (
+    session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id VARCHAR(255) NOT NULL,
+    company_id UUID REFERENCES client_companies(company_id),
+    active_state VARCHAR(50) NOT NULL DEFAULT 'SETUP',
+    decision_statement TEXT,
+    selected_offering VARCHAR(255) DEFAULT 'Selected Offering',
+    selected_strategy VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE market_scores (
+    score_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id UUID REFERENCES user_sessions(session_id) ON DELETE CASCADE,
+    market_name VARCHAR(100) NOT NULL,
+    market_type VARCHAR(50) NOT NULL, -- Country, Region, Market Bloc
+    attractiveness_raw INT CHECK (attractiveness_raw BETWEEN 1 AND 5),
+    offering_fit_raw INT CHECK (offering_fit_raw BETWEEN 1 AND 5),
+    channel_access_raw INT CHECK (channel_access_raw BETWEEN 1 AND 5),
+    competitor_intensity_raw INT CHECK (competitor_intensity_raw BETWEEN 1 AND 5),
+    regulatory_complexity_raw INT CHECK (regulatory_complexity_raw BETWEEN 1 AND 5),
+    operational_feasibility_raw INT CHECK (operational_feasibility_raw BETWEEN 1 AND 5),
+    brand_transferability_raw INT CHECK (brand_transferability_raw BETWEEN 1 AND 5),
+    strategic_value_raw INT CHECK (strategic_value_raw BETWEEN 1 AND 5),
+    financial_logic_raw INT CHECK (financial_logic_raw BETWEEN 1 AND 5),
+    evidence_basis VARCHAR(100), -- Direct Evidence, Market Reports, Expert Judgment
+    notes TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### 1.4 Contextual RAG Engine (Vector Knowledge Base)
+To ground the advisory outputs in actual, un-hallucinated regional data (specifically for the UAE F&B launch), the physical architecture integrates a high-performance RAG pipeline:
+
+*   **Vector Database:** **Qdrant** or PostgreSQL with the **pgvector** extension.
+*   **Data Ingestion & Chunking:** Curated regulatory frameworks, trade reports, and import guidelines are parsed, chunked using a sliding-window strategy (500 tokens chunk size, 10% overlap), embedded via `text-embedding-gecko` or equivalent, and indexed.
+*   **Search Hybridization:** Combines semantic vector similarity search with keyword search (BM25) to retrieve exact standards (e.g., UAE halal, labeling regulations) and merge them into prompt context windows, complete with explicit citation anchors.
+
+---
+
+### 2. Enterprise Authentication, OIDC, & Role-Based Access Control (RBAC)
+
+To safeguard corporate IP, protect client data, and guarantee that administrative controls are restricted, the physical layer deploys a secure access-control paradigm.
+
+```
+           +-----------------------+
+           |   Google OIDC Flow    |
+           +-----------+-----------+
+                       |
+                 id_token (JWT)
+                       |
+                       v
+           +-----------------------+
+           |   FastAPI Middleware  |
+           +-----------+-----------+
+                       |
+               Extract role claim
+                       |
+          +------------+------------+
+          |                         |
+          v                         v
++-------------------+     +-------------------+
+|  Role: Consultant |     |   Role: Viewer    |
+| Full Access + PDF |     | Read-Only / Demo  |
++-------------------+     +-------------------+
+```
+
+#### 2.1 Google OIDC Authentication
+MEP-light™ integrates with **Google Identity Platform** using standard **OpenID Connect (OIDC)** protocol:
+1.  The React frontend initiates the OIDC authorization code flow with PKCE (Proof Key for Code Exchange), prompting the user to authenticate via their Google Identity.
+2.  Upon verification, Google issues an encrypted `id_token` and `access_token` JWT to the client.
+3.  The client transmits this JWT in the `Authorization: Bearer <JWT>` header of all subsequent API queries.
+4.  The back-end FastAPI gateway intercepts the request, locally retrieves and caches Google’s JWKS public keys, and verifies the token's validity (signature, expiration, audience).
+
+#### 2.2 Role-Based Access Control (RBAC) Matrix
+The JWT contains an enterprise claims block defining user access authorization. The back-end parses this payload to assign permissions:
+
+| System Role | Front-End UI Rights | Back-End API Permissions | Scope & Constraints |
+| :--- | :--- | :--- | :--- |
+| **Viewer** | Access to Demo Mode only; scores are read-only. | `GET` endpoints for demo sessions; blocked from custom calculations. | Restricted to simulated sandbox data. |
+| **Consultant** | Full access to 7-screen flow, overrides, notes, PDF generation. | `POST`/`PUT`/`DELETE` on custom sessions; calls ReportLab compiler. | Can manage owned client workspaces. |
+| **Administrator** | Access to internal platform settings and system matrices. | Adjust global dimension weights; modify RAG vector documents. | System-wide schema and config modifications. |
+
+```python
+# FastAPI Dependency-Driven RBAC Middleware
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import jwt
+
+security = HTTPBearer()
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    try:
+        # Decode and validate using Google JWKS (simplified representation)
+        payload = jwt.decode(token, "GOOGLE_PUBLIC_KEY", algorithms=["RS256"], audience="MEP_CLIENT_ID")
+        return payload
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired access token"
+        )
+
+def require_role(allowed_roles: list[str]):
+    def dependency(payload: dict = Depends(verify_token)):
+        user_role = payload.get("mep_role", "Viewer")
+        if user_role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Action restricted for this privilege tier."
+            )
+        return payload
+    return dependency
+```
+
+---
+
+### 3. Logging, Metrics & Alarm Infrastructure (The Safety Net)
+
+To transition MEP-light™ away from "pilot purgatory" and establish reliable runtime governance, the physical layer deploys an structured **observability pipeline**:
+
+#### 3.1 Structured JSON Logging
+All system activities, calculations, and multi-agent loops are written as structured, machine-readable JSON logs.
+
+```json
+{
+  "timestamp": "2026-07-01T06:16:01Z",
+  "level": "INFO",
+  "component": "scoring_engine",
+  "session_id": "8f87a8b3-19cb-4ef9-81a1-9c6bc01fb819",
+  "user_role": "Consultant",
+  "action": "execute_scoring",
+  "payload": {
+    "market": "UAE",
+    "adjusted_opportunity_score": 3.70,
+    "adjusted_feasibility_score": 4.00,
+    "composite_expansion_potential": 77.0,
+    "evidence_confidence_score": 68.0
+  }
+}
+```
+
+#### 3.2 System Metrics & Prometheus Export
+The API exposes an `/metrics` endpoint scrapable by **Prometheus** to track:
+*   `mep_calculation_latency_seconds`: Histogram measuring execution speed of scoring calculations.
+*   `mep_token_consumption_total`: Counter tracking input/output tokens used by agentic loops to prevent FinOps billing spikes.
+*   `mep_pdf_generations_total`: Counter tracking PDF compile volume.
+
+#### 3.3 Dynamic Discrepancy Alarming (The "Certainty Guardrail" Event)
+An alarm is triggered automatically if the system detects a critical strategic misalignment:
+
+*   **Trigger Condition:** If an expansion option receives an `Expansion Potential Score` $>70$ (Tier A Candidate), but its `Evidence Confidence Score` is $<50$ (Low Confidence Hypothesis), the system must:
+    1.  Raise an event flag on the JSON log.
+    2.  Increment a Prometheus counter `mep_high_opportunity_low_confidence_alerts`.
+    3.  Route an notification banner to the UI: *"Mep-Alert: Leading validation candidate presents significant data gap. Halting Tier-A approval; routing to Tier-B Promising Hypothesis workspace."*
+
+```python
+# Alarm Verification and State Override Hook
+def run_certainty_guardrail(potential_score: float, confidence_score: float, market_name: str) -> dict:
+    alerts = []
+    recommended_tier = "Tier A" if potential_score >= 75 else "Tier B"
+    
+    if potential_score >= 70 and confidence_score < 50:
+        recommended_tier = "Tier B"  # Forced downgrade due to low evidence certainty
+        alerts.append({
+            "code": "HIGH_POT_LOW_CONF",
+            "severity": "CRITICAL",
+            "message": f"Market '{market_name}' scores high ({potential_score}) but has weak evidence ({confidence_score}). Capping to Tier B and routing to active validation."
+        })
+        # Fire logging alarm
+        logger.warning(
+            f"CERTAINTY_GUARDRAIL_TRIGGERED for market {market_name}. Potential: {potential_score}, Confidence: {confidence_score}",
+            extra={"session_alert": "HIGH_POT_LOW_CONF"}
+        )
+        
+    return {
+        "final_tier": recommended_tier,
+        "alerts": alerts
+    }
+```
+
+---
+
+### 4. Step-by-Step Production Roadmap
+
+```
+Phase 1: Foundation (W1-2)    Phase 2: RAG & Calc (W3-4)   Phase 3: Auth & Ops (W5-6)     Phase 4: Launch (W7)
+┌─────────────────────────┐   ┌────────────────────────┐   ┌──────────────────────────┐   ┌────────────────────────┐
+│  Setup local project    │   │  Ingest regulatory documents  Deploy Google OIDC      │   │  Continuous Integration│
+│  folders; configure OIDC│ ➔ │  Build calculation APIs│ ➔ │  Integrate FSM / UI      │ ➔ │  Run automated QA      │
+│  and PostgreSQL schemas │   │  Define search pipelines│  Build PDF Render routes │   │  Deploy live Cloud Run │
+└─────────────────────────┘   └────────────────────────┘   └──────────────────────────┘   └────────────────────────┘
+```
+
+#### Phase 1: Core System & Schemas (Weeks 1–2)
+*   Initialize local development workspace inside Google Antigravity.
+*   Deploy localized **PostgreSQL** schema to handle companies, user sessions, market matrices, and diagnostic metrics.
+*   Configure the OAuth client and endpoints with Google Identity.
+
+#### Phase 2: RAG & Calculation APIs (Weeks 3–4)
+*   Inject F&B regulatory databases and Middle East export guidelines into a localized **pgvector** container.
+*   Program the mathematical scoring backend using FastAPI, implementing inverted scores, categorical metrics, and the custom SME weighting models.
+*   Set up automated **pytest** scripts inside `/tests` using the Golden Scenario data (Somayeh F&B / Kashkam) to verify logic gates.
+
+#### Phase 3: Auth Integration & Operational Spaces (Weeks 5–6)
+*   Enforce JWT authorization middleware on the back-end API routes, assigning RBAC scopes (`Viewer`, `Consultant`, `Administrator`).
+*   Bind the UI frontend state transitions to the FSM.
+*   Integrate the serverless PDF-compilation service using ReportLab to export dynamic strategic reports.
+*   Build out the **Entry Readiness Workspace** (Product Prep) components for regulatory compliance and product localization.
+
+#### Phase 4: Observability, QA & Cloud Launch (Week 7)
+*   Deploy the JSON logging, metrics, and high-priority certain-guardrail alerts.
+*   Verify all system components against the automated Golden Evaluation datasets.
+*   Activate the **`cloudrun-mcp`** server in Antigravity to build and deploy the production codebase directly to Google Cloud Run.
+
+---
+
+### 5. Detailed Implementation Prompt for Google Antigravity IDE
+
+*This copy-paste prompt is ready to run inside your Antigravity 2.0 Manager Surface or Antigravity IDE Agent Panel to build the core system structure.*
+
+```text
+You are the Lead Systems Architect and Principal Engineer for the MEP-light™ system. We need to build a mature, production-grade, and enterprise-ready codebase that transitions our strategic MVP into a stateful, secure, and multi-tenant software system.
+
+Your task is to program our front-end foundations, REST APIs, PostgreSQL data persistence, context-aware RAG search pipeline, user authentication via Google OIDC, Role-Based Access Control, and comprehensive observability engines.
+
+Please execute the following implementation tasks sequentially inside your secure Linux sandbox:
+
+### 1. Build the Directory and Dependency Workspace
+Establish a clean, robust workspace layout to isolate our functional concerns:
+- `/frontend` - Containing our UI files, deterministic state machine controller, and screen components.
+- `/backend` - Containing our FastAPI routers, JWT auth middleware, scoring models, and RAG pipelines.
+- `/data` - Containing our PostgreSQL migrations, raw schemas, and pgvector configuration files.
+- `/tests` - Containing our Python pytest modules and the "Somayeh F&B / Kashkam" Golden Evaluation Dataset.
+- `/logs` - Isolated directory mapped to JSON-formatted log streams.
+Configure the primary setup manifests ('requirements.txt' and 'package.json') including fastAPI, pgvector, reportlab, python-jose, xstate, and OpenTelemetry.
+
+### 2. Implement Google OIDC and Role-Based Access Control (RBAC)
+- Create an authentication middleware module in the backend ('auth.py') that intercepts requests and validates incoming Google OIDC JWT tokens.
+- Map decoded token claims to our Roles: 'Viewer', 'Consultant', and 'Administrator'.
+- Enforce custom FastAPI dependencies to secure our routers:
+  - Viewer: Read-only access to demo modes and dashboard queries.
+  - Consultant: Full CRUD access to sessions, custom overrides, note sections, and PDF export routes.
+  - Administrator: Unrestricted backend management (altering weights, managing users).
+
+### 3. Program the Logical Scoring Engine and "Certainty Guardrail"
+- Implement the strict scoring mathematics within 'backend/scoring.py':
+  - Invert negative dimensions (Competitive Intensity & Regulatory Complexity): Adjusted Score = 6 - Raw Score.
+  - Compute Opportunity, Feasibility, and Strategic Fit sub-scores according to our exact weights.
+  - Apply the SME Weighting Model: Opportunity (25%), Offering Fit (20%), Feasibility (25%), Strategic Value (10%), and Financial Logic (20%).
+- Code the "Certainty Guardrail" Alarm:
+  - If a market scores high on Opportunity (>70) but low on Evidence Confidence (<50), trigger a CRITICAL level alert payload, write an alert block to the JSON logs, and downgrade the option’s final classification to Tier B (Promising but Not Ready).
+
+### 4. Build the pgvector Contextual RAG Engine
+- Configure a vector search client in the backend ('rag.py') using SQLalchemy to connect with our pgvector schema.
+- Write a localized search route that chunk-parses, embeds, and indexes Middle East regulatory compliance documents and F&B trade guidelines.
+- Build a hybrid retrieval route: When an agent generates recommendations for a selected market, it must run similarity searches across pgvector, retrieve exact standard citations, and stitch them directly into the advisory text with precise citation mappings.
+
+### 5. Construct the Enterprise ReportLab PDF Generator
+- Refactor the 'backend/pdf_exporter.py' using ReportLab to render a dynamic prioritisation report.
+- Design a formal INNOBASE template: Charcoal margins, elegant structural wave borders on the cover, a bold crimson red accent bar, and alternating shaded rows.
+- Ensure the export receives dynamic database inputs representing our active session states, selected strategy models, comparative dashboards, and the calculated 30-60-90 Day Validation Roadmap.
+- Implement strict formatting protection: Wrap all text cells in Paragraph blocks and escape XML characters to ensure the PDF compiles safely.
+
+### 6. Set Up Structured Logging, Alarms, and Observability
+- Configure our backend logger to output JSON-formatted trace streams to stdout and '/logs/app.json'.
+- Implement Prometheus instrumentation to expose endpoints for scoring latencies, token consumption volumes, and OIDC auth failures.
+- Ensure that any triggered "Certainty Guardrail" discrepancy fires an alert.
+
+Verify the complete system against our 'tests' suites using the Somayeh Golden Dataset. Run local tests inside the sandbox, catch stdout/stderr logs, and output a detailed Walkthrough file outlining the generated files and database models.
