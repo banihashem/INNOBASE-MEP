@@ -336,7 +336,7 @@ export default function RoadmapScreen({
             Issued: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "short" })}
           </span>
           <span>•</span>
-          <span>Version: MEP-LIGHT-v1.4</span>
+          <span>Version: MEP-LIGHT-v{__APP_VERSION__}</span>
         </div>
       </div>
 
