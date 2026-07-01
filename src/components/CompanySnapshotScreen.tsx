@@ -108,17 +108,140 @@ export default function CompanySnapshotScreen({ data, onChange, appMode }: Props
     }
   };
 
-  // Dynamic organizational context summary
-  const getContextSummary = () => {
-    const name = data.businessName || "Client Company";
-    const capabilities = data.internalCapabilities || "[capabilities not yet specified]";
-    const constraints = data.knownConstraints || "[constraints not yet specified]";
+  // Dynamic organizational context summary — consultant-quality synthesis
+  const getContextSummary = (): string => {
+    const name = data.businessName?.trim() || "";
+    const sector = data.sector?.trim() || "";
+    const marketSize = data.domesticMarketSize?.trim() || "";
+    const exportExp = data.exportExperience?.trim() || "";
+    const capabilities = data.internalCapabilities?.trim() || "";
+    const constraints = data.knownConstraints?.trim() || "";
+    const ev = data.evidenceStates;
 
-    if (!data.businessName.trim()) {
+    // If no name yet, prompt
+    if (!name) {
       return "Complete the fields above to generate a context summary.";
     }
 
-    return `${name} is being assessed as a business with selected capabilities in ${capabilities}. Its expansion decision is shaped by several known constraints, including ${constraints}. These factors will be considered when evaluating market attractiveness, feasibility, evidence confidence, and entry-readiness.`;
+    // Count how many fields are filled beyond the name
+    const filledCount = [sector, marketSize, exportExp, capabilities, constraints].filter(Boolean).length;
+    if (filledCount < 2) {
+      return `${name} has been identified as the subject of this assessment. Please complete additional fields to generate a meaningful organizational context summary.`;
+    }
+
+    // ── Helpers ──
+    const evidenceTag = (state: EvidenceState): string => {
+      switch (state) {
+        case "Confirmed": return "";
+        case "Estimated": return " (estimated)";
+        case "Unknown": return " (to be validated)";
+      }
+    };
+
+    // Lowercase first char for mid-sentence use
+    const lc = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+
+    // Count unvalidated / estimated fields
+    const uncertainFields = Object.values(ev).filter(v => v === "Unknown").length;
+    const estimatedFields = Object.values(ev).filter(v => v === "Estimated").length;
+
+    // ── Build the narrative fragments ──
+    const sentences: string[] = [];
+
+    // Opening: company positioning
+    if (sector) {
+      sentences.push(
+        `${name} operates in the ${sector} sector${evidenceTag(ev.sector)}, positioning it within an industry where market entry dynamics are shaped by regulatory standards, channel structures, and competitive density.`
+      );
+    } else {
+      sentences.push(
+        `${name} is being assessed for international market expansion potential.`
+      );
+    }
+
+    // Domestic scale context
+    if (marketSize) {
+      const sizeNote = ev.domesticMarketSize === "Unknown"
+        ? `The organization's domestic market position — described as "${marketSize}" — has not yet been independently verified, and should be confirmed before it is used to benchmark international opportunity.`
+        : ev.domesticMarketSize === "Estimated"
+        ? `With a domestic footprint reported at approximately ${marketSize}, the company appears to have a foundation from which to explore expansion — though this figure is estimated and should be substantiated.`
+        : `With a confirmed domestic footprint of ${marketSize}, the company has a quantifiable baseline against which to evaluate international opportunity sizing.`;
+      sentences.push(sizeNote);
+    }
+
+    // Export readiness
+    if (exportExp) {
+      const expLower = exportExp.toLowerCase();
+      if (expLower.includes("no experience")) {
+        sentences.push(
+          `The organization has no prior international or export experience${evidenceTag(ev.exportExperience)}, which means the assessment should place particular emphasis on operational feasibility, partner access, and the learning curve associated with first-market entry.`
+        );
+      } else if (expLower.includes("limited") || expLower.includes("indirect")) {
+        sentences.push(
+          `The company reports limited or indirect export experience${evidenceTag(ev.exportExperience)}, suggesting some familiarity with cross-border operations — though likely not at a scale that would reduce execution risk significantly.`
+        );
+      } else if (expLower.includes("active")) {
+        sentences.push(
+          `As an active international exporter${evidenceTag(ev.exportExperience)}, the company is likely to have existing logistics, compliance, and distribution capabilities that may accelerate market entry timelines.`
+        );
+      }
+    }
+
+    // Capabilities synthesis
+    if (capabilities) {
+      // Parse capabilities into discrete items for rephrasing
+      const capItems = capabilities
+        .split(/[,;\n]+/)
+        .map(s => lc(s.trim()))
+        .filter(Boolean);
+
+      if (capItems.length === 1) {
+        sentences.push(
+          `Among its identified strengths, the organization cites ${capItems[0]}${evidenceTag(ev.internalCapabilities)} — a capability that should be evaluated for its transferability to target markets.`
+        );
+      } else if (capItems.length > 1) {
+        const lastItem = capItems.pop();
+        sentences.push(
+          `Key capabilities identified include ${capItems.join(", ")}, and ${lastItem}${evidenceTag(ev.internalCapabilities)}. The relevance and transferability of these strengths to prospective markets will be a critical factor in the prioritization analysis.`
+        );
+      }
+    }
+
+    // Constraints synthesis
+    if (constraints) {
+      const conItems = constraints
+        .split(/[,;\n]+/)
+        .map(s => lc(s.trim()))
+        .filter(Boolean);
+
+      if (conItems.length === 1) {
+        sentences.push(
+          `However, the expansion decision is tempered by a notable constraint: ${conItems[0]}${evidenceTag(ev.knownConstraints)}. This factor should be stress-tested against each candidate market's conditions.`
+        );
+      } else if (conItems.length > 1) {
+        const lastCon = conItems.pop();
+        sentences.push(
+          `The expansion decision is shaped by several identified constraints, including ${conItems.join(", ")}, and ${lastCon}${evidenceTag(ev.knownConstraints)}. These factors will need to be weighed against each market's accessibility and risk profile.`
+        );
+      }
+    }
+
+    // Evidence confidence closing
+    if (uncertainFields >= 3) {
+      sentences.push(
+        `It should be noted that a significant portion of the inputs provided remain unvalidated. The resulting prioritization should be treated as directional rather than definitive, and a structured validation effort is recommended before committing resources.`
+      );
+    } else if (uncertainFields >= 1 || estimatedFields >= 2) {
+      sentences.push(
+        `Some inputs are currently flagged as estimated or unvalidated, which introduces uncertainty into the assessment. The roadmap phase should include targeted validation actions for these areas.`
+      );
+    } else {
+      sentences.push(
+        `The evidence basis across inputs is relatively strong, providing a solid foundation for prioritization. Validation efforts can focus on market-specific assumptions rather than internal data gaps.`
+      );
+    }
+
+    return sentences.join(" ");
   };
 
   return (
@@ -271,9 +394,9 @@ export default function CompanySnapshotScreen({ data, onChange, appMode }: Props
           </h3>
         </div>
 
-        <p className="text-sm text-slate-300 leading-relaxed">
-          {getContextSummary() ||
-            "Complete the fields above to generate a context summary."}
+        <p className="text-sm text-slate-300 leading-relaxed italic">
+          {"\u201C"}{getContextSummary() ||
+            "Complete the fields above to generate a context summary."}{"\u201D"}
         </p>
 
         {/* Evidence quality badges grid */}
