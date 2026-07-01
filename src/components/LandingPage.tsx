@@ -477,7 +477,7 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
           </div>
           <p className="landing-footer-copy">
             © 2026 INNOBASE Consulting • Market Entry Prioritizer •
-            Proprietary Enterprise Strategy Tool • v2.0.0
+            Proprietary Enterprise Strategy Tool • v{__APP_VERSION__}
           </p>
           <p className="landing-footer-charter">
             Charter: "Clarify Preparedness, Do Not Predict Success"
