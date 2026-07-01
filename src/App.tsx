@@ -557,7 +557,7 @@ export default function App() {
                   MEP-light™
                 </h1>
                 <span className="text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-900/60 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                  Enterprise v1.4
+                  v{__APP_VERSION__}
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 mt-0.5">
