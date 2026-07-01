@@ -1,0 +1,7 @@
+name = "mep-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+routes = [
+  { pattern = "mep.innobase.app/*", zone_name = "innobase.app" }
+]
