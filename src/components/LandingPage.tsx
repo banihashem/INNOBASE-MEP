@@ -15,7 +15,7 @@ import {
   Lock,
 } from "lucide-react";
 
-import { decodeGoogleJwt, GOOGLE_CLIENT_ID, isGoogleAuthConfigured } from "../lib/auth";
+import { decodeGoogleJwt, GOOGLE_CLIENT_ID, isGoogleAuthConfigured, isGoogleAuthReady } from "../lib/auth";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -59,6 +59,7 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
   const [scrollY, setScrollY] = useState(0);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [gisReady, setGisReady] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -66,18 +67,48 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Initialize Google Identity Services when configured
+  // Poll for Google Identity Services readiness when configured.
+  // The GIS script loads async; we must wait for it before allowing sign-in.
   useEffect(() => {
     if (!isGoogleAuthConfigured()) return;
-    if (!window.google?.accounts?.id) return;
 
+    // Check immediately
+    if (isGoogleAuthReady()) {
+      initializeGis();
+      setGisReady(true);
+      return;
+    }
+
+    // Poll every 200ms for up to 10 seconds
+    let attempts = 0;
+    const maxAttempts = 50;
+    const interval = setInterval(() => {
+      attempts++;
+      if (isGoogleAuthReady()) {
+        clearInterval(interval);
+        initializeGis();
+        setGisReady(true);
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        console.error("[MEP Auth] Google Identity Services script failed to load after 10s");
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  /**
+   * Initialize GIS with our client ID and credential callback.
+   */
+  function initializeGis() {
+    if (!window.google?.accounts?.id) return;
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: handleGoogleCredentialResponse,
       auto_select: false,
       cancel_on_tap_outside: true,
     });
-  }, []);
+  }
 
   /**
    * Handle the credential response from Google Identity Services.
@@ -102,20 +133,29 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
     setAuthError(null);
 
     // ─── Real Google OIDC Flow ─────────────────────────────
-    if (isGoogleAuthConfigured() && window.google?.accounts?.id) {
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // GIS popup was blocked or skipped — show error
-          setAuthError(
-            "Google sign-in popup was blocked. Please allow popups for this site, or try again."
-          );
-          setIsLoading(false);
-        }
-      });
+    if (isGoogleAuthConfigured()) {
+      // If GIS is ready, trigger the prompt
+      if (gisReady && window.google?.accounts?.id) {
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            setAuthError(
+              "Google sign-in popup was blocked. Please allow popups for this site, or try again."
+            );
+            setIsLoading(false);
+          }
+        });
+        return;
+      }
+
+      // GIS configured but script hasn't loaded yet — wait and retry
+      setAuthError(
+        "Google sign-in is loading. Please wait a moment and try again."
+      );
+      setIsLoading(false);
       return;
     }
 
-    // ─── Demo Fallback (no valid Client ID) ────────────────
+    // ─── Demo Fallback (no valid Client ID — local dev only) ─────
     setTimeout(() => {
       const demoUser: UserProfile = {
         email: "consultant@innobase.app",

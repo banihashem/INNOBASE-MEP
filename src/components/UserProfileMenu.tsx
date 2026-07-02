@@ -80,7 +80,13 @@ export default function UserProfileMenu({ onOpenAdmin }: UserProfileMenuProps) {
           updateUserRole(data.user.role);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        // If 401 → token expired or invalid → force re-authentication
+        if (err?.status === 401) {
+          console.warn("[MEP Auth] Token rejected by backend — signing out");
+          signOut();
+          return;
+        }
         setProfileError(true);
       });
   }, [user?.email]);

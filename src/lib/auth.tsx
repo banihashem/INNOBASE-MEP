@@ -57,6 +57,15 @@ export function isGoogleAuthConfigured(): boolean {
   return !GOOGLE_CLIENT_ID.includes("placeholder") && GOOGLE_CLIENT_ID.length > 10;
 }
 
+/**
+ * Check if Google Identity Services library is fully loaded and ready.
+ * Returns true only when BOTH the Client ID is configured AND the GIS
+ * script has loaded and initialized window.google.accounts.id.
+ */
+export function isGoogleAuthReady(): boolean {
+  return isGoogleAuthConfigured() && !!window?.google?.accounts?.id;
+}
+
 // ─── JWT Helpers ────────────────────────────────────────────────────
 
 /**

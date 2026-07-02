@@ -22,5 +22,10 @@ ENV PORT=8080
 ENV API_PORT=8080
 ENV NODE_ENV=production
 
+# IMPORTANT: Set these via Cloud Run environment variables at deploy time:
+#   SEED_ADMIN_EMAIL  — Email to auto-promote to Administrator on first login
+#   GOOGLE_CLIENT_ID  — (backend doesn't use it, but keep for reference)
+#   GOOGLE_CLIENT_SECRET — (reserved for future server-side token verification)
+
 # Start the scoring engine API
 CMD ["node", "--import", "tsx", "backend/src/api_server.ts"]
