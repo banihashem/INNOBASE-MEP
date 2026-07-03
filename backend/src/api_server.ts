@@ -35,9 +35,18 @@ import type {
 import { generateComparativeDashboard } from "./scoring_engine.js";
 import { generatePdf } from "./pdf_generator.js";
 import dotenv from "dotenv";
+import { readFileSync } from "fs";
 
 // Load environment variables from .env file (local/dev)
 dotenv.config();
+
+// Dynamic version from package.json (prevents hardcoded version drift)
+const PKG_VERSION = (() => {
+  try {
+    const pkg = JSON.parse(readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../package.json'), 'utf-8'));
+    return pkg.version || '0.0.0';
+  } catch { return '0.0.0'; }
+})();
 
 // ─── PRODUCTION SAFETY GUARDS ────────────────────────────────────────
 
@@ -188,7 +197,7 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "healthy",
     service: "MEP-light™ Scoring Engine API",
-    version: "4.1.1",
+    version: PKG_VERSION,
     timestamp: new Date().toISOString(),
   });
 });
@@ -1293,7 +1302,7 @@ const ADK_ENABLED = process.env.ADK_ENABLED === "true" || process.env.ADK_ENABLE
 app.get("/api/v2/adk/health", (_req: Request, res: Response) => {
   res.json({
     service: "MEP-light™ ADK Agent Service",
-    version: "4.1.0",
+    version: PKG_VERSION,
     enabled: ADK_ENABLED,
     mode: ADK_ENABLED ? "controlled-deterministic" : "disabled",
     charter: "Clarify Preparedness, Do Not Predict Success",
