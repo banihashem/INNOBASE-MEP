@@ -137,7 +137,8 @@ export interface CategoryScores {
 export type TierClassification =
   | "Tier A: Priority"
   | "Tier B: Promising"
-  | "Tier C: Do not prioritize";
+  | "Tier C: Do not prioritize"
+  | "Tier D: Exclude from current agenda";
 
 /** Risk exposure level */
 export type RiskLevel = "High" | "Medium" | "Low";

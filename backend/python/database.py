@@ -27,6 +27,29 @@ def _create_engine():
     """Create the SQLAlchemy engine based on config."""
     url = settings.database_url
 
+    # ─── Production Safety Guard ─────────────────────────────────
+    # SQLite is PROHIBITED in production. This mirrors the TypeScript
+    # db_client.ts startup guard.
+    if settings.node_env == "production" and url.startswith("sqlite"):
+        import sys
+        logger.critical(
+            "FATAL: SQLite database is not allowed in production. "
+            "Set DATABASE_URL to a PostgreSQL connection string. "
+            "Refusing to start."
+        )
+        sys.exit(1)
+
+    # ─── Cloud SQL Auto-Configuration ────────────────────────────
+    # If CLOUD_SQL_CONNECTION is set but DATABASE_URL is SQLite default,
+    # auto-construct a PostgreSQL URL using Unix socket.
+    if settings.cloud_sql_connection and url.startswith("sqlite"):
+        socket_path = f"/cloudsql/{settings.cloud_sql_connection}"
+        url = (
+            f"postgresql+pg8000://{settings.db_user}:{settings.db_password}"
+            f"@/{settings.db_name}?unix_sock={socket_path}/.s.PGSQL.5432"
+        )
+        logger.info("Auto-configured PostgreSQL via Cloud SQL Unix socket")
+
     if url.startswith("sqlite"):
         # SQLite for local development
         engine = create_engine(

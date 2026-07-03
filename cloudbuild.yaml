@@ -1,0 +1,97 @@
+# ══════════════════════════════════════════════════════════════════════
+# MEP-light™ — Cloud Build Pipeline
+#
+# Build steps:
+#   1. Run scoring regression tests (fail-fast)
+#   2. Run auth regression tests (fail-fast)
+#   3. Build production Docker image (multi-runtime)
+#   4. Push to Artifact Registry / GCR
+#   5. Deploy to Cloud Run with Cloud SQL, Secret Manager, and ADK config
+#
+# Substitutions:
+#   _GOOGLE_CLIENT_ID  — Google OAuth Client ID (required)
+#   _CLOUD_SQL_CONN    — Cloud SQL connection name (default: innobase-mep-light:europe-west2:mep-light-db)
+#   _REGION            — Deployment region (default: europe-west2)
+#   _ADK_ENABLED       — Enable ADK service (default: false)
+# ══════════════════════════════════════════════════════════════════════
+
+steps:
+  # Step 1: Install dependencies and run scoring tests
+  - name: 'node:22-slim'
+    id: 'test-scoring'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - 'npm ci && npm test'
+
+  # Step 2: Run auth regression tests
+  - name: 'node:22-slim'
+    id: 'test-auth'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - 'npm ci && npx tsx tests/auth_regression.test.ts'
+
+  # Step 3: Build production Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
+    waitFor: ['test-scoring', 'test-auth']
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.1.0'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
+      - '.'
+
+  # Step 4: Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy'
+    waitFor: ['build-image']
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'market-entry-prioritizer'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--add-cloudsql-instances'
+      - '${_CLOUD_SQL_CONN}'
+      - '--set-secrets'
+      - 'DB_PASSWORD=mep-db-password:latest'
+      - '--update-env-vars'
+      - 'NODE_ENV=production,GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID},CLOUD_SQL_CONNECTION=${_CLOUD_SQL_CONN},DB_NAME=mep_production,DB_USER=mep_app,ADK_ENABLED=${_ADK_ENABLED},SEED_ADMIN_EMAIL=ehsan.banihashem@gmail.com'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--max-instances'
+      - '3'
+      - '--min-instances'
+      - '1'
+      - '--concurrency'
+      - '80'
+      - '--port'
+      - '8080'
+      - '--allow-unauthenticated'
+
+images:
+  - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.1.0'
+  - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
+
+substitutions:
+  _GOOGLE_CLIENT_ID: ''
+  _CLOUD_SQL_CONN: 'innobase-mep-light:europe-west2:mep-light-db'
+  _REGION: 'europe-west2'
+  _ADK_ENABLED: 'controlled'
+
+timeout: '900s'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

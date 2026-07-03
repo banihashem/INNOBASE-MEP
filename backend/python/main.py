@@ -116,6 +116,16 @@ app.include_router(pdf_router)
 app.include_router(user_router)
 app.include_router(metrics_router)
 
+# ADK Agent routes — behind feature flag with graceful degradation
+try:
+    from .adk_routes import router as adk_router
+    app.include_router(adk_router)
+    logging.getLogger("mep").info("ADK routes registered")
+except ImportError as e:
+    logging.getLogger("mep").warning(
+        f"ADK routes not available (missing dependency): {e}"
+    )
+
 
 # ─── Root Endpoint ───────────────────────────────────────────────────
 

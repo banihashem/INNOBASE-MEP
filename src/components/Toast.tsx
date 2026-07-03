@@ -86,7 +86,7 @@ const VARIANT_CONFIG: Record<
   },
 };
 
-function ToastItem({
+function ToastItemView({
   item,
   onDismiss,
 }: {
@@ -166,7 +166,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {/* Toast Container */}
       <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-auto">
         {toasts.map((t) => (
-          <ToastItem key={t.id} item={t} onDismiss={dismiss} />
+          <ToastItemView key={t.id} item={t} onDismiss={dismiss} />
         ))}
       </div>
 

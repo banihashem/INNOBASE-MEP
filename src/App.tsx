@@ -593,6 +593,8 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
           tier = "Tier A: Priority";
         } else if (potentialScore >= 60) {
           tier = "Tier B: Promising";
+        } else if (potentialScore < 40) {
+          tier = "Tier D: Exclude from current agenda";
         }
 
         return {

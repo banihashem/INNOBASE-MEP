@@ -406,6 +406,20 @@ assert(
   actualRanking
 );
 
+// ─── Tier D Boundary Tests ───────────────────────────────────────────
+
+section("Tier D Classification Boundaries");
+
+assert(classifyTier(100) === "Tier A: Priority", "Score 100 → Tier A", "Tier A: Priority", classifyTier(100));
+assert(classifyTier(75) === "Tier A: Priority", "Score 75 → Tier A (boundary)", "Tier A: Priority", classifyTier(75));
+assert(classifyTier(74) === "Tier B: Promising", "Score 74 → Tier B", "Tier B: Promising", classifyTier(74));
+assert(classifyTier(60) === "Tier B: Promising", "Score 60 → Tier B (boundary)", "Tier B: Promising", classifyTier(60));
+assert(classifyTier(59) === "Tier C: Do not prioritize", "Score 59 → Tier C", "Tier C: Do not prioritize", classifyTier(59));
+assert(classifyTier(40) === "Tier C: Do not prioritize", "Score 40 → Tier C (boundary)", "Tier C: Do not prioritize", classifyTier(40));
+assert(classifyTier(39) === "Tier D: Exclude from current agenda", "Score 39 → Tier D", "Tier D: Exclude from current agenda", classifyTier(39));
+assert(classifyTier(20) === "Tier D: Exclude from current agenda", "Score 20 → Tier D (floor)", "Tier D: Exclude from current agenda", classifyTier(20));
+assert(classifyTier(0) === "Tier D: Exclude from current agenda", "Score 0 → Tier D (minimum)", "Tier D: Exclude from current agenda", classifyTier(0));
+
 // ─── Test Summary ────────────────────────────────────────────────────
 
 section("TEST SUMMARY");

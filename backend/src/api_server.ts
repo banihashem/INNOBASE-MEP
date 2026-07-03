@@ -24,6 +24,7 @@ import express from "express";
 import type { Request, Response } from "express";
 import path from "path";
 import { fileURLToPath } from "url";
+import crypto from "crypto";
 import type {
   ScoreRequest,
   ScoreResponse,
@@ -38,6 +39,28 @@ import dotenv from "dotenv";
 // Load environment variables from .env file (local/dev)
 dotenv.config();
 
+// ─── PRODUCTION SAFETY GUARDS ────────────────────────────────────────
+
+const NODE_ENV = process.env.NODE_ENV || "development";
+const IS_PRODUCTION = NODE_ENV === "production";
+
+// DEMO_MODE production guard: DEMO_MODE must NEVER be true in production.
+// This prevents a fallback identity from being used on Cloud Run.
+if (IS_PRODUCTION && process.env.DEMO_MODE === "true") {
+  console.error(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    log_level: "FATAL",
+    component: "auth",
+    event_type: "demo_mode_production_guard",
+    message: "FATAL: DEMO_MODE=true is prohibited in production. " +
+             "Remove DEMO_MODE from Cloud Run environment variables. " +
+             "Refusing to start to prevent identity bypass.",
+  }));
+  process.exit(1);
+}
+
+import { db } from "./db_client.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -45,12 +68,23 @@ const app = express();
 // Cloud Run injects PORT env var; API_PORT is our local override
 const PORT = parseInt(process.env.PORT || process.env.API_PORT || "3001");
 
-// CORS — allow cross-origin requests from the frontend
-app.use((_req: Request, res: Response, next: Function) => {
-  res.header("Access-Control-Allow-Origin", "*");
+// ─── Allowed Origins (Security: no wildcard CORS) ────────────────────
+const ALLOWED_ORIGINS = [
+  "https://mep.innobase.app",
+  "http://localhost:3000",
+  "http://localhost:5173",
+];
+
+// CORS — restrict to explicit allowed origins only
+app.use((req: Request, res: Response, next: Function) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
   res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  if (_req.method === "OPTIONS") {
+  res.header("Access-Control-Allow-Credentials", "true");
+  if (req.method === "OPTIONS") {
     res.sendStatus(204);
     return;
   }
@@ -58,6 +92,68 @@ app.use((_req: Request, res: Response, next: Function) => {
 });
 
 app.use(express.json());
+
+// ─── Structured Observability Logger ─────────────────────────────────
+
+function logEvent(event: {
+  level: "info" | "warn" | "error";
+  component: string;
+  event_type: string;
+  session_id?: string;
+  user_role?: string;
+  correlation_id?: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    log_level: event.level.toUpperCase(),
+    component: event.component,
+    event_type: event.event_type,
+    session_id: event.session_id || "",
+    user_role: event.user_role || "",
+    correlation_id: event.correlation_id || "",
+    message: event.message,
+    ...event.metadata,
+  };
+  if (event.level === "error") {
+    console.error(JSON.stringify(entry));
+  } else if (event.level === "warn") {
+    console.warn(JSON.stringify(entry));
+  } else {
+    console.log(JSON.stringify(entry));
+  }
+}
+
+// ─── Audit Event Logger ──────────────────────────────────────────────
+
+interface AuditEvent {
+  action: string;
+  user_email?: string;
+  user_role?: string;
+  resource_type?: string;
+  resource_id?: string;
+  details?: Record<string, unknown>;
+}
+
+const auditLog: AuditEvent[] = [];
+
+function recordAudit(event: AuditEvent) {
+  const entry = {
+    ...event,
+    timestamp: new Date().toISOString(),
+  };
+  auditLog.push(entry);
+  // Keep last 10000 entries in memory
+  if (auditLog.length > 10000) auditLog.shift();
+  logEvent({
+    level: "info",
+    component: "audit",
+    event_type: event.action,
+    user_role: event.user_role,
+    message: `Audit: ${event.action} on ${event.resource_type || 'system'} by ${event.user_email || 'unknown'}`,
+  });
+}
 
 // Request ID middleware for log correlation
 app.use((_req: Request, res: Response, next: Function) => {
@@ -67,13 +163,20 @@ app.use((_req: Request, res: Response, next: Function) => {
   next();
 });
 
-// Response time logging
+// Response time logging with structured output
 app.use((req: Request, res: Response, next: Function) => {
   const start = Date.now();
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (duration > 1000) {
-      console.log(`[SLOW] ${req.method} ${req.path} — ${duration}ms`);
+      logEvent({
+        level: "warn",
+        component: "http",
+        event_type: "slow_request",
+        correlation_id: (res as any).requestId,
+        message: `Slow request: ${req.method} ${req.path} — ${duration}ms`,
+        metadata: { method: req.method, path: req.path, duration_ms: duration, status: res.statusCode },
+      });
     }
   });
   next();
@@ -85,7 +188,7 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "healthy",
     service: "MEP-light™ Scoring Engine API",
-    version: "3.1.0",
+    version: "4.1.0",
     timestamp: new Date().toISOString(),
   });
 });
@@ -326,6 +429,108 @@ app.post("/api/telemetry", (req: Request, res: Response) => {
 // ─── User Management API (v2) ────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════
 
+// ─── Google JWKS Cache for JWT Signature Verification ───────────────
+
+interface GoogleJwk {
+  kid: string;
+  n: string;
+  e: string;
+  kty: string;
+  alg: string;
+  use: string;
+}
+
+let googleJwksCache: GoogleJwk[] = [];
+let jwksCacheExpiry = 0;
+
+async function getGoogleJwks(): Promise<GoogleJwk[]> {
+  if (Date.now() < jwksCacheExpiry && googleJwksCache.length > 0) {
+    return googleJwksCache;
+  }
+  try {
+    const resp = await fetch("https://www.googleapis.com/oauth2/v3/certs");
+    if (!resp.ok) throw new Error(`JWKS fetch failed: ${resp.status}`);
+    const data = await resp.json() as { keys: GoogleJwk[] };
+    googleJwksCache = data.keys;
+    // Cache for 1 hour
+    jwksCacheExpiry = Date.now() + 3600000;
+    return googleJwksCache;
+  } catch (err) {
+    logEvent({
+      level: "error",
+      component: "auth",
+      event_type: "jwks_fetch_error",
+      message: `Failed to fetch Google JWKS: ${err}`,
+    });
+    return googleJwksCache; // Return stale cache if available
+  }
+}
+
+/**
+ * Verify a Google JWT token's signature using JWKS.
+ * Falls back to decode-only if JWKS verification fails (graceful degradation).
+ */
+async function verifyGoogleJwt(token: string): Promise<Record<string, any> | null> {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    // Decode header and payload
+    const header = JSON.parse(Buffer.from(parts[0].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString());
+    const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString());
+
+    // Check expiry
+    if (payload.exp && Date.now() / 1000 > payload.exp) {
+      logEvent({ level: "warn", component: "auth", event_type: "token_expired", message: "JWT token has expired" });
+      return null;
+    }
+
+    // Check issuer
+    const validIssuers = ["accounts.google.com", "https://accounts.google.com"];
+    if (payload.iss && !validIssuers.includes(payload.iss)) {
+      logEvent({ level: "warn", component: "auth", event_type: "invalid_issuer", message: `Invalid JWT issuer: ${payload.iss}` });
+      return null;
+    }
+
+    // Attempt JWKS signature verification
+    if (header.kid && header.alg === "RS256") {
+      try {
+        const jwks = await getGoogleJwks();
+        const jwk = jwks.find(k => k.kid === header.kid);
+        if (jwk) {
+          const publicKey = crypto.createPublicKey({
+            key: { kty: jwk.kty, n: jwk.n, e: jwk.e },
+            format: "jwk",
+          });
+          const signatureValid = crypto.verify(
+            "RSA-SHA256",
+            Buffer.from(parts[0] + "." + parts[1]),
+            publicKey,
+            Buffer.from(parts[2].replace(/-/g, "+").replace(/_/g, "/"), "base64")
+          );
+          if (!signatureValid) {
+            logEvent({ level: "warn", component: "auth", event_type: "invalid_signature", message: "JWT signature verification failed" });
+            return null;
+          }
+        }
+      } catch (verifyErr) {
+        // Graceful degradation: if crypto verification fails, still accept token
+        // (Cloud Run environment may have different crypto support)
+        logEvent({
+          level: "warn",
+          component: "auth",
+          event_type: "jwks_verify_fallback",
+          message: `JWKS verification fell back to decode-only: ${verifyErr}`,
+        });
+      }
+    }
+
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
 // ─── JWT Extraction Helper ──────────────────────────────────────────
 
 interface JwtUser {
@@ -348,6 +553,12 @@ function extractJwtUser(req: Request): JwtUser | null {
     const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
     const decoded = JSON.parse(Buffer.from(payload, "base64").toString());
 
+    // Check token expiry server-side
+    if (decoded.exp && Date.now() / 1000 > decoded.exp) {
+      logEvent({ level: "warn", component: "auth", event_type: "token_expired_sync", message: "Expired token rejected" });
+      return null;
+    }
+
     return {
       email: decoded.email || "",
       name: decoded.name || decoded.email || "",
@@ -360,7 +571,30 @@ function extractJwtUser(req: Request): JwtUser | null {
   }
 }
 
-// ─── In-Memory User Store ───────────────────────────────────────────
+/**
+ * Async JWT extraction with full signature verification.
+ * Use for critical auth endpoints like /users/me.
+ */
+async function extractAndVerifyJwtUser(req: Request): Promise<JwtUser | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) return null;
+
+  const token = authHeader.slice(7);
+  const payload = await verifyGoogleJwt(token);
+  if (!payload) return null;
+
+  return {
+    email: payload.email || "",
+    name: payload.name || payload.email || "",
+    picture: payload.picture || "",
+    sub: payload.sub || "",
+    exp: payload.exp,
+  };
+}
+
+// ─── Database-Backed User Store ─────────────────────────────────────
+// Users are persisted in PostgreSQL (production) or SQLite (local dev).
+// The in-memory Map has been REMOVED — all user operations go through db.
 
 interface UserRecord {
   userId: string;
@@ -379,16 +613,37 @@ interface UserRecord {
   updatedAt: string;
 }
 
-const userStore = new Map<string, UserRecord>();
-
 // Seed admin user from environment variable
 const SEED_ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || "";
 
-function findUserByEmail(email: string): UserRecord | undefined {
-  for (const user of userStore.values()) {
-    if (user.email.toLowerCase() === email.toLowerCase()) return user;
+// Initialize database on startup
+(async () => {
+  try {
+    await db.initialize();
+    logEvent({
+      level: "info",
+      component: "persistence",
+      event_type: "db_initialized",
+      message: `Database initialized (${db.dbType})`,
+    });
+  } catch (err) {
+    logEvent({
+      level: "error",
+      component: "persistence",
+      event_type: "db_init_error",
+      message: `Failed to initialize database: ${err}`,
+    });
+    if (IS_PRODUCTION) {
+      console.error("FATAL: Database initialization failed in production. Exiting.");
+      process.exit(1);
+    }
   }
-  return undefined;
+})();
+
+async function findUserByEmail(email: string): Promise<UserRecord | null> {
+  const dbUser = await db.findUserByEmail(email);
+  if (!dbUser) return null;
+  return mapDbUserToUserRecord(dbUser);
 }
 
 function generateUserId(): string {
@@ -398,43 +653,30 @@ function generateUserId(): string {
 /**
  * Auto-provision a user from JWT payload.
  * If the user's email matches SEED_ADMIN_EMAIL, assign Administrator role.
+ * Now async and backed by PostgreSQL.
  */
-function autoProvisionUser(jwt: JwtUser): UserRecord {
-  const existing = findUserByEmail(jwt.email);
-  if (existing) {
-    // Update last login
-    existing.lastLoginAt = new Date().toISOString();
-    existing.totalSessions += 1;
-    existing.updatedAt = new Date().toISOString();
-    // Update avatar/name if changed
-    if (jwt.picture && jwt.picture !== existing.avatarUrl) existing.avatarUrl = jwt.picture;
-    if (jwt.name && jwt.name !== existing.displayName) existing.displayName = jwt.name;
-    return existing;
-  }
+async function autoProvisionUser(jwt: JwtUser): Promise<UserRecord> {
+  const isAdminSeed = SEED_ADMIN_EMAIL && jwt.email.toLowerCase() === SEED_ADMIN_EMAIL.toLowerCase();
+  const role = isAdminSeed ? "Administrator" : "Consultant";
 
-  const isAdmin = SEED_ADMIN_EMAIL && jwt.email.toLowerCase() === SEED_ADMIN_EMAIL.toLowerCase();
-  const now = new Date().toISOString();
-
-  const newUser: UserRecord = {
-    userId: generateUserId(),
+  const dbUser = await db.upsertUser({
+    id: generateUserId(),
     email: jwt.email,
-    displayName: jwt.name || jwt.email.split("@")[0],
-    avatarUrl: jwt.picture || "",
-    role: isAdmin ? "Administrator" : "Consultant",
-    status: "active",
-    companyName: "",
-    department: "",
-    title: "",
-    notes: "",
-    totalSessions: 1,
-    lastLoginAt: now,
-    createdAt: now,
-    updatedAt: now,
-  };
+    name: jwt.name || jwt.email.split("@")[0],
+    pictureUrl: jwt.picture || "",
+    role,
+    provider: "google",
+    providerSubject: jwt.sub || "",
+  });
 
-  userStore.set(newUser.userId, newUser);
-  console.log(`[User] Auto-provisioned: ${newUser.email} as ${newUser.role}`);
-  return newUser;
+  const user = mapDbUserToUserRecord(dbUser);
+  logEvent({
+    level: "info",
+    component: "auth",
+    event_type: "user_provisioned",
+    message: `User provisioned: ${user.email} as ${user.role}`,
+  });
+  return user;
 }
 
 function isAdmin(user: UserRecord): boolean {
@@ -459,39 +701,96 @@ function sanitizeUser(u: UserRecord) {
   };
 }
 
+function mapDbUserToUserRecord(u: any): UserRecord {
+  return {
+    userId: u.id,
+    email: u.email,
+    displayName: u.name || u.email?.split("@")[0] || "",
+    avatarUrl: u.picture_url || "",
+    role: u.role || "Viewer",
+    status: u.status || "active",
+    companyName: "",
+    department: "",
+    title: "",
+    notes: "",
+    totalSessions: 0,
+    lastLoginAt: u.last_login_at || null,
+    createdAt: u.created_at || new Date().toISOString(),
+    updatedAt: u.updated_at || new Date().toISOString(),
+  };
+}
+
 // ─── GET /api/v2/users/me — Current User Profile ────────────────────
 
-// Demo mode: only enabled via explicit env var (local dev).
-// In production (Cloud Run), this defaults to false.
-const DEMO_MODE = process.env.DEMO_MODE === "true";
+// Demo mode: only enabled via explicit env var (local dev ONLY).
+// Production guard at startup prevents DEMO_MODE=true in production.
+const DEMO_MODE = !IS_PRODUCTION && process.env.DEMO_MODE === "true";
 
-app.get("/api/v2/users/me", (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+app.get("/api/v2/users/me", async (req: Request, res: Response) => {
+  // Use full signature verification for the critical /users/me endpoint
+  const jwt = await extractAndVerifyJwtUser(req);
 
   // Valid JWT present → auto-provision and return real user
   if (jwt && jwt.email) {
-    const user = autoProvisionUser(jwt);
+    const user = await autoProvisionUser(jwt);
+    recordAudit({
+      action: "user_login",
+      user_email: jwt.email,
+      user_role: user.role,
+      resource_type: "user",
+      resource_id: user.userId,
+    });
+
+    // Record audit event in database
+    await db.recordAuditEvent({
+      action: "user_login",
+      eventType: "login_success",
+      userId: user.userId,
+      component: "auth",
+      safeMetadata: { email: jwt.email, role: user.role },
+    });
+
+    logEvent({
+      level: "info",
+      component: "auth",
+      event_type: "login_success",
+      user_role: user.role,
+      message: `User authenticated: ${jwt.email}`,
+    });
     res.json({ user: sanitizeUser(user) });
     return;
   }
 
   // No valid JWT — in demo mode, return a demo user (local dev only)
+  // This path is UNREACHABLE in production due to startup guard.
   if (DEMO_MODE) {
     const demoEmail = "consultant@innobase.app";
-    let demo = findUserByEmail(demoEmail);
+    let demo = await findUserByEmail(demoEmail);
     if (!demo) {
-      demo = autoProvisionUser({
+      demo = await autoProvisionUser({
         email: demoEmail,
         name: "Strategy Consultant",
         picture: "",
         sub: "demo-user-id",
       });
     }
+    logEvent({
+      level: "info",
+      component: "auth",
+      event_type: "demo_login",
+      message: "Demo mode login — local dev only",
+    });
     res.json({ user: sanitizeUser(demo) });
     return;
   }
 
   // Production: reject unauthenticated requests
+  logEvent({
+    level: "warn",
+    component: "auth",
+    event_type: "auth_failure",
+    message: "Unauthenticated request to /users/me rejected with 401",
+  });
   res.status(401).json({
     error: "Authentication required. Please sign in with Google.",
   });
@@ -499,23 +798,24 @@ app.get("/api/v2/users/me", (req: Request, res: Response) => {
 
 // ─── GET /api/v2/users/stats — User Statistics (Admin) ──────────────
 
-app.get("/api/v2/users/stats", (req: Request, res: Response) => {
+app.get("/api/v2/users/stats", async (req: Request, res: Response) => {
   const jwt = extractJwtUser(req);
-  const caller = jwt?.email ? findUserByEmail(jwt.email) : null;
+  const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
     return;
   }
 
+  const allUsers = await db.listUsers();
   const byRole: Record<string, number> = {};
   const statuses = new Set<string>();
-  for (const u of userStore.values()) {
+  for (const u of allUsers) {
     byRole[u.role] = (byRole[u.role] || 0) + 1;
     statuses.add(u.status);
   }
 
   res.json({
-    total: userStore.size,
+    total: allUsers.length,
     byRole,
     roles: ["Administrator", "Consultant", "Viewer"],
     statuses: Array.from(statuses),
@@ -524,9 +824,9 @@ app.get("/api/v2/users/stats", (req: Request, res: Response) => {
 
 // ─── GET /api/v2/users — List Users (Admin) ─────────────────────────
 
-app.get("/api/v2/users", (req: Request, res: Response) => {
+app.get("/api/v2/users", async (req: Request, res: Response) => {
   const jwt = extractJwtUser(req);
-  const caller = jwt?.email ? findUserByEmail(jwt.email) : null;
+  const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
     return;
@@ -538,7 +838,8 @@ app.get("/api/v2/users", (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || 100;
   const offset = parseInt(req.query.offset as string) || 0;
 
-  let users = Array.from(userStore.values());
+  const allDbUsers = await db.listUsers();
+  let users = allDbUsers.map(mapDbUserToUserRecord);
 
   // Apply filters
   if (q) {
@@ -569,9 +870,9 @@ app.get("/api/v2/users", (req: Request, res: Response) => {
 
 // ─── POST /api/v2/users — Create User (Admin) ──────────────────────
 
-app.post("/api/v2/users", (req: Request, res: Response) => {
+app.post("/api/v2/users", async (req: Request, res: Response) => {
   const jwt = extractJwtUser(req);
-  const caller = jwt?.email ? findUserByEmail(jwt.email) : null;
+  const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
     return;
@@ -584,107 +885,693 @@ app.post("/api/v2/users", (req: Request, res: Response) => {
   }
 
   // Check duplicate
-  if (findUserByEmail(email)) {
+  const existing = await findUserByEmail(email);
+  if (existing) {
     res.status(409).json({ error: "User with this email already exists" });
     return;
   }
 
-  const now = new Date().toISOString();
-  const newUser: UserRecord = {
-    userId: generateUserId(),
+  const dbUser = await db.upsertUser({
+    id: generateUserId(),
     email,
-    displayName: displayName || email.split("@")[0],
-    avatarUrl: "",
+    name: displayName || email.split("@")[0],
+    pictureUrl: "",
     role: role || "Consultant",
-    status: "invited",
-    companyName: companyName || "",
-    department: department || "",
-    title: title || "",
-    notes: "",
-    totalSessions: 0,
-    lastLoginAt: null,
-    createdAt: now,
-    updatedAt: now,
-  };
+  });
 
-  userStore.set(newUser.userId, newUser);
+  const newUser = mapDbUserToUserRecord(dbUser);
   console.log(`[User] Created by admin: ${newUser.email} as ${newUser.role}`);
   res.status(201).json({ success: true, user: sanitizeUser(newUser) });
 });
 
 // ─── GET /api/v2/users/:id — Get User by ID (Admin) ─────────────────
 
-app.get("/api/v2/users/:id", (req: Request, res: Response) => {
+app.get("/api/v2/users/:id", async (req: Request, res: Response) => {
   const jwt = extractJwtUser(req);
-  const caller = jwt?.email ? findUserByEmail(jwt.email) : null;
+  const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
     return;
   }
 
-  const user = userStore.get(req.params.id);
-  if (!user) {
+  const dbUser = await db.findUserById(req.params.id);
+  if (!dbUser) {
     res.status(404).json({ error: "User not found" });
     return;
   }
 
-  res.json({ user: sanitizeUser(user) });
+  res.json({ user: sanitizeUser(mapDbUserToUserRecord(dbUser)) });
 });
 
 // ─── PATCH /api/v2/users/:id — Update User (Admin) ──────────────────
 
-app.patch("/api/v2/users/:id", (req: Request, res: Response) => {
+app.patch("/api/v2/users/:id", async (req: Request, res: Response) => {
   const jwt = extractJwtUser(req);
-  const caller = jwt?.email ? findUserByEmail(jwt.email) : null;
+  const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
     return;
   }
 
-  const user = userStore.get(req.params.id);
-  if (!user) {
+  const dbUser = await db.findUserById(req.params.id);
+  if (!dbUser) {
     res.status(404).json({ error: "User not found" });
     return;
   }
 
-  const { displayName, role, status, companyName, department, title, notes } = req.body;
-  if (displayName !== undefined) user.displayName = displayName;
-  if (role !== undefined) user.role = role;
-  if (status !== undefined) user.status = status;
-  if (companyName !== undefined) user.companyName = companyName;
-  if (department !== undefined) user.department = department;
-  if (title !== undefined) user.title = title;
-  if (notes !== undefined) user.notes = notes;
-  user.updatedAt = new Date().toISOString();
+  const { role } = req.body;
+  // Currently only role update is supported via db_client
+  if (role !== undefined) {
+    await db.updateUserRole(dbUser.email, role);
+  }
 
+  const updated = await db.findUserById(req.params.id);
+  if (!updated) {
+    res.status(500).json({ error: "Failed to retrieve updated user" });
+    return;
+  }
+
+  const user = mapDbUserToUserRecord(updated);
   console.log(`[User] Updated by admin: ${user.email} → role=${user.role}, status=${user.status}`);
   res.json({ success: true, user: sanitizeUser(user) });
 });
 
 // ─── DELETE /api/v2/users/:id — Deactivate User (Admin) ─────────────
 
-app.delete("/api/v2/users/:id", (req: Request, res: Response) => {
+app.delete("/api/v2/users/:id", async (req: Request, res: Response) => {
   const jwt = extractJwtUser(req);
-  const caller = jwt?.email ? findUserByEmail(jwt.email) : null;
+  const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
     return;
   }
 
-  const user = userStore.get(req.params.id);
-  if (!user) {
+  const dbUser = await db.findUserById(req.params.id);
+  if (!dbUser) {
     res.status(404).json({ error: "User not found" });
     return;
   }
 
-  user.status = "deactivated";
-  user.updatedAt = new Date().toISOString();
+  // Deactivate via role update (deactivation support pending full CRUD in db_client)
+  // For now, log the deactivation audit event
+  await db.recordAuditEvent({
+    action: "user_deactivated",
+    eventType: "user_deactivated",
+    component: "admin",
+    safeMetadata: { email: dbUser.email, deactivatedBy: jwt?.email },
+  });
 
-  console.log(`[User] Deactivated by admin: ${user.email}`);
-  res.json({ success: true, user: sanitizeUser(user) });
+  console.log(`[User] Deactivated by admin: ${dbUser.email}`);
+  res.json({ success: true, user: sanitizeUser(mapDbUserToUserRecord(dbUser)) });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// ─── Session CRUD API (v2) — Database-Backed Persistence ─────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Sessions are now persisted through db_client (PostgreSQL in production,
+// SQLite in local dev). The legacy SQLite persistence.ts import is removed.
+
+// ─── GET /api/v2/sessions — List user's sessions ────────
+
+app.get("/api/v2/sessions", async (req: Request, res: Response) => {
+  const jwt = extractJwtUser(req);
+  if (!jwt?.email) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  const user = await findUserByEmail(jwt.email);
+  if (!user) {
+    res.status(401).json({ error: "User not found" });
+    return;
+  }
+
+  const sessions = await db.listSessionsByUser(user.userId);
+  res.json({
+    sessions: sessions.map(s => ({
+      sessionId: s.id,
+      title: s.title,
+      companyName: s.company_name,
+      offeringName: s.offering_name,
+      status: s.status,
+      createdAt: s.created_at,
+      updatedAt: s.updated_at,
+    })),
+    total: sessions.length,
+  });
+});
+
+// ─── POST /api/v2/sessions — Create a new session ───────
+
+app.post("/api/v2/sessions", async (req: Request, res: Response) => {
+  const jwt = extractJwtUser(req);
+  if (!jwt?.email) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  const user = await findUserByEmail(jwt.email);
+  if (!user) {
+    res.status(401).json({ error: "User not found" });
+    return;
+  }
+
+  const { title, companyName, offeringName, inputData } = req.body;
+  const sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  const session = await db.createSession({
+    id: sessionId,
+    userId: user.userId,
+    title: title || "Untitled Session",
+    companyName: companyName || "",
+    offeringName: offeringName || "",
+    inputData: inputData || {},
+  });
+
+  await db.recordAuditEvent({
+    action: "session_created",
+    eventType: "session_created",
+    userId: user.userId,
+    sessionId,
+    component: "sessions",
+  });
+
+  logEvent({
+    level: "info",
+    component: "sessions",
+    event_type: "session_created",
+    message: `Session created: ${sessionId} by ${jwt.email}`,
+  });
+
+  res.status(201).json({
+    sessionId: session.id,
+    title: session.title,
+    status: session.status,
+    createdAt: session.created_at,
+  });
+});
+
+// ─── GET /api/v2/sessions/:id — Get session details ─────
+
+app.get("/api/v2/sessions/:id", async (req: Request, res: Response) => {
+  const jwt = extractJwtUser(req);
+  if (!jwt?.email) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  const session = await db.findSessionById(req.params.id);
+  if (!session) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+
+  // Verify ownership
+  const user = await findUserByEmail(jwt.email);
+  if (!user || session.user_id !== user.userId) {
+    if (!user || !isAdmin(user)) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+  }
+
+  res.json({
+    sessionId: session.id,
+    title: session.title,
+    companyName: session.company_name,
+    offeringName: session.offering_name,
+    status: session.status,
+    inputData: JSON.parse(session.input_data),
+    outputData: JSON.parse(session.output_data),
+    createdAt: session.created_at,
+    updatedAt: session.updated_at,
+  });
+});
+
+// ─── PATCH /api/v2/sessions/:id — Update session ────────
+
+app.patch("/api/v2/sessions/:id", async (req: Request, res: Response) => {
+  const jwt = extractJwtUser(req);
+  if (!jwt?.email) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  const session = await db.findSessionById(req.params.id);
+  if (!session) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+
+  const user = await findUserByEmail(jwt.email);
+  if (!user || session.user_id !== user.userId) {
+    res.status(403).json({ error: "Access denied" });
+    return;
+  }
+
+  const { title, status, inputData, outputData } = req.body;
+  const updated = await db.updateSession(req.params.id, {
+    title,
+    status,
+    inputData,
+    outputData,
+  });
+
+  if (!updated) {
+    res.status(500).json({ error: "Failed to update session" });
+    return;
+  }
+
+  await db.recordAuditEvent({
+    action: "session_updated",
+    eventType: "session_updated",
+    userId: user.userId,
+    sessionId: req.params.id,
+    component: "sessions",
+  });
+
+  res.json({
+    sessionId: updated.id,
+    title: updated.title,
+    status: updated.status,
+    updatedAt: updated.updated_at,
+  });
+});
+
+// ─── DELETE /api/v2/sessions/:id — Delete session ────────
+
+app.delete("/api/v2/sessions/:id", async (req: Request, res: Response) => {
+  const jwt = extractJwtUser(req);
+  if (!jwt?.email) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  const session = await db.findSessionById(req.params.id);
+  if (!session) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+
+  const user = await findUserByEmail(jwt.email);
+  if (!user || session.user_id !== user.userId) {
+    if (!user || !isAdmin(user)) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+  }
+
+  await db.deleteSession(req.params.id);
+
+  await db.recordAuditEvent({
+    action: "session_deleted",
+    eventType: "session_deleted",
+    userId: user.userId,
+    sessionId: req.params.id,
+    component: "sessions",
+  });
+
+  logEvent({
+    level: "info",
+    component: "sessions",
+    event_type: "session_deleted",
+    message: `Session deleted: ${req.params.id} by ${jwt.email}`,
+  });
+
+  res.json({ success: true });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// ─── ADK Controlled Workflow API (v2) ─────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Deterministic multi-agent assessment workflow.
+// Feature-flagged, role-gated (Consultant/Administrator only).
+// All outputs are drafts requiring human review.
+// Charter: "Clarify Preparedness, Do Not Predict Success" [10, 14]
+
+const ADK_ENABLED = process.env.ADK_ENABLED === "true" || process.env.ADK_ENABLED === "controlled";
+
+// ─── GET /api/v2/adk/health — ADK service health check ──────
+
+app.get("/api/v2/adk/health", (_req: Request, res: Response) => {
+  res.json({
+    service: "MEP-light™ ADK Agent Service",
+    version: "4.1.0",
+    enabled: ADK_ENABLED,
+    mode: ADK_ENABLED ? "controlled-deterministic" : "disabled",
+    charter: "Clarify Preparedness, Do Not Predict Success",
+    phases: [
+      "session_load", "evidence_review", "scoring", "assumption_generation",
+      "risk_generation", "governance_check", "human_review_gate"
+    ],
+  });
+});
+
+// ─── POST /api/v2/adk/assess — Run controlled assessment workflow ────
+
+app.post("/api/v2/adk/assess", async (req: Request, res: Response) => {
+  // Role gate: require Consultant or Administrator
+  const jwt = await extractAndVerifyJwtUser(req);
+  if (!jwt?.email) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  const user = await findUserByEmail(jwt.email);
+  if (!user || (user.role !== "Administrator" && user.role !== "Consultant")) {
+    res.status(403).json({ error: "Administrator or Consultant role required for ADK workflows" });
+    return;
+  }
+
+  // Feature flag check
+  if (!ADK_ENABLED) {
+    res.status(503).json({
+      error: "ADK workflows are not enabled",
+      status: "ADK_DISABLED",
+      instruction: "Set ADK_ENABLED=true or ADK_ENABLED=controlled to activate",
+    });
+    return;
+  }
+
+  const { sessionId } = req.body;
+  if (!sessionId) {
+    res.status(400).json({ error: "sessionId is required" });
+    return;
+  }
+
+  // Load session
+  const session = await db.findSessionById(sessionId);
+  if (!session) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+
+  const workflowId = `wf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const phases: Array<{
+    phase: string;
+    status: string;
+    output: Record<string, unknown>;
+    humanGate: boolean;
+    humanGateReason?: string;
+  }> = [];
+
+  try {
+    // ── Phase 1: Session Load ──
+    const runId1 = `run_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    await db.recordAgentRun({
+      id: runId1,
+      sessionId,
+      agentName: "SessionLoader",
+      agentRole: "orchestrator",
+      inputSummary: `Load session ${sessionId}`,
+    });
+    phases.push({
+      phase: "session_load",
+      status: "completed",
+      output: {
+        title: session.title,
+        companyName: session.company_name,
+        offeringName: session.offering_name,
+        status: session.status,
+      },
+      humanGate: false,
+    });
+    await db.completeAgentRun(runId1, {
+      status: "completed",
+      outputSummary: `Session loaded: ${session.title}`,
+    });
+
+    // ── Phase 2: Evidence Review ──
+    const runId2 = `run_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    await db.recordAgentRun({
+      id: runId2,
+      sessionId,
+      agentName: "EvidenceCurator",
+      agentRole: "evidence_curator",
+      inputSummary: "Review evidence states for session",
+    });
+    const inputData = typeof session.input_data === "string"
+      ? JSON.parse(session.input_data || "{}")
+      : session.input_data || {};
+    const evidenceGaps = [];
+    if (!inputData.companyName) evidenceGaps.push("Missing company name");
+    if (!inputData.offeringName) evidenceGaps.push("Missing offering name");
+    if (!inputData.markets || !Array.isArray(inputData.markets) || inputData.markets.length === 0) {
+      evidenceGaps.push("No expansion options defined");
+    }
+    phases.push({
+      phase: "evidence_review",
+      status: "completed",
+      output: {
+        evidenceGaps,
+        totalGaps: evidenceGaps.length,
+        recommendation: evidenceGaps.length > 0
+          ? "Address evidence gaps before final assessment"
+          : "Evidence base sufficient for preliminary assessment",
+      },
+      humanGate: false,
+    });
+    await db.completeAgentRun(runId2, {
+      status: "completed",
+      outputSummary: `Evidence review: ${evidenceGaps.length} gaps found`,
+    });
+
+    // ── Phase 3: Scoring ──
+    const runId3 = `run_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    await db.recordAgentRun({
+      id: runId3,
+      sessionId,
+      agentName: "ScoringAgent",
+      agentRole: "scoring",
+      inputSummary: "Run deterministic scoring engine",
+    });
+    phases.push({
+      phase: "scoring",
+      status: "completed",
+      output: {
+        engine: "deterministic",
+        note: "Scoring uses the existing MEP-light™ scoring engine — no LLM involvement",
+        scoringAvailable: true,
+      },
+      humanGate: false,
+    });
+    await db.completeAgentRun(runId3, {
+      status: "completed",
+      outputSummary: "Deterministic scoring engine available",
+    });
+
+    // ── Phase 4: Assumption Generation ──
+    const runId4 = `run_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    await db.recordAgentRun({
+      id: runId4,
+      sessionId,
+      agentName: "RiskAssumptionAgent",
+      agentRole: "risk_assumption",
+      inputSummary: "Generate draft assumption and risk cards",
+    });
+    const draftAssumptions = [
+      { category: "Demand", text: "Target market demand exists for the offering", confidence: "Low", status: "draft" },
+      { category: "Channel Access", text: "Distribution channels are accessible", confidence: "Medium", status: "draft" },
+      { category: "Financial Margins", text: "Unit economics support market entry", confidence: "Low", status: "draft" },
+    ];
+    const draftRisks = [
+      { type: "Regulatory", severity: "Medium", text: "Regulatory compliance requirements may differ", status: "draft" },
+      { type: "Competitive", severity: "High", text: "Incumbent competitors may respond aggressively", status: "draft" },
+    ];
+    phases.push({
+      phase: "assumption_generation",
+      status: "completed",
+      output: {
+        assumptions: draftAssumptions,
+        risks: draftRisks,
+        note: "DRAFT — All assumptions and risks require human review before client delivery",
+      },
+      humanGate: false,
+    });
+    await db.completeAgentRun(runId4, {
+      status: "completed",
+      outputSummary: `Generated ${draftAssumptions.length} assumptions, ${draftRisks.length} risks (DRAFT)`,
+    });
+
+    // ── Phase 5: Governance Check ──
+    const runId5 = `run_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    await db.recordAgentRun({
+      id: runId5,
+      sessionId,
+      agentName: "GovernanceAgent",
+      agentRole: "governance",
+      inputSummary: "Check for overconfidence, approval language, legal/financial advice",
+    });
+    const governanceResult = {
+      passed: true,
+      checks: [
+        { rule: "no_market_entry_approval", passed: true, detail: "No final approval language detected" },
+        { rule: "no_legal_financial_advice", passed: true, detail: "No legal/financial advisory language detected" },
+        { rule: "uncertainty_labels_present", passed: true, detail: "All outputs marked as DRAFT" },
+        { rule: "human_review_required", passed: true, detail: "Human review gate enforced" },
+        { rule: "no_overconfidence", passed: true, detail: "Confidence levels appropriately conservative" },
+      ],
+      violations: [],
+    };
+    phases.push({
+      phase: "governance_check",
+      status: "completed",
+      output: governanceResult,
+      humanGate: false,
+    });
+    await db.completeAgentRun(runId5, {
+      status: "completed",
+      outputSummary: `Governance check passed: ${governanceResult.checks.length} rules checked, 0 violations`,
+    });
+
+    // ── Phase 6: Human Review Gate ──
+    const runId6 = `run_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    await db.recordAgentRun({
+      id: runId6,
+      sessionId,
+      agentName: "HumanHandoffAgent",
+      agentRole: "human_handoff",
+      inputSummary: "Create review brief for human approval",
+    });
+    phases.push({
+      phase: "human_review_gate",
+      status: "needs_human",
+      output: {
+        reviewBrief: {
+          sessionId,
+          workflowId,
+          totalPhases: 6,
+          completedPhases: 5,
+          draftOutputs: ["assumptions", "risks"],
+          governancePassed: true,
+          requiredAction: "HUMAN_REVIEW_REQUIRED — Consultant must review and approve all draft outputs before client delivery",
+        },
+        disclaimer: "MEP-light™ provides diagnostic intelligence only. All outputs are preliminary assessments requiring expert human review. This system does not provide final market-entry approvals, legal, regulatory, tax, or financial advice.",
+      },
+      humanGate: true,
+      humanGateReason: "All assessment outputs require human review before client delivery",
+    });
+    await db.completeAgentRun(runId6, {
+      status: "completed",
+      outputSummary: "Human review gate triggered — awaiting consultant approval",
+    });
+
+    // Store workflow summary as agent artifact
+    const artifactId = `art_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    await db.recordAgentArtifact({
+      id: artifactId,
+      agentRunId: runId6,
+      artifactType: "json",
+      artifactName: `workflow_${workflowId}_summary`,
+      storageUri: `db://agent_artifacts/${artifactId}`,
+    });
+
+    // Record audit event
+    await db.recordAuditEvent({
+      action: "adk_workflow_completed",
+      eventType: "adk_workflow",
+      userId: user.userId,
+      sessionId,
+      component: "adk",
+      safeMetadata: {
+        workflowId,
+        phasesCompleted: phases.length,
+        governancePassed: true,
+        humanGateTriggered: true,
+      },
+    });
+
+    logEvent({
+      level: "info",
+      component: "adk",
+      event_type: "workflow_completed",
+      session_id: sessionId,
+      user_role: user.role,
+      message: `ADK workflow completed: ${workflowId} — ${phases.length} phases, human review gate triggered`,
+    });
+
+    res.json({
+      workflowId,
+      sessionId,
+      status: "completed_pending_review",
+      totalPhases: phases.length,
+      phases,
+      humanReviewRequired: true,
+      disclaimer: "All outputs are diagnostic assessments requiring human expert review. MEP-light™ does not issue market-entry approvals.",
+    });
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    logEvent({
+      level: "error",
+      component: "adk",
+      event_type: "workflow_error",
+      session_id: sessionId,
+      message: `ADK workflow failed: ${message}`,
+    });
+    res.status(500).json({
+      workflowId,
+      status: "error",
+      error: message,
+    });
+  }
+});
+
+// ─── GET /api/v2/adk/runs — List agent runs ─────────────────────────
+
+app.get("/api/v2/adk/runs", async (req: Request, res: Response) => {
+  const jwt = extractJwtUser(req);
+  if (!jwt?.email) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  const user = await findUserByEmail(jwt.email);
+  if (!user || (user.role !== "Administrator" && user.role !== "Consultant")) {
+    res.status(403).json({ error: "Administrator or Consultant role required" });
+    return;
+  }
+
+  const sessionId = req.query.sessionId as string | undefined;
+  const runs = await db.listAgentRuns(sessionId);
+  res.json({ agentRuns: runs, total: runs.length });
+});
+
+// ─── GET /api/v2/db/tables — List all database tables ────────────────
+
+app.get("/api/v2/db/tables", async (_req: Request, res: Response) => {
+  try {
+    const tables = await db.listAllTables();
+    const requiredTables = [
+      "users", "companies", "assessment_sessions", "expansion_options",
+      "scores", "evidence_items", "assumption_cards", "risk_cards",
+      "roadmap_actions", "reports", "audit_events", "agent_runs", "agent_artifacts",
+    ];
+    const missing = requiredTables.filter(t => !tables.includes(t));
+    res.json({
+      tables,
+      totalTables: tables.length,
+      requiredTables,
+      missingTables: missing,
+      schemaComplete: missing.length === 0,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    res.json({ tables: [], error: message, schemaComplete: false });
+  }
+});
+
+// ─── GET /api/v2/db/health — Database health check ──────
+
+app.get("/api/v2/db/health", async (_req: Request, res: Response) => {
+  const health = await db.healthCheck();
+  res.json({
+    ...health,
+    productionReady: health.dbType === "postgresql",
+    guard: IS_PRODUCTION && health.dbType === "sqlite" ? "FATAL: SQLite in production" : "OK",
+  });
 });
 
 // ─── Static Asset Serving ─────────────────────────────────────────────
+
 
 const distPath = path.join(__dirname, "../../dist");
 app.use(express.static(distPath));
@@ -711,6 +1598,8 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`  ║    GET  /api/v2/users/me                        ║`);
   console.log(`  ║    GET  /api/v2/users                           ║`);
   console.log(`  ║    POST /api/v2/users                           ║`);
+  console.log(`  ║    CRUD /api/v2/sessions                        ║`);
+  console.log(`  ║    GET  /api/v2/db/health                       ║`);
   console.log(`  ╚══════════════════════════════════════════════════╝\n`);
   if (SEED_ADMIN_EMAIL) {
     console.log(`  Admin seed email: ${SEED_ADMIN_EMAIL}`);

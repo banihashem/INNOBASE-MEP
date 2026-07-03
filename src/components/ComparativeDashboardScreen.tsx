@@ -23,7 +23,7 @@ export interface CalculatedResult {
   potentialScore: number;
   riskExposure: number;
   riskLevel: "High" | "Medium" | "Low";
-  tier: "Tier A: Priority" | "Tier B: Promising" | "Tier C: Do not prioritize";
+  tier: "Tier A: Priority" | "Tier B: Promising" | "Tier C: Do not prioritize" | "Tier D: Exclude from current agenda";
   confidence: "High" | "Medium" | "Low" | "Unknown";
   evidenceBasis: string;
   evidenceConfidenceScore: number;
@@ -129,6 +129,8 @@ export default function ComparativeDashboardScreen({
       tier = "Tier A: Priority";
     } else if (potentialScore >= 60) {
       tier = "Tier B: Promising";
+    } else if (potentialScore < 40) {
+      tier = "Tier D: Exclude from current agenda";
     }
 
     // Main Strength / Weakness (from positive dimensions only)
@@ -243,6 +245,12 @@ export default function ComparativeDashboardScreen({
       return (
         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-900/40 text-indigo-300 border border-indigo-500/30">
           Tier B: Promising
+        </span>
+      );
+    } else if (tier === "Tier D: Exclude from current agenda") {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-950/40 text-red-400 border border-red-500/30">
+          Tier D: Exclude
         </span>
       );
     }

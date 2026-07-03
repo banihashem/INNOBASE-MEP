@@ -8,7 +8,7 @@
  *   1. Invert negative dimensions (Competitive Intensity, Regulatory Complexity)
  *   2. Compute weighted category sub-scores (Opportunity, Fit, Feasibility, Strategic, Financial)
  *   3. Compute SME-weighted Expansion Potential composite (0–100)
- *   4. Classify into Tiers (A/B/C)
+ *   4. Classify into Tiers (A/B/C/D)
  *   5. Apply confidence decoupling (cap Tier A → Tier B if low evidence)
  * 
  * Charter compliance:
@@ -54,6 +54,7 @@ const COMPOSITE_SCALE_FACTOR = 20;
 /** Tier thresholds */
 const TIER_A_THRESHOLD = 75;
 const TIER_B_THRESHOLD = 60;
+const TIER_D_THRESHOLD = 40;
 
 /** Risk level thresholds (based on raw negative dimension average) */
 const RISK_HIGH_THRESHOLD = 3.8;
@@ -134,12 +135,14 @@ export function calculateExpansionPotential(categoryScores: CategoryScores): num
  * Maps a composite score to a tier classification.
  *   >= 75 → Tier A: Priority
  *   >= 60 → Tier B: Promising
- *   <  60 → Tier C: Do not prioritize
+ *   >= 40 → Tier C: Do not prioritize
+ *   <  40 → Tier D: Exclude from current agenda
  */
 export function classifyTier(score: number): TierClassification {
   if (score >= TIER_A_THRESHOLD) return "Tier A: Priority";
   if (score >= TIER_B_THRESHOLD) return "Tier B: Promising";
-  return "Tier C: Do not prioritize";
+  if (score >= TIER_D_THRESHOLD) return "Tier C: Do not prioritize";
+  return "Tier D: Exclude from current agenda";
 }
 
 // ─── Step 5: Risk Assessment ─────────────────────────────────────────

@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     # ─── Database ─────────────────────────────────────────────────
     database_url: str = "sqlite:///./data/mep_local.db"
     database_echo: bool = False  # SQLAlchemy echo for debug
+    cloud_sql_connection: str = ""  # e.g. innobase-mep-light:europe-west2:mep-light-db
+    db_name: str = "mep_production"
+    db_user: str = "mep_app"
+    db_password: str = ""  # Loaded from Secret Manager in production
+
+    # ─── Environment ──────────────────────────────────────────────
+    node_env: str = "development"  # Shared with Node.js; "production" in Cloud Run
 
     # ─── Authentication (Google OIDC) ─────────────────────────────
     google_client_id: str = ""

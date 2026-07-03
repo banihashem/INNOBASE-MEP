@@ -192,3 +192,287 @@ class AuditLog(Base):
         Index("ix_audit_log_timestamp", "timestamp"),
         Index("ix_audit_log_user", "user_id"),
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ─── Phase 4: Production 13-Entity Schema ─────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════
+# These models align with backend/migrations/001_initial_schema.sql
+# and backend/src/db_client.ts for cross-runtime consistency.
+
+class User(Base):
+    """Production user table — mirrors db_client.ts DbUser."""
+    __tablename__ = "users"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    provider = Column(String(50), nullable=False, default="google")
+    provider_subject = Column(String(255), nullable=False, default="")
+    email = Column(String(255), unique=True, nullable=False)
+    name = Column(String(255), nullable=False, default="")
+    picture_url = Column(Text, default="")
+    role = Column(String(50), nullable=False, default="Viewer")
+    status = Column(String(50), nullable=False, default="active")
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    assessment_sessions = relationship("AssessmentSession", back_populates="user", cascade="all, delete-orphan")
+    agent_runs = relationship("AgentRun", back_populates="user")
+
+    __table_args__ = (
+        Index("ix_users_email", "email"),
+        Index("ix_users_role", "role"),
+    )
+
+
+class AssessmentSession(Base):
+    """Production assessment session — mirrors db_client.ts DbSession."""
+    __tablename__ = "assessment_sessions"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(500), nullable=False, default="Untitled Session")
+    company_name = Column(String(255), default="")
+    offering_name = Column(String(255), default="")
+    status = Column(String(50), nullable=False, default="draft")
+    active_state = Column(String(50), nullable=False, default="SETUP")
+    input_data = Column(JSON, default=dict)
+    output_data = Column(JSON, default=dict)
+    consultant_notes = Column(Text, default="")
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="assessment_sessions")
+    expansion_options = relationship("ExpansionOption", back_populates="session", cascade="all, delete-orphan")
+    scores = relationship("Score", back_populates="session", cascade="all, delete-orphan")
+    evidence_items = relationship("EvidenceItem", back_populates="session", cascade="all, delete-orphan")
+    assumption_cards = relationship("AssumptionCard", back_populates="session", cascade="all, delete-orphan")
+    risk_cards = relationship("RiskCard", back_populates="session", cascade="all, delete-orphan")
+    roadmap_actions = relationship("RoadmapAction", back_populates="session", cascade="all, delete-orphan")
+    reports = relationship("Report", back_populates="session", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_assessment_sessions_user", "user_id"),
+        Index("ix_assessment_sessions_status", "status"),
+    )
+
+
+class ExpansionOption(Base):
+    """Market/channel option within an assessment session."""
+    __tablename__ = "expansion_options"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    session_id = Column(String(64), ForeignKey("assessment_sessions.id", ondelete="CASCADE"), nullable=False)
+    market_name = Column(String(255), nullable=False)
+    market_type = Column(String(50), nullable=False, default="Country")
+    channel_strategy = Column(String(255), default="")
+    status = Column(String(50), default="active")
+    metadata_json = Column(JSON, default=dict)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+    session = relationship("AssessmentSession", back_populates="expansion_options")
+
+
+class Score(Base):
+    """9-dimension score record for a market within a session."""
+    __tablename__ = "scores"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    session_id = Column(String(64), ForeignKey("assessment_sessions.id", ondelete="CASCADE"), nullable=False)
+    expansion_option_id = Column(String(64), ForeignKey("expansion_options.id", ondelete="SET NULL"), nullable=True)
+    market_name = Column(String(255), nullable=False)
+
+    # Raw dimension scores (1-5)
+    attractiveness = Column(Integer)
+    offering_fit = Column(Integer)
+    channel_access = Column(Integer)
+    competitive_intensity = Column(Integer)
+    regulatory_complexity = Column(Integer)
+    operational_feasibility = Column(Integer)
+    brand_transferability = Column(Integer)
+    strategic_value = Column(Integer)
+    financial_logic = Column(Integer)
+
+    # Computed results
+    expansion_potential_score = Column(Integer, nullable=True)
+    tier_classification = Column(String(10), nullable=True)
+    risk_level = Column(String(20), nullable=True)
+    risk_exposure = Column(Float, nullable=True)
+    evidence_confidence = Column(String(20), default="Medium")
+    evidence_confidence_score = Column(Integer, nullable=True)
+    warnings = Column(JSON, default=list)
+
+    scored_at = Column(DateTime(timezone=True), default=_utcnow)
+    scored_by = Column(String(100), default="scoring_engine_v3")
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+    session = relationship("AssessmentSession", back_populates="scores")
+
+    __table_args__ = (
+        Index("ix_scores_session", "session_id"),
+    )
+
+
+class EvidenceItem(Base):
+    """Evidence ledger entry linked to a session."""
+    __tablename__ = "evidence_items"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    session_id = Column(String(64), ForeignKey("assessment_sessions.id", ondelete="CASCADE"), nullable=False)
+    dimension = Column(String(100), nullable=False)
+    market_name = Column(String(255), default="")
+    source_type = Column(String(100), default="")
+    source_url = Column(Text, default="")
+    source_title = Column(String(500), default="")
+    excerpt = Column(Text, default="")
+    confidence = Column(String(20), default="Medium")
+    added_by = Column(String(100), default="consultant")
+    verified = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+    session = relationship("AssessmentSession", back_populates="evidence_items")
+
+    __table_args__ = (
+        Index("ix_evidence_session_dim", "session_id", "dimension"),
+    )
+
+
+class AssumptionCard(Base):
+    """Structured assumption tracking."""
+    __tablename__ = "assumption_cards"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    session_id = Column(String(64), ForeignKey("assessment_sessions.id", ondelete="CASCADE"), nullable=False)
+    statement = Column(Text, nullable=False)
+    dimension = Column(String(100), default="")
+    market_name = Column(String(255), default="")
+    impact_if_wrong = Column(String(20), default="Medium")
+    validation_method = Column(Text, default="")
+    status = Column(String(50), default="untested")
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+    session = relationship("AssessmentSession", back_populates="assumption_cards")
+
+
+class RiskCard(Base):
+    """Risk register entry."""
+    __tablename__ = "risk_cards"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    session_id = Column(String(64), ForeignKey("assessment_sessions.id", ondelete="CASCADE"), nullable=False)
+    risk_title = Column(String(500), nullable=False)
+    description = Column(Text, default="")
+    market_name = Column(String(255), default="")
+    probability = Column(String(20), default="Medium")
+    impact = Column(String(20), default="Medium")
+    mitigation = Column(Text, default="")
+    status = Column(String(50), default="open")
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+    session = relationship("AssessmentSession", back_populates="risk_cards")
+
+
+class RoadmapAction(Base):
+    """30-60-90 day validation action."""
+    __tablename__ = "roadmap_actions"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    session_id = Column(String(64), ForeignKey("assessment_sessions.id", ondelete="CASCADE"), nullable=False)
+    action_title = Column(String(500), nullable=False)
+    description = Column(Text, default="")
+    market_name = Column(String(255), default="")
+    time_horizon = Column(String(50), default="30 days")
+    priority = Column(String(20), default="Medium")
+    owner = Column(String(255), default="")
+    status = Column(String(50), default="planned")
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+    session = relationship("AssessmentSession", back_populates="roadmap_actions")
+
+
+class Report(Base):
+    """Report metadata with storage URI."""
+    __tablename__ = "reports"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    session_id = Column(String(64), ForeignKey("assessment_sessions.id", ondelete="CASCADE"), nullable=False)
+    report_type = Column(String(100), nullable=False, default="assessment")
+    title = Column(String(500), default="")
+    format = Column(String(50), default="pdf")
+    storage_uri = Column(Text, default="")
+    generated_by = Column(String(100), default="system")
+    status = Column(String(50), default="draft")
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+    session = relationship("AssessmentSession", back_populates="reports")
+
+
+class AuditEvent(Base):
+    """Immutable audit trail — mirrors db_client.ts DbAuditEvent."""
+    __tablename__ = "audit_events"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    user_id = Column(String(64), nullable=True)
+    session_id = Column(String(64), nullable=True)
+    event_type = Column(String(100), nullable=False)
+    component = Column(String(100), default="")
+    action = Column(String(200), nullable=False)
+    safe_metadata = Column(JSON, default=dict)
+    correlation_id = Column(String(100), default="")
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("ix_audit_events_created", "created_at"),
+        Index("ix_audit_events_user", "user_id"),
+        Index("ix_audit_events_type", "event_type"),
+    )
+
+
+class AgentRun(Base):
+    """ADK agent execution record."""
+    __tablename__ = "agent_runs"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    session_id = Column(String(64), ForeignKey("assessment_sessions.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    agent_name = Column(String(100), nullable=False)
+    agent_role = Column(String(100), default="")
+    run_status = Column(String(50), nullable=False, default="started")
+    input_summary = Column(Text, default="")
+    output_summary = Column(Text, default="")
+    evidence_references = Column(JSON, default=list)
+    tool_calls_summary = Column(JSON, default=list)
+    error_category = Column(String(100), default="")
+    token_usage = Column(JSON, default=dict)
+    cost_estimate = Column(Float, default=0)
+    started_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user = relationship("User", back_populates="agent_runs")
+    artifacts = relationship("AgentArtifact", back_populates="agent_run", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_agent_runs_session", "session_id"),
+        Index("ix_agent_runs_status", "run_status"),
+    )
+
+
+class AgentArtifact(Base):
+    """Agent output artifact storage metadata."""
+    __tablename__ = "agent_artifacts"
+
+    id = Column(String(64), primary_key=True, default=_gen_uuid)
+    agent_run_id = Column(String(64), ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False)
+    artifact_type = Column(String(100), nullable=False)
+    title = Column(String(500), default="")
+    content_summary = Column(Text, default="")
+    storage_uri = Column(Text, default="")
+    format = Column(String(50), default="json")
+    size_bytes = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+    agent_run = relationship("AgentRun", back_populates="artifacts")
+

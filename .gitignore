@@ -10,3 +10,10 @@ coverage/
 .antigravity/
 __pycache__/
 *.pyc
+data/
+logs/
+scripts/
+.pytest_cache/
+*.db
+*.sqlite
+*.sqlite3

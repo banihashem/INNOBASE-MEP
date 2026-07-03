@@ -22,6 +22,9 @@ import {
   Download,
   Loader2,
   ArrowRight,
+  Pencil,
+  Trash2,
+  Plus,
 } from "lucide-react";
 import StrategicDisclaimer from "./StrategicDisclaimer";
 
@@ -131,7 +134,11 @@ export default function RoadmapScreen({
 
   const pathway = getEntryPathway();
 
-  // Assumptions state
+  // Human Review Gate state
+  const [reviewStatus, setReviewStatus] = useState<"pending" | "approved" | "flagged">("pending");
+  const [reviewNotes, setReviewNotes] = useState("");
+
+  // Assumptions state — editable cards
   const [assumptions, setAssumptions] = useState<Assumption[]>([
     {
       id: "asm-1",
@@ -167,6 +174,8 @@ export default function RoadmapScreen({
     },
   ]);
 
+  const [editingAssumption, setEditingAssumption] = useState<string | null>(null);
+
   const toggleAssumptionConfidence = (id: string) => {
     setAssumptions((prev) =>
       prev.map((asm) => {
@@ -180,6 +189,30 @@ export default function RoadmapScreen({
         return asm;
       })
     );
+  };
+
+  const updateAssumption = (id: string, field: "text" | "validationAction", value: string) => {
+    setAssumptions((prev) =>
+      prev.map((asm) => asm.id === id ? { ...asm, [field]: value } : asm)
+    );
+  };
+
+  const addAssumption = () => {
+    const categories: Assumption["category"][] = ["Demand", "Channel Access", "Financial Margins", "Adaptation"];
+    const newAsm: Assumption = {
+      id: `asm-${Date.now()}`,
+      category: categories[assumptions.length % 4],
+      text: "Enter your strategic assumption here...",
+      confidence: "Low",
+      validationAction: "Define validation action...",
+    };
+    setAssumptions((prev) => [...prev, newAsm]);
+    setEditingAssumption(newAsm.id);
+  };
+
+  const removeAssumption = (id: string) => {
+    setAssumptions((prev) => prev.filter((asm) => asm.id !== id));
+    if (editingAssumption === id) setEditingAssumption(null);
   };
 
   const getConfBadgeClass = (conf: "High" | "Medium" | "Low") => {
@@ -340,6 +373,86 @@ export default function RoadmapScreen({
         </div>
       </div>
 
+      {/* Human Review Gate */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <ShieldAlert className="w-4 h-4 text-indigo-400" />
+          <h3 className="text-sm uppercase font-semibold text-indigo-400 tracking-wider">
+            Human Review Gate
+          </h3>
+        </div>
+
+        <div className={`rounded-xl border p-5 transition-all ${
+          reviewStatus === "approved"
+            ? "bg-emerald-950/20 border-emerald-900/40"
+            : reviewStatus === "flagged"
+            ? "bg-rose-950/20 border-rose-900/40"
+            : "bg-amber-950/15 border-amber-900/30"
+        }`}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2 flex-1">
+              <div className="flex items-center space-x-2">
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  reviewStatus === "approved"
+                    ? "bg-emerald-900/60 text-emerald-400 border border-emerald-800/60"
+                    : reviewStatus === "flagged"
+                    ? "bg-rose-900/60 text-rose-400 border border-rose-800/60"
+                    : "bg-amber-900/60 text-amber-400 border border-amber-800/60"
+                }`}>
+                  {reviewStatus === "approved" ? "✓ Approved" : reviewStatus === "flagged" ? "⚠ Flagged" : "⏳ Pending Review"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
+                {reviewStatus === "approved"
+                  ? `This assessment has been reviewed and approved for ${activeMarket.name}. The reviewer confirms that scoring inputs have been validated and the advisory output is suitable for strategic discussion.`
+                  : reviewStatus === "flagged"
+                  ? `This assessment has been flagged for revision. The reviewer has identified concerns with the scoring inputs or advisory output for ${activeMarket.name}. Review the assumptions and evidence basis before proceeding.`
+                  : `This assessment for ${activeMarket.name} has not yet been reviewed by a qualified advisor. MEP-light™ outputs are decision-support tools — do not commit capital or resources based on unreviewed assessments.`
+                }
+              </p>
+              {reviewNotes && (
+                <div className="mt-2 p-3 bg-slate-950/60 rounded-lg border border-slate-800/40">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Reviewer Notes:</span>
+                  <p className="text-xs text-slate-300">{reviewNotes}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col space-y-2 shrink-0">
+              {reviewStatus !== "approved" && (
+                <button
+                  onClick={() => setReviewStatus("approved")}
+                  className="px-4 py-2 text-xs font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-900/40 rounded-lg hover:bg-emerald-900/40 transition-colors"
+                >
+                  Approve
+                </button>
+              )}
+              {reviewStatus !== "flagged" && (
+                <button
+                  onClick={() => {
+                    const note = prompt("Enter review notes (optional):");
+                    if (note !== null) {
+                      setReviewNotes(note || "");
+                      setReviewStatus("flagged");
+                    }
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-amber-400 bg-amber-950/40 border border-amber-900/40 rounded-lg hover:bg-amber-900/40 transition-colors"
+                >
+                  Flag for Revision
+                </button>
+              )}
+              {reviewStatus !== "pending" && (
+                <button
+                  onClick={() => { setReviewStatus("pending"); setReviewNotes(""); }}
+                  className="px-4 py-2 text-xs font-semibold text-slate-400 bg-slate-800/40 border border-slate-700/40 rounded-lg hover:bg-slate-700/40 transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Data Gap Checklist */}
       {dataGaps.length > 0 && (
         <div className="space-y-4">
@@ -382,53 +495,104 @@ export default function RoadmapScreen({
         </div>
       )}
 
-      {/* Assumptions Cards */}
+      {/* Assumptions Cards — Editable */}
       <div className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <ShieldAlert className="w-4 h-4 text-indigo-400" />
-          <h3 className="text-sm uppercase font-semibold text-indigo-400 tracking-wider">
-            Critical Strategic Assumptions
-          </h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <ShieldAlert className="w-4 h-4 text-indigo-400" />
+            <h3 className="text-sm uppercase font-semibold text-indigo-400 tracking-wider">
+              Critical Strategic Assumptions
+            </h3>
+          </div>
+          <button
+            onClick={addAssumption}
+            className="flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold text-indigo-400 bg-indigo-950/40 border border-indigo-900/40 rounded-lg hover:bg-indigo-900/40 transition-colors"
+          >
+            <Plus className="w-3 h-3" />
+            <span>Add Assumption</span>
+          </button>
         </div>
         <p className="text-xs text-slate-400">
-          Click confidence badges to cycle as research progresses.
+          Click confidence badges to cycle. Click the edit icon to modify text. Add or remove assumptions as needed.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {assumptions.map((asm) => (
             <div
               key={asm.id}
-              className="bg-slate-900 border border-slate-800/80 rounded-xl p-5 flex flex-col justify-between space-y-4"
+              className="bg-slate-900 border border-slate-800/80 rounded-xl p-5 flex flex-col justify-between space-y-4 group"
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-500">
                     {asm.category}
                   </span>
-                  <button
-                    onClick={() =>
-                      toggleAssumptionConfidence(asm.id)
-                    }
-                    className={`px-2.5 py-0.5 rounded border text-[10px] font-semibold uppercase transition-colors cursor-pointer ${getConfBadgeClass(
-                      asm.confidence
-                    )}`}
-                    title="Click to cycle confidence"
-                  >
-                    {asm.confidence}
-                  </button>
+                  <div className="flex items-center space-x-1.5">
+                    <button
+                      onClick={() => setEditingAssumption(
+                        editingAssumption === asm.id ? null : asm.id
+                      )}
+                      className={`p-1 rounded transition-colors ${
+                        editingAssumption === asm.id
+                          ? "text-indigo-400 bg-indigo-950/60"
+                          : "text-slate-600 hover:text-slate-400 opacity-0 group-hover:opacity-100"
+                      }`}
+                      title="Edit assumption"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => removeAssumption(asm.id)}
+                      className="p-1 rounded text-slate-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Remove assumption"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        toggleAssumptionConfidence(asm.id)
+                      }
+                      className={`px-2.5 py-0.5 rounded border text-[10px] font-semibold uppercase transition-colors cursor-pointer ${getConfBadgeClass(
+                        asm.confidence
+                      )}`}
+                      title="Click to cycle confidence"
+                    >
+                      {asm.confidence}
+                    </button>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-300 font-medium leading-relaxed">
-                  {asm.text}
-                </p>
+                {editingAssumption === asm.id ? (
+                  <textarea
+                    value={asm.text}
+                    onChange={(e) => updateAssumption(asm.id, "text", e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-300 leading-relaxed resize-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    rows={3}
+                    placeholder="Enter your strategic assumption..."
+                  />
+                ) : (
+                  <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                    {asm.text}
+                  </p>
+                )}
               </div>
 
               <div className="pt-3 border-t border-slate-800/60 space-y-1.5">
                 <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">
                   Validation Action:
                 </span>
-                <p className="text-xs text-slate-400 leading-normal">
-                  {asm.validationAction}
-                </p>
+                {editingAssumption === asm.id ? (
+                  <textarea
+                    value={asm.validationAction}
+                    onChange={(e) => updateAssumption(asm.id, "validationAction", e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-400 leading-normal resize-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    rows={2}
+                    placeholder="Define validation action..."
+                  />
+                ) : (
+                  <p className="text-xs text-slate-400 leading-normal">
+                    {asm.validationAction}
+                  </p>
+                )}
               </div>
             </div>
           ))}
