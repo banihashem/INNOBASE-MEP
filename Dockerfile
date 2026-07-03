@@ -36,12 +36,16 @@ RUN if [ -z "$GOOGLE_CLIENT_ID" ]; then \
 RUN echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}" >> .env
 RUN npm run build
 
-# POST-BUILD GUARD: Verify the built bundle does NOT contain placeholder or demo identity
-RUN if grep -r "placeholder" dist/assets/*.js 2>/dev/null; then \
-      echo "FATAL: Production bundle contains 'placeholder' string — Client ID was not injected properly." && exit 1; \
+# POST-BUILD GUARD: Verify the built bundle does NOT contain placeholder Client ID or demo identity
+# NOTE: "placeholder" alone is too broad (matches HTML placeholder attrs). Use specific pattern.
+RUN if grep -r "placeholder.apps.googleusercontent.com" dist/assets/*.js 2>/dev/null; then \
+      echo "FATAL: Production bundle contains placeholder Client ID — real ID was not injected." && exit 1; \
     fi
 RUN if grep -r "consultant@innobase.app" dist/assets/*.js 2>/dev/null; then \
       echo "FATAL: Production bundle contains demo identity 'consultant@innobase.app'." && exit 1; \
+    fi
+RUN if grep -r "demo-user-id" dist/assets/*.js 2>/dev/null; then \
+      echo "FATAL: Production bundle contains demo sub 'demo-user-id'." && exit 1; \
     fi
 
 # ─── Stage 2: Install Python dependencies ────────────────────────────
