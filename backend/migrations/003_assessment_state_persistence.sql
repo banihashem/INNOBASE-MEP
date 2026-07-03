@@ -12,7 +12,7 @@ ADD COLUMN IF NOT EXISTS current_step INTEGER DEFAULT 1,
 ADD COLUMN IF NOT EXISTS completion_percent INTEGER DEFAULT 0,
 ADD COLUMN IF NOT EXISTS review_status VARCHAR(50) DEFAULT 'pending' 
     CHECK (review_status IN ('pending', 'approved', 'revision_requested')),
-ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES users(id),
+ADD COLUMN IF NOT EXISTS reviewed_by TEXT REFERENCES users(id),
 ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
 
 -- Indices for performance on new tracking fields

@@ -191,7 +191,24 @@ app.use((req: Request, res: Response, next: Function) => {
   next();
 });
 
-// ─── Health Check ────────────────────────────────────────────────────
+app.get("/api/v2/db/run-migration", async (req, res) => {
+  try {
+    const fs = await import("fs");
+    const path = await import("path");
+    const sql = fs.readFileSync(path.resolve("backend/migrations/003_assessment_state_persistence.sql"), "utf8");
+    if ((db as any).pgPool) {
+      await (db as any).pgPool.query(sql);
+      res.json({ success: true, message: "Migration 003 applied to pgPool" });
+    } else {
+      res.json({ success: false, message: "pgPool not active" });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── Health Checks ────────────────────────────────────────────────────────
+
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
