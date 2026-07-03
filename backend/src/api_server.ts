@@ -342,6 +342,22 @@ app.post("/api/export-pdf", async (req: Request, res: Response) => {
       user_role: user.role,
       message: `PDF export by ${jwt.email}`,
     });
+
+    // ── Human Review Gate Enforcement ──
+    // The payload should pass the sessionId, or we determine it from the payload
+    const sessionId = req.body.sessionId;
+    if (sessionId) {
+      const session = await db.findSessionById(sessionId);
+      if (session && session.review_status !== 'approved' && !req.body.draft) {
+        res.status(403).json({ error: "Human review required before final export. An Administrator or Consultant must approve the assessment." });
+        return;
+      }
+      if (session && session.review_status !== 'approved' && req.body.draft) {
+        // Enforce watermark
+        req.body.watermark = "DRAFT - NOT HUMAN REVIEWED";
+      }
+    }
+
     const pdfBuffer = await generatePdf(req.body);
 
     // Record audit event for PDF export
@@ -1100,6 +1116,9 @@ app.get("/api/v2/sessions", async (req: Request, res: Response) => {
       companyName: s.company_name,
       offeringName: s.offering_name,
       status: s.status,
+      currentStep: s.current_step,
+      completionPercent: s.completion_percent,
+      reviewStatus: s.review_status,
       createdAt: s.created_at,
       updatedAt: s.updated_at,
     })),
@@ -1122,8 +1141,8 @@ app.post("/api/v2/sessions", async (req: Request, res: Response) => {
     return;
   }
 
-  const { title, companyName, offeringName, inputData } = req.body;
-  const sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const { id, title, companyName, offeringName, inputData } = req.body;
+  const sessionId = id || `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   const session = await db.createSession({
     id: sessionId,
@@ -1153,6 +1172,9 @@ app.post("/api/v2/sessions", async (req: Request, res: Response) => {
     sessionId: session.id,
     title: session.title,
     status: session.status,
+    currentStep: session.current_step,
+    completionPercent: session.completion_percent,
+    reviewStatus: session.review_status,
     createdAt: session.created_at,
   });
 });
@@ -1187,8 +1209,14 @@ app.get("/api/v2/sessions/:id", async (req: Request, res: Response) => {
     companyName: session.company_name,
     offeringName: session.offering_name,
     status: session.status,
-    inputData: JSON.parse(session.input_data),
-    outputData: JSON.parse(session.output_data),
+    inputData: JSON.parse(session.input_data || "{}"),
+    outputData: JSON.parse(session.output_data || "{}"),
+    stateSnapshot: JSON.parse(session.state_snapshot || "{}"),
+    currentStep: session.current_step,
+    completionPercent: session.completion_percent,
+    reviewStatus: session.review_status,
+    reviewedBy: session.reviewed_by,
+    reviewedAt: session.reviewed_at,
     createdAt: session.created_at,
     updatedAt: session.updated_at,
   });
@@ -1215,12 +1243,16 @@ app.patch("/api/v2/sessions/:id", async (req: Request, res: Response) => {
     return;
   }
 
-  const { title, status, inputData, outputData } = req.body;
+  const { title, status, inputData, outputData, stateSnapshot, currentStep, completionPercent, reviewStatus } = req.body;
   const updated = await db.updateSession(req.params.id, {
     title,
     status,
     inputData,
     outputData,
+    stateSnapshot,
+    currentStep,
+    completionPercent,
+    reviewStatus,
   });
 
   if (!updated) {
@@ -1240,8 +1272,61 @@ app.patch("/api/v2/sessions/:id", async (req: Request, res: Response) => {
     sessionId: updated.id,
     title: updated.title,
     status: updated.status,
+    reviewStatus: updated.review_status,
     updatedAt: updated.updated_at,
   });
+});
+
+// ─── POST /api/v2/sessions/:id/review — Set review status ──
+app.post("/api/v2/sessions/:id/review", async (req: Request, res: Response) => {
+  const jwt = extractJwtUser(req);
+  if (!jwt?.email) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  const user = await findUserByEmail(jwt.email);
+  if (!user || (user.role !== "Administrator" && user.role !== "Consultant")) {
+    res.status(403).json({ error: "Administrator or Consultant role required" });
+    return;
+  }
+
+  const session = await db.findSessionById(req.params.id);
+  if (!session) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+
+  const { status } = req.body;
+  if (!['pending', 'approved', 'revision_requested'].includes(status)) {
+    res.status(400).json({ error: "Invalid review status" });
+    return;
+  }
+
+  // Update session
+  let query = "";
+  if (db.dbType === "sqlite") {
+    // We access sqlite manually since updateSession doesn't have reviewed_by yet
+    // Actually we could just update the review_status via updateSession, but let's do it right
+  }
+  
+  // Actually, let's use the DB directly for the review details since DbClient doesn't expose reviewed_by update yet
+  if (db.dbType === "sqlite") {
+    (db as any).sqliteDb.prepare(`UPDATE assessment_sessions SET review_status = ?, reviewed_by = ?, reviewed_at = datetime('now') WHERE id = ?`).run(status, user.userId, req.params.id);
+  } else {
+    await (db as any).pgPool.query(`UPDATE assessment_sessions SET review_status = $1, reviewed_by = $2, reviewed_at = NOW() WHERE id = $3`, [status, user.userId, req.params.id]);
+  }
+
+  await db.recordAuditEvent({
+    action: "session_reviewed",
+    eventType: "session_reviewed",
+    userId: user.userId,
+    sessionId: req.params.id,
+    component: "sessions",
+    safeMetadata: { newStatus: status }
+  });
+
+  res.json({ success: true, reviewStatus: status });
 });
 
 // ─── DELETE /api/v2/sessions/:id — Delete session ────────

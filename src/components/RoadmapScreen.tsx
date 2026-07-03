@@ -27,6 +27,7 @@ import {
   Plus,
 } from "lucide-react";
 import StrategicDisclaimer from "./StrategicDisclaimer";
+import { apiClient } from "../lib/apiClient";
 
 interface Props {
   selectedMarkets: Market[];
@@ -41,6 +42,9 @@ interface Props {
   onProceedToPrep: () => void;
   isDownloadingPDF?: boolean;
   appMode: AppMode;
+  sessionId?: string;
+  reviewStatus?: string;
+  onReviewStatusChange?: (status: string) => void;
 }
 
 interface Assumption {
@@ -70,7 +74,12 @@ export default function RoadmapScreen({
   onProceedToPrep,
   isDownloadingPDF = false,
   appMode,
+  sessionId,
+  reviewStatus = "pending",
+  onReviewStatusChange,
 }: Props) {
+  const [adkRunning, setAdkRunning] = useState(false);
+  const [adkResult, setAdkResult] = useState<any>(null);
   const currentMarketId =
     selectedMarketId ||
     (selectedMarkets.length > 0 ? selectedMarkets[0].id : "");
@@ -135,8 +144,38 @@ export default function RoadmapScreen({
   const pathway = getEntryPathway();
 
   // Human Review Gate state
-  const [reviewStatus, setReviewStatus] = useState<"pending" | "approved" | "flagged">("pending");
   const [reviewNotes, setReviewNotes] = useState("");
+  
+  const handleReviewAction = async (status: string, notes?: string) => {
+    if (onReviewStatusChange) {
+      onReviewStatusChange(status);
+    }
+    if (notes !== undefined) {
+      setReviewNotes(notes);
+    }
+    if (sessionId) {
+      try {
+        await apiClient.sessions.review(sessionId, status === "flagged" ? "revision_requested" : status);
+      } catch (err) {
+        console.error("Failed to update review status on server:", err);
+      }
+    }
+  };
+
+  const handleRunAdk = async () => {
+    if (!sessionId) return;
+    setAdkRunning(true);
+    try {
+      const res = await apiClient.adk.assess(sessionId);
+      if (res.artifact) {
+        setAdkResult(res.artifact);
+      }
+    } catch (err) {
+      console.error("ADK workflow failed:", err);
+    } finally {
+      setAdkRunning(false);
+    }
+  };
 
   // Assumptions state — editable cards
   const [assumptions, setAssumptions] = useState<Assumption[]>([
@@ -418,9 +457,19 @@ export default function RoadmapScreen({
               )}
             </div>
             <div className="flex flex-col space-y-2 shrink-0">
+              {appMode !== "demo" && !adkResult && (
+                <button
+                  onClick={handleRunAdk}
+                  disabled={adkRunning}
+                  className="px-4 py-2 text-xs font-semibold text-indigo-400 bg-indigo-950/40 border border-indigo-900/40 rounded-lg hover:bg-indigo-900/40 transition-colors flex items-center justify-center space-x-2"
+                >
+                  {adkRunning && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Run Agent Review</span>
+                </button>
+              )}
               {reviewStatus !== "approved" && (
                 <button
-                  onClick={() => setReviewStatus("approved")}
+                  onClick={() => handleReviewAction("approved")}
                   className="px-4 py-2 text-xs font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-900/40 rounded-lg hover:bg-emerald-900/40 transition-colors"
                 >
                   Approve
@@ -431,8 +480,7 @@ export default function RoadmapScreen({
                   onClick={() => {
                     const note = prompt("Enter review notes (optional):");
                     if (note !== null) {
-                      setReviewNotes(note || "");
-                      setReviewStatus("flagged");
+                      handleReviewAction("flagged", note || "");
                     }
                   }}
                   className="px-4 py-2 text-xs font-semibold text-amber-400 bg-amber-950/40 border border-amber-900/40 rounded-lg hover:bg-amber-900/40 transition-colors"
@@ -442,7 +490,7 @@ export default function RoadmapScreen({
               )}
               {reviewStatus !== "pending" && (
                 <button
-                  onClick={() => { setReviewStatus("pending"); setReviewNotes(""); }}
+                  onClick={() => handleReviewAction("pending", "")}
                   className="px-4 py-2 text-xs font-semibold text-slate-400 bg-slate-800/40 border border-slate-700/40 rounded-lg hover:bg-slate-700/40 transition-colors"
                 >
                   Reset
@@ -451,6 +499,20 @@ export default function RoadmapScreen({
             </div>
           </div>
         </div>
+
+        {adkResult && (
+          <div className="bg-indigo-950/20 border border-indigo-900/40 rounded-xl p-5 mt-4">
+            <h4 className="text-xs uppercase font-bold text-indigo-400 mb-2">Agent Review Result (DRAFT)</h4>
+            <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{adkResult.content}</p>
+            {adkResult.governanceCheck && (
+              <ul className="mt-3 space-y-1 text-xs text-amber-400 list-disc list-inside">
+                {adkResult.governanceCheck.warnings?.map((w: string, i: number) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Data Gap Checklist */}

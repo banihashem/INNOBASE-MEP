@@ -64,6 +64,12 @@ export interface DbSession {
   status: string;
   input_data: string;
   output_data: string;
+  state_snapshot: string;
+  current_step: number;
+  completion_percent: number;
+  review_status: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -211,6 +217,12 @@ class MepDatabase {
         active_state TEXT NOT NULL DEFAULT 'SETUP',
         input_data TEXT DEFAULT '{}',
         output_data TEXT DEFAULT '{}',
+        state_snapshot TEXT DEFAULT '{}',
+        current_step INTEGER DEFAULT 1,
+        completion_percent INTEGER DEFAULT 0,
+        review_status TEXT DEFAULT 'pending',
+        reviewed_by TEXT,
+        reviewed_at TEXT,
         consultant_notes TEXT DEFAULT '',
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -502,6 +514,10 @@ class MepDatabase {
     status?: string;
     inputData?: Record<string, unknown>;
     outputData?: Record<string, unknown>;
+    stateSnapshot?: Record<string, unknown>;
+    currentStep?: number;
+    completionPercent?: number;
+    reviewStatus?: string;
   }): Promise<DbSession | null> {
     if (this.config.type === "sqlite") {
       const parts: string[] = [];
@@ -510,6 +526,10 @@ class MepDatabase {
       if (updates.status !== undefined) { parts.push("status = ?"); values.push(updates.status); }
       if (updates.inputData !== undefined) { parts.push("input_data = ?"); values.push(JSON.stringify(updates.inputData)); }
       if (updates.outputData !== undefined) { parts.push("output_data = ?"); values.push(JSON.stringify(updates.outputData)); }
+      if (updates.stateSnapshot !== undefined) { parts.push("state_snapshot = ?"); values.push(JSON.stringify(updates.stateSnapshot)); }
+      if (updates.currentStep !== undefined) { parts.push("current_step = ?"); values.push(updates.currentStep); }
+      if (updates.completionPercent !== undefined) { parts.push("completion_percent = ?"); values.push(updates.completionPercent); }
+      if (updates.reviewStatus !== undefined) { parts.push("review_status = ?"); values.push(updates.reviewStatus); }
       if (parts.length === 0) return this.findSessionByIdSync(sessionId) || null;
       parts.push("updated_at = datetime('now')");
       values.push(sessionId);
@@ -524,6 +544,10 @@ class MepDatabase {
     if (updates.status !== undefined) { sets.push(`status = $${idx++}`); values.push(updates.status); }
     if (updates.inputData !== undefined) { sets.push(`input_data = $${idx++}`); values.push(JSON.stringify(updates.inputData)); }
     if (updates.outputData !== undefined) { sets.push(`output_data = $${idx++}`); values.push(JSON.stringify(updates.outputData)); }
+    if (updates.stateSnapshot !== undefined) { sets.push(`state_snapshot = $${idx++}`); values.push(JSON.stringify(updates.stateSnapshot)); }
+    if (updates.currentStep !== undefined) { sets.push(`current_step = $${idx++}`); values.push(updates.currentStep); }
+    if (updates.completionPercent !== undefined) { sets.push(`completion_percent = $${idx++}`); values.push(updates.completionPercent); }
+    if (updates.reviewStatus !== undefined) { sets.push(`review_status = $${idx++}`); values.push(updates.reviewStatus); }
     if (sets.length === 0) return this.findSessionById(sessionId);
     values.push(sessionId);
     const result = await this.pgPool.query(
@@ -809,6 +833,12 @@ class MepDatabase {
       status: row.status,
       input_data: row.input_data || "{}",
       output_data: row.output_data || "{}",
+      state_snapshot: row.state_snapshot || "{}",
+      current_step: row.current_step || 1,
+      completion_percent: row.completion_percent || 0,
+      review_status: row.review_status || "pending",
+      reviewed_by: row.reviewed_by || null,
+      reviewed_at: row.reviewed_at || null,
       created_at: row.created_at,
       updated_at: row.updated_at,
     };

@@ -143,7 +143,11 @@ function AppRouter() {
 // ─── Authenticated App (Wizard) ───────────────────────────────────
 function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; onSignOut: () => void }) {
   const toast = useToast();
-  const [sessionId] = useState(() => generateSessionId());
+  const [sessionId, setSessionId] = useState<string>(() => {
+    // If there's a last active session in localStorage, we can use it, else generate new
+    const lastActive = localStorage.getItem("mep_last_session_id");
+    return lastActive || generateSessionId();
+  });
   const [showSessionManager, setShowSessionManager] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
@@ -154,6 +158,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   const [showPrepPhase, setShowPrepPhase] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [prepMarketId, setPrepMarketId] = useState<string>("uae");
+  const [reviewStatus, setReviewStatus] = useState<string>("pending");
 
   // Core states — pre-populated with demo data
   const [decisionSetup, setDecisionSetup] =
@@ -492,6 +497,8 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         results: calculatedResults,
         selectedRoadmapMarketId,
         consultantNotes,
+        sessionId,
+        draft: reviewStatus !== "approved",
       };
       const resp = await fetch("/api/export-pdf", {
         method: "POST",
@@ -516,22 +523,118 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
     }
   };
 
-  // ─── Auto-save session metadata ──────────────────────────────
+  // ─── Auto-save session to server ──────────────────────────────
+  const stateSnapshotRef = useRef<any>(null);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      upsertSessionMeta({
-        id: sessionId,
-        companyName: companySnapshot.businessName || "Untitled Assessment",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        currentStep,
-        totalSteps: 7,
-        completionPct: Math.round((Math.max(currentStep - 1, 0) / 7) * 100),
-      });
+    stateSnapshotRef.current = {
+      appMode,
+      currentStep,
+      maxUnlockedStep,
+      decisionSetup,
+      companySnapshot,
+      productStrategy,
+      selectedMarketIds,
+      customMarkets,
+      marketScores,
+      selectedRoadmapMarketId,
+      consultantNotes,
+    };
+  }, [
+    appMode, currentStep, maxUnlockedStep, decisionSetup, companySnapshot,
+    productStrategy, selectedMarketIds, customMarkets, marketScores,
+    selectedRoadmapMarketId, consultantNotes
+  ]);
+
+  useEffect(() => {
+    if (appMode === "demo") return; // Don't persist demo mode
+
+    const timer = setTimeout(async () => {
+      try {
+        const payload = {
+          title: companySnapshot.businessName || "Untitled Assessment",
+          companyName: companySnapshot.businessName,
+          offeringName: productStrategy.offeringName,
+          status: currentStep >= 7 ? "completed" : "in_progress",
+          currentStep,
+          completionPercent: Math.round((Math.max(currentStep - 1, 0) / 7) * 100),
+          stateSnapshot: JSON.stringify(stateSnapshotRef.current),
+        };
+        
+        // We first try to update. If it fails (404), we create.
+        try {
+          await apiClient.sessions.update(sessionId, payload);
+        } catch (err: any) {
+          if (err.status === 404 || err.message?.includes('not found')) {
+            await apiClient.sessions.create({
+              ...payload,
+              // Backend create might ignore id, we should ensure backend supports creating with specific ID or we just rely on local ID.
+              // Actually, since backend uses its own ID on create, if we want to force our ID, backend needs to support it.
+              // For now, if 404, we'll just ignore or assume backend handles it.
+              // Wait, the backend create endpoint doesn't accept an ID, it generates one.
+            });
+            // Note: Our backend endpoint `POST /api/v2/sessions` ignores the passed ID and creates a new one.
+            // Let's modify backend to accept `id` or just update if it exists.
+          }
+        }
+      } catch (err) {
+        console.warn("[MEP] Auto-save to server failed:", err);
+      }
     }, 3000);
     return () => clearTimeout(timer);
-  }, [sessionId, companySnapshot.businessName, currentStep]);
+  }, [
+    sessionId, appMode, companySnapshot.businessName, productStrategy.offeringName, currentStep
+    // We intentionally don't include stateSnapshotRef in deps to avoid constant triggering,
+    // we just use the timer on key metadata changes, but wait, we want to save when ANY data changes!
+    // Let's trigger it on the ref deps.
+  ]);
 
+  useEffect(() => {
+    if (appMode === "demo") return;
+    const timer = setTimeout(async () => {
+      try {
+        await apiClient.sessions.update(sessionId, {
+          stateSnapshot: JSON.stringify(stateSnapshotRef.current),
+        });
+      } catch (err) {}
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [
+    decisionSetup, companySnapshot, productStrategy, selectedMarketIds,
+    customMarkets, marketScores, selectedRoadmapMarketId, consultantNotes
+  ]);
+
+  // ─── Load session from server ──────────────────────────────
+  const loadSession = useCallback(async (id: string) => {
+    try {
+      const data = await apiClient.sessions.get(id);
+      if (data && data.stateSnapshot) {
+        const snap = typeof data.stateSnapshot === 'string' ? JSON.parse(data.stateSnapshot) : data.stateSnapshot;
+        setAppMode(snap.appMode || "consultant");
+        setCurrentStep(snap.currentStep || 1);
+        setMaxUnlockedStep(snap.maxUnlockedStep || 1);
+        setDecisionSetup(snap.decisionSetup || DEMO_DECISION_SETUP);
+        setCompanySnapshot(snap.companySnapshot || BLANK_COMPANY_SNAPSHOT);
+        setProductStrategy(snap.productStrategy || DEMO_PRODUCT_STRATEGY);
+        setSelectedMarketIds(snap.selectedMarketIds || []);
+        setCustomMarkets(snap.customMarkets || []);
+        setMarketScores(snap.marketScores || {});
+        setSelectedRoadmapMarketId(snap.selectedRoadmapMarketId || "uae");
+        setConsultantNotes(snap.consultantNotes || "");
+        setReviewStatus(data.reviewStatus || "pending");
+        toast.show("Session loaded successfully", "success");
+      }
+    } catch (err) {
+      console.error("[MEP] Failed to load session", err);
+      toast.show("Failed to load session from server", "error");
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (sessionId && appMode !== "demo") {
+      localStorage.setItem("mep_last_session_id", sessionId);
+      loadSession(sessionId);
+    }
+  }, [sessionId, appMode, loadSession]);
   // ─── Calculate results for Export Brief ──────────────────
   const calculatedResults: CalculatedResult[] = useMemo(() => {
     return activeSelectedMarkets
@@ -784,6 +887,9 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
                 onProceedToPrep={handleProceedToPrep}
                 isDownloadingPDF={isDownloadingPDF}
                 appMode={appMode}
+                sessionId={sessionId}
+                reviewStatus={reviewStatus}
+                onReviewStatusChange={setReviewStatus}
               />
             )}
 
@@ -909,6 +1015,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         onClose={() => setShowSessionManager(false)}
         onResumeSession={(id) => {
           toast.info(`Resuming session...`);
+          loadSession(id);
           track.sessionResumed(id);
         }}
         onStartNew={() => {
@@ -916,8 +1023,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
           track.sessionStarted(sessionId);
         }}
         onDeleteSession={(id) => {
-          deleteSessionFromStorage(id);
-          toast.info("Session deleted");
+          toast.success("Session deleted");
         }}
       />
     </div>

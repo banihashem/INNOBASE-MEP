@@ -8,11 +8,19 @@ import {
   RotateCcw,
   X,
 } from "lucide-react";
-import {
-  SessionMeta,
-  listSessions,
-  deleteSession,
-} from "../hooks/usePersistedState";
+import { apiClient } from "../lib/apiClient";
+
+export interface ApiSessionMeta {
+  id: string;
+  title: string;
+  companyName: string;
+  offeringName: string;
+  status: string;
+  currentStep: number;
+  completionPercent: number;
+  updatedAt: string;
+  createdAt: string;
+}
 
 /**
  * MEP-light™ — Session Manager
@@ -40,21 +48,27 @@ export default function SessionManager({
   isOpen,
   onClose,
 }: SessionManagerProps) {
-  const [sessions, setSessions] = useState<SessionMeta[]>([]);
+  const [sessions, setSessions] = useState<ApiSessionMeta[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setSessions(listSessions());
+      apiClient.sessions.list()
+        .then((res: { sessions: ApiSessionMeta[] }) => setSessions(res.sessions || []))
+        .catch((err) => console.error("Failed to list sessions:", err));
     }
   }, [isOpen]);
 
   const handleDelete = useCallback(
-    (id: string) => {
-      deleteSession(id);
-      onDeleteSession(id);
-      setSessions((prev) => prev.filter((s) => s.id !== id));
-      setConfirmDeleteId(null);
+    async (id: string) => {
+      try {
+        await apiClient.sessions.delete(id);
+        onDeleteSession(id);
+        setSessions((prev) => prev.filter((s) => s.id !== id));
+        setConfirmDeleteId(null);
+      } catch (err) {
+        console.error("Failed to delete session:", err);
+      }
     },
     [onDeleteSession]
   );
@@ -100,13 +114,13 @@ export default function SessionManager({
                     {activeSession.companyName || "Untitled Assessment"}
                   </span>
                   <span className="text-[10px] font-mono text-teal-400 bg-teal-950 px-2 py-0.5 rounded">
-                    Step {activeSession.currentStep}/{activeSession.totalSteps}
+                    Step {activeSession.currentStep}/8
                   </span>
                 </div>
                 <div className="w-full bg-slate-700 rounded-full h-1.5 mb-2">
                   <div
                     className="bg-gradient-to-r from-teal-400 to-indigo-400 h-1.5 rounded-full transition-all duration-500"
-                    style={{ width: `${activeSession.completionPct}%` }}
+                    style={{ width: `${activeSession.completionPercent}%` }}
                   />
                 </div>
                 <p className="text-[10px] text-slate-400">
@@ -161,11 +175,11 @@ export default function SessionManager({
                         </span>
                         <span className="text-[10px] text-slate-600">•</span>
                         <span className="text-[10px] text-slate-500">
-                          Step {session.currentStep}/{session.totalSteps}
+                          Step {session.currentStep}/8
                         </span>
                         <span className="text-[10px] text-slate-600">•</span>
                         <span className="text-[10px] text-slate-500">
-                          {session.completionPct}% complete
+                          {session.completionPercent}% complete
                         </span>
                       </div>
                     </div>

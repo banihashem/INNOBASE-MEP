@@ -314,4 +314,63 @@ export const apiClient = {
       return res.json();
     },
   },
+
+  // ─── Sessions API ───────────────────────────────────────────────
+
+  sessions: {
+    async list(): Promise<any> {
+      const res = await fetchWithRetry("/v2/sessions");
+      return res.json();
+    },
+    async create(data: { title?: string; companyName?: string; offeringName?: string; inputData?: any }): Promise<any> {
+      const res = await fetchWithRetry("/v2/sessions", {
+        method: "POST",
+        body: data,
+      });
+      return res.json();
+    },
+    async get(id: string): Promise<any> {
+      const res = await fetchWithRetry(`/v2/sessions/${id}`);
+      return res.json();
+    },
+    async update(id: string, data: any): Promise<any> {
+      const res = await fetchWithRetry(`/v2/sessions/${id}`, {
+        method: "PATCH",
+        body: data,
+      });
+      return res.json();
+    },
+    async review(id: string, status: string): Promise<any> {
+      const res = await fetchWithRetry(`/v2/sessions/${id}/review`, {
+        method: "POST",
+        body: { status },
+      });
+      return res.json();
+    },
+    async delete(id: string): Promise<any> {
+      const res = await fetchWithRetry(`/v2/sessions/${id}`, {
+        method: "DELETE",
+      });
+      return res.json();
+    }
+  },
+
+  // ─── ADK API ───────────────────────────────────────────────────
+
+  adk: {
+    async assess(sessionId: string): Promise<any> {
+      const res = await fetchWithRetry("/v2/adk/assess", {
+        method: "POST",
+        body: { sessionId },
+      });
+      return res.json();
+    },
+    async run(sessionId: string, workflowId: string): Promise<any> {
+      const res = await fetchWithRetry("/v2/adk/run", {
+        method: "POST",
+        body: { sessionId, workflowId },
+      });
+      return res.json();
+    }
+  }
 };
