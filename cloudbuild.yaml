@@ -62,10 +62,19 @@ steps:
       - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
       - '.'
 
-  # Step 4: Deploy to Cloud Run
+  # Step 4: Push image to registry BEFORE deploy
+  # (Cloud Build's 'images' section pushes AFTER all steps, which is too late for deploy)
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    waitFor: ['build-image']
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
+
+  # Step 5: Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'deploy'
-    waitFor: ['build-image']
+    waitFor: ['push-image']
     entrypoint: 'gcloud'
     args:
       - 'run'
