@@ -191,14 +191,18 @@ app.use((req: Request, res: Response, next: Function) => {
   next();
 });
 
-app.get("/api/v2/db/run-migration", async (req, res) => {
+app.get("/api/v2/db/run-migration/:name", async (req, res) => {
   try {
     const fs = await import("fs");
     const path = await import("path");
-    const sql = fs.readFileSync(path.resolve("backend/migrations/003_assessment_state_persistence.sql"), "utf8");
+    const filename = req.params.name;
+    if (!/^[a-zA-Z0-9_-]+\.sql$/.test(filename)) {
+      throw new Error("Invalid migration filename");
+    }
+    const sql = fs.readFileSync(path.resolve(`backend/migrations/${filename}`), "utf8");
     if ((db as any).pgPool) {
       await (db as any).pgPool.query(sql);
-      res.json({ success: true, message: "Migration 003 applied to pgPool" });
+      res.json({ success: true, message: `Migration ${filename} applied to pgPool` });
     } else {
       res.json({ success: false, message: "pgPool not active" });
     }

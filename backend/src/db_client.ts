@@ -818,6 +818,12 @@ class MepDatabase {
       status: row.status,
       input_data: typeof row.input_data === "string" ? row.input_data : JSON.stringify(row.input_data || {}),
       output_data: typeof row.output_data === "string" ? row.output_data : JSON.stringify(row.output_data || {}),
+      state_snapshot: typeof row.state_snapshot === "string" ? row.state_snapshot : JSON.stringify(row.state_snapshot || {}),
+      current_step: row.current_step,
+      completion_percent: row.completion_percent,
+      review_status: row.review_status,
+      reviewed_by: row.reviewed_by,
+      reviewed_at: row.reviewed_at?.toISOString?.() || row.reviewed_at,
       created_at: row.created_at?.toISOString?.() || row.created_at,
       updated_at: row.updated_at?.toISOString?.() || row.updated_at,
     };
