@@ -13,12 +13,12 @@
 | **Semantic Version** | 4.1.0 |
 | **Git Branch** | master |
 | **Git Tag** | v4.1.0 |
-| **Git Commit SHA** | *(populated after commit)* |
+| **Git Commit SHA** | `13b548d37be7b38c9b010b06c96776df0e92baa7` |
 | **Container Image** | `gcr.io/innobase-mep-light/market-entry-prioritizer:v4.1.0` |
-| **Image Digest** | *(populated after build)* |
+| **Image Digest** | `sha256:acfe8670d7ebbc7da596f90ddea4bcf6fd24d382d2cead6bc9289ba47fb166dc` |
 | **Cloud Run Service** | market-entry-prioritizer |
 | **Cloud Run Region** | europe-west2 |
-| **Cloud Run Revision** | *(populated after deploy)* |
+| **Cloud Run Revision** | `market-entry-prioritizer-00027-2bc` |
 | **Cloud SQL Instance** | mep-light-db |
 | **Database** | mep_production |
 | **Migration Version** | 002 (002_fix_id_types) |
@@ -27,7 +27,7 @@
 | **ADK Mode** | controlled — feature-flagged, role-gated |
 | **Rollback Target** | v4.0.2 / revision market-entry-prioritizer-00022-hdg |
 | **Previous Version** | 4.0.2 |
-| **Secret Manager** | mep-db-password (version 3, active) |
+| **Secret Manager** | mep-db-password (version 4, active; v1-3 disabled) |
 
 ---
 
