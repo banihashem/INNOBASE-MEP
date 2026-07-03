@@ -58,12 +58,11 @@ RUN pip install --no-cache-dir --target=/python-deps/site-packages -r requiremen
 # ─── Stage 3: Production server (multi-runtime) ──────────────────────
 FROM node:22-slim
 
-# Install Python 3.12 and supervisord for dual-process management
+# Install runtime dependencies (Python for future ADK, curl for healthcheck)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
-    supervisor \
     make \
     g++ \
     curl \
@@ -88,21 +87,21 @@ COPY backend/ ./backend/
 #   gcloud sql connect ... < backend/migrations/001_initial_schema.sql
 COPY backend/migrations/ ./backend/migrations/
 
-# ─── Supervisord configuration ───────────────────────────────────
-# Runs both Express.js and FastAPI in the same container
-COPY infra/supervisord.conf /etc/supervisor/conf.d/mep.conf
+# ─── Entrypoint ──────────────────────────────────────────────────────
+COPY infra/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # ─── Health check ─────────────────────────────────────────────────────
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
   CMD curl -f http://localhost:8080/api/health || exit 1
 
 # ─── Expose and start ────────────────────────────────────────────────
-EXPOSE 8080 8000
+EXPOSE 8080
 ENV PORT=8080
 ENV NODE_ENV=production
 ENV ADK_ENABLED=false
 
-# Use supervisord for dual-process management.
-# When ADK_ENABLED=false, only Express starts.
-# When ADK_ENABLED=true, both Express and FastAPI start.
-CMD ["supervisord", "-c", "/etc/supervisor/conf.d/mep.conf"]
+# Start the Express.js API server directly.
+# ADK controlled-deterministic workflow runs in-process within Node.js.
+CMD ["/app/entrypoint.sh"]
+
