@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Globe2,
   BarChart3,
@@ -13,6 +13,8 @@ import {
   Zap,
   CheckCircle2,
   Lock,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 
 import { decodeGoogleJwt, GOOGLE_CLIENT_ID, isGoogleAuthConfigured, isGoogleAuthReady } from "../lib/auth";
@@ -30,10 +32,23 @@ declare global {
             callback: (response: { credential: string }) => void;
             auto_select?: boolean;
             cancel_on_tap_outside?: boolean;
+            ux_mode?: "popup" | "redirect";
+            login_uri?: string;
+            itp_support?: boolean;
           }) => void;
-          prompt: (notification?: (n: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => void) => void;
-          renderButton: (element: HTMLElement, config: { theme?: string; size?: string; width?: number; text?: string; shape?: string; logo_alignment?: string }) => void;
+          prompt: (notification?: (n: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean; getNotDisplayedReason: () => string; getSkippedReason: () => string }) => void) => void;
+          renderButton: (element: HTMLElement, config: {
+            theme?: "outline" | "filled_blue" | "filled_black";
+            size?: "large" | "medium" | "small";
+            width?: number | string;
+            text?: "signin_with" | "signup_with" | "continue_with" | "signin";
+            shape?: "rectangular" | "pill" | "circle" | "square";
+            logo_alignment?: "left" | "center";
+            type?: "standard" | "icon";
+            locale?: string;
+          }) => void;
           revoke: (email: string, callback: () => void) => void;
+          disableAutoSelect: () => void;
         };
       };
     };
@@ -47,6 +62,19 @@ interface UserProfile {
   sub: string;
 }
 
+// ─── Auth State Machine ─────────────────────────────────────────────
+
+type AuthState =
+  | "idle"                  // Initial state
+  | "gis_loading"           // Waiting for GIS script to load
+  | "gis_ready"             // GIS loaded and initialized, buttons rendered
+  | "gis_failed"            // GIS script failed to load
+  | "signin_started"        // User initiated sign-in (clicked button)
+  | "credential_received"   // Google returned a credential
+  | "verifying"             // Sending to backend for verification
+  | "authenticated"         // Successfully authenticated
+  | "auth_failed";          // Authentication failed
+
 // ─── Landing Page Component ─────────────────────────────────────────
 
 interface LandingPageProps {
@@ -55,11 +83,18 @@ interface LandingPageProps {
 }
 
 export default function LandingPage({ onSignIn, isAuthenticated }: LandingPageProps) {
-  const [isLoading, setIsLoading] = useState(false);
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
   const [scrollY, setScrollY] = useState(0);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [gisReady, setGisReady] = useState(false);
+  const [authState, setAuthState] = useState<AuthState>("idle");
+
+  // Refs for Google-rendered button containers
+  const navButtonRef = useRef<HTMLDivElement>(null);
+  const heroButtonRef = useRef<HTMLDivElement>(null);
+  const ctaButtonRef = useRef<HTMLDivElement>(null);
+
+  // Track if GIS has been initialized
+  const gisInitializedRef = useRef(false);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -67,115 +102,152 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Poll for Google Identity Services readiness when configured.
-  // The GIS script loads async; we must wait for it before allowing sign-in.
-  useEffect(() => {
-    if (!isGoogleAuthConfigured()) return;
+  /**
+   * Handle the credential response from Google Identity Services.
+   * This fires when the user completes the Google OAuth popup/consent flow.
+   * The credential is a JWT id_token.
+   */
+  const handleGoogleCredentialResponse = useCallback((response: { credential: string }) => {
+    console.log("[MEP Auth] gis_credential_received");
+    setAuthState("credential_received");
+    setAuthError(null);
 
-    // Check immediately
-    if (isGoogleAuthReady()) {
-      initializeGis();
-      setGisReady(true);
-      return;
+    const user = decodeGoogleJwt(response.credential);
+    if (user) {
+      console.log("[MEP Auth] credential_decoded_ok");
+      setAuthState("authenticated");
+      onSignIn(user, response.credential);
+    } else {
+      console.error("[MEP Auth] credential_decode_failed");
+      setAuthState("auth_failed");
+      setAuthError("Failed to decode authentication response. Please try again.");
     }
+  }, [onSignIn]);
 
-    // Poll every 200ms for up to 10 seconds
-    let attempts = 0;
-    const maxAttempts = 50;
-    const interval = setInterval(() => {
-      attempts++;
-      if (isGoogleAuthReady()) {
-        clearInterval(interval);
-        initializeGis();
-        setGisReady(true);
-      } else if (attempts >= maxAttempts) {
-        clearInterval(interval);
-        console.error("[MEP Auth] Google Identity Services script failed to load after 10s");
+  /**
+   * Render Google Sign-In buttons into all 3 container refs.
+   * Uses google.accounts.id.renderButton() which creates an iframe-based
+   * Google-branded button that opens a proper popup OAuth flow.
+   * 
+   * CRITICAL: This works in ALL browser contexts:
+   * - Normal browser ✓
+   * - Incognito ✓
+   * - Fresh profile ✓
+   * - After clearing site data ✓
+   */
+  const renderGoogleButtons = useCallback(() => {
+    if (!window.google?.accounts?.id) return;
+
+    const refs = [
+      { ref: navButtonRef, width: 200, size: "medium" as const },
+      { ref: heroButtonRef, width: 280, size: "large" as const },
+      { ref: ctaButtonRef, width: 300, size: "large" as const },
+    ];
+
+    for (const { ref, width, size } of refs) {
+      if (ref.current) {
+        // Clear any previous renders
+        ref.current.innerHTML = "";
+        window.google.accounts.id.renderButton(ref.current, {
+          theme: "filled_blue",
+          size,
+          width,
+          text: "signin_with",
+          shape: "pill",
+          logo_alignment: "left",
+        });
       }
-    }, 200);
-
-    return () => clearInterval(interval);
+    }
   }, []);
 
   /**
-   * Initialize GIS with our client ID and credential callback.
+   * Initialize Google Identity Services and render buttons.
+   * Called when the GIS script finishes loading.
    */
-  function initializeGis() {
+  const initializeAndRenderGis = useCallback(() => {
     if (!window.google?.accounts?.id) return;
+    if (gisInitializedRef.current) return;
+    gisInitializedRef.current = true;
+
+    console.log("[MEP Auth] gis_initializing");
+
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: handleGoogleCredentialResponse,
       auto_select: false,
       cancel_on_tap_outside: true,
+      itp_support: true,
     });
-  }
 
-  /**
-   * Handle the credential response from Google Identity Services.
-   * The credential is a JWT id_token that we decode client-side
-   * and store for backend API authentication.
-   */
-  const handleGoogleCredentialResponse = (response: { credential: string }) => {
-    setIsLoading(true);
-    setAuthError(null);
+    console.log("[MEP Auth] gis_initialized — rendering buttons");
+    renderGoogleButtons();
+    setAuthState("gis_ready");
+    console.log("[MEP Auth] gis_ready — buttons rendered");
+  }, [handleGoogleCredentialResponse, renderGoogleButtons]);
 
-    const user = decodeGoogleJwt(response.credential);
-    if (user) {
-      onSignIn(user, response.credential);
-    } else {
-      setAuthError("Failed to decode authentication response. Please try again.");
-    }
-    setIsLoading(false);
-  };
-
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setAuthError(null);
-
-    // ─── Real Google OIDC Flow ─────────────────────────────
-    if (isGoogleAuthConfigured()) {
-      // If GIS is ready, trigger the prompt
-      if (gisReady && window.google?.accounts?.id) {
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            setAuthError(
-              "Google sign-in popup was blocked. Please allow popups for this site, or try again."
-            );
-            setIsLoading(false);
-          }
-        });
-        return;
-      }
-
-      // GIS configured but script hasn't loaded yet — wait and retry
-      setAuthError(
-        "Google sign-in is loading. Please wait a moment and try again."
-      );
-      setIsLoading(false);
+  // Poll for Google Identity Services readiness when configured.
+  useEffect(() => {
+    if (!isGoogleAuthConfigured()) {
+      console.error("[MEP Auth] Google Auth not configured — no Client ID");
+      setAuthState("gis_failed");
+      setAuthError("Google Sign-In is not configured. Please contact the administrator.");
       return;
     }
 
-    // ─── No valid Client ID ─────────────────────────────────
-    // In production: show clear error. No demo identity ever.
-    // In development: allow demo fallback only with explicit flag.
-    if (import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE === "true") {
-      setTimeout(() => {
-        const demoUser: UserProfile = {
-          email: "dev-demo@localhost",
-          name: "Dev Demo User",
-          picture: "",
-          sub: "dev-demo-only",
-        };
-        onSignIn(demoUser);
-        setIsLoading(false);
-      }, 800);
+    setAuthState("gis_loading");
+    console.log("[MEP Auth] gis_loading — waiting for GIS script");
+
+    // Check immediately
+    if (isGoogleAuthReady()) {
+      initializeAndRenderGis();
+      return;
+    }
+
+    // Poll every 200ms for up to 15 seconds
+    let attempts = 0;
+    const maxAttempts = 75;
+    const interval = setInterval(() => {
+      attempts++;
+      if (isGoogleAuthReady()) {
+        clearInterval(interval);
+        initializeAndRenderGis();
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        console.error("[MEP Auth] gis_failed — GIS script did not load after 15s");
+        setAuthState("gis_failed");
+        setAuthError(
+          "Google sign-in script failed to load. Please check your internet connection and try refreshing the page."
+        );
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [initializeAndRenderGis]);
+
+  // Re-render buttons when refs become available (e.g. after scroll reveals CTA section)
+  useEffect(() => {
+    if (authState === "gis_ready") {
+      renderGoogleButtons();
+    }
+  }, [authState, renderGoogleButtons]);
+
+  /**
+   * Retry handler — re-initialize GIS and re-render buttons.
+   */
+  const handleRetry = () => {
+    setAuthError(null);
+    gisInitializedRef.current = false;
+    setAuthState("gis_loading");
+
+    if (isGoogleAuthReady()) {
+      initializeAndRenderGis();
     } else {
-      setAuthError(
-        "Google Sign-In is not configured. Please contact the administrator."
-      );
-      setIsLoading(false);
+      // Force reload the page to get a fresh GIS script
+      window.location.reload();
     }
   };
+
+  // ─── Feature & Step Data ──────────────────────────────────────────
 
   const features = [
     {
@@ -249,6 +321,53 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
     },
   ];
 
+  // ─── Auth Error Banner ────────────────────────────────────────────
+
+  const renderAuthError = () => {
+    if (!authError) return null;
+    return (
+      <div className="landing-auth-error">
+        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+        <span>{authError}</span>
+        <button onClick={handleRetry} className="landing-auth-retry">
+          <RefreshCw className="w-3.5 h-3.5" />
+          Retry
+        </button>
+      </div>
+    );
+  };
+
+  // ─── Google Button Container ──────────────────────────────────────
+  // The Google-rendered button is injected into these divs by GIS renderButton().
+  // While GIS is loading, we show a styled loading placeholder.
+
+  const renderGoogleButtonContainer = (
+    ref: React.RefObject<HTMLDivElement | null>,
+    id: string,
+    fallbackText: string = "Sign in with Google"
+  ) => {
+    if (authState === "gis_loading" || authState === "idle") {
+      return (
+        <div className="landing-gis-loading" id={id}>
+          <span className="landing-spinner" />
+          <span>Loading Google Sign-In...</span>
+        </div>
+      );
+    }
+
+    if (authState === "gis_failed") {
+      return (
+        <button onClick={handleRetry} className="landing-cta-primary" id={id}>
+          <RefreshCw className="w-4 h-4" />
+          Retry Sign-In
+        </button>
+      );
+    }
+
+    // GIS ready — the rendered button will be injected into this div
+    return <div ref={ref} id={id} className="landing-gis-button-container" />;
+  };
+
   return (
     <div className="landing-page">
       {/* ─── Animated Background ────────────────────────────────── */}
@@ -271,37 +390,7 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
             <span className="landing-logo-text">MEP-light™</span>
             <span className="landing-logo-tag">by INNOBASE</span>
           </div>
-          <button
-            className="landing-nav-cta"
-            onClick={handleGoogleSignIn}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <span className="landing-spinner" />
-            ) : (
-              <>
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path
-                    fill="#fff"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-                  />
-                  <path
-                    fill="#fff"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#fff"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  />
-                  <path
-                    fill="#fff"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-                Sign in with Google
-              </>
-            )}
-          </button>
+          {renderGoogleButtonContainer(navButtonRef, "nav-google-signin", "Sign in")}
         </div>
       </nav>
 
@@ -322,43 +411,15 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
             No AI hallucinations — pure mathematical scoring.
           </p>
           <div className="landing-hero-ctas">
-            <button
-              className="landing-cta-primary"
-              onClick={handleGoogleSignIn}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <span className="landing-spinner" />
-              ) : (
-                <>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path
-                      fill="currentColor"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                  Sign in with Google
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+            {renderGoogleButtonContainer(heroButtonRef, "hero-google-signin", "Sign in with Google")}
             <button className="landing-cta-secondary">
               <span>Watch 90-sec Overview</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Auth error banner */}
+          {renderAuthError()}
 
           {/* ─── Floating Score Cards ───────────────────────────── */}
           <div className="landing-floating-cards">
@@ -482,38 +543,7 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
             Start your first strategic assessment in under 3 minutes.
             No credit card required.
           </p>
-          <button
-            className="landing-cta-primary landing-cta-large"
-            onClick={handleGoogleSignIn}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <span className="landing-spinner" />
-            ) : (
-              <>
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-                Get Started with Google
-                <ArrowRight className="w-5 h-5" />
-              </>
-            )}
-          </button>
+          {renderGoogleButtonContainer(ctaButtonRef, "cta-google-signin", "Get Started with Google")}
         </div>
       </section>
 

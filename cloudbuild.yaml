@@ -57,7 +57,7 @@ steps:
       - '--build-arg'
       - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.1.1'
+      - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.2.0'
       - '-t'
       - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
       - '.'
@@ -107,7 +107,7 @@ steps:
       - '--allow-unauthenticated'
 
 images:
-  - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.1.1'
+  - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.2.0'
   - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
 
 substitutions:

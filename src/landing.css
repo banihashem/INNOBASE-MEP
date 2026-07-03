@@ -754,3 +754,72 @@
 .to-pink-400 { --tw-gradient-to: #f472b6; }
 .from-blue-400 { --tw-gradient-from: #60a5fa; }
 .to-indigo-400 { --tw-gradient-to: #818cf8; }
+
+/* ─── Google Sign-In Button Containers ───────────────────────────────── */
+
+.landing-gis-button-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  min-width: 180px;
+}
+
+.landing-gis-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 24px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: var(--lp-text-dim);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* ─── Auth Error Banner ──────────────────────────────────────────────── */
+
+.landing-auth-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: var(--lp-radius-xs);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  font-size: 0.85rem;
+  max-width: 520px;
+  animation: fadeIn 0.3s ease;
+}
+
+.landing-auth-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.landing-auth-retry:hover {
+  background: rgba(245, 158, 11, 0.35);
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
