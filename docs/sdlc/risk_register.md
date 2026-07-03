@@ -1,6 +1,6 @@
 # MEP-light™ — Risk Register
 
-**Version**: 4.1.0  
+**Version**: 4.1.1  
 **Date**: 2026-07-03  
 **Classification**: Internal
 
@@ -29,6 +29,9 @@
 | R-009 | Missing DB Tables | 2026-07-03 | All 15 tables verified in mep_production |
 | R-010 | SQLite Fallback in Production | 2026-07-03 | Production startup guard prevents SQLite |
 | R-011 | Demo Mode Bypass | 2026-07-03 | DEMO_MODE=true triggers process.exit(1) in production |
+| R-012 | **Placeholder Client ID in Bundle** | 2026-07-03 | Build-time + post-build guards added; placeholder fallback removed (v4.1.1) |
+| R-013 | **PDF Export Unauthenticated** | 2026-07-03 | JWT auth + role-based access added to /api/export-pdf (v4.1.1) |
+| R-014 | **Demo Identity in Production** | 2026-07-03 | `consultant@innobase.app` fallback removed; gated behind `import.meta.env.DEV` (v4.1.1) |
 
 ---
 

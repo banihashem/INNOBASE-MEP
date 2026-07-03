@@ -155,17 +155,26 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
       return;
     }
 
-    // ─── Demo Fallback (no valid Client ID — local dev only) ─────
-    setTimeout(() => {
-      const demoUser: UserProfile = {
-        email: "consultant@innobase.app",
-        name: "Strategy Consultant",
-        picture: "",
-        sub: "demo-user-id",
-      };
-      onSignIn(demoUser);
+    // ─── No valid Client ID ─────────────────────────────────
+    // In production: show clear error. No demo identity ever.
+    // In development: allow demo fallback only with explicit flag.
+    if (import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE === "true") {
+      setTimeout(() => {
+        const demoUser: UserProfile = {
+          email: "dev-demo@localhost",
+          name: "Dev Demo User",
+          picture: "",
+          sub: "dev-demo-only",
+        };
+        onSignIn(demoUser);
+        setIsLoading(false);
+      }, 800);
+    } else {
+      setAuthError(
+        "Google Sign-In is not configured. Please contact the administrator."
+      );
       setIsLoading(false);
-    }, 800);
+    }
   };
 
   const features = [

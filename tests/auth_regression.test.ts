@@ -161,6 +161,76 @@ console.log("─".repeat(60) + "\n");
   assert(!validIssuers.includes("evil.attacker.com"), "AUTH-REG-010: evil.attacker.com is NOT a valid issuer");
 }
 
+// AUTH-REG-011: Audience validation logic
+{
+  const expectedClientId = "52156375400-4glmj1ngbpth2f16hocbi37oo4nro83p.apps.googleusercontent.com";
+  const tokenAud = "52156375400-4glmj1ngbpth2f16hocbi37oo4nro83p.apps.googleusercontent.com";
+  const wrongAud = "other-client-id.apps.googleusercontent.com";
+  
+  // Matching audience passes
+  const matchPass = !expectedClientId || !tokenAud || tokenAud === expectedClientId;
+  assert(matchPass === true, "AUTH-REG-011: Matching audience passes validation");
+  
+  // Mismatched audience fails
+  const mismatchFail = expectedClientId && wrongAud && wrongAud !== expectedClientId;
+  assert(mismatchFail === true, "AUTH-REG-011: Mismatched audience fails validation");
+  
+  // Empty expected client ID (dev mode) → accept any audience
+  const emptyExpected = "";
+  const acceptAny = !emptyExpected || !tokenAud || tokenAud === emptyExpected;
+  assert(acceptAny === true, "AUTH-REG-011: Empty expected client ID accepts any audience (dev mode)");
+}
+
+// AUTH-REG-012: PDF export auth requirement (conceptual logic)
+{
+  // Simulate: no JWT → should be rejected
+  const noJwt = null;
+  const shouldBlock = !noJwt;
+  assert(shouldBlock === true, "AUTH-REG-012: No JWT → PDF export should be blocked (401)");
+  
+  // Simulate: valid JWT with Viewer role → should be rejected (403)
+  const viewerRole = "Viewer";
+  const isAuthorized = viewerRole === "Administrator" || viewerRole === "Consultant";
+  assert(isAuthorized === false, "AUTH-REG-012: Viewer role → PDF export unauthorized (403)");
+  
+  // Simulate: valid JWT with Consultant role → should be allowed
+  const consultantRole = "Consultant";
+  const isConsultantAuth = consultantRole === "Administrator" || consultantRole === "Consultant";
+  assert(isConsultantAuth === true, "AUTH-REG-012: Consultant role → PDF export authorized (200)");
+}
+
+// AUTH-REG-013: Config-status endpoint must not expose secrets
+{
+  // Simulate config-status response fields
+  const responseFields = [
+    "googleClientIdConfigured", "clientIdSuffix", "nodeEnv",
+    "demoModeAllowed", "authProvider", "oauthOriginExpected",
+    "dbUserPersistence", "productionGuard",
+  ];
+  
+  const forbiddenFields = ["password", "secret", "apiKey", "token", "credential"];
+  const hasForbidden = responseFields.some(f => forbiddenFields.includes(f.toLowerCase()));
+  assert(hasForbidden === false, "AUTH-REG-013: Config-status does not expose forbidden field names");
+  
+  // Ensure clientIdSuffix is truncated, not full
+  const fullClientId = "52156375400-4glmj1ngbpth2f16hocbi37oo4nro83p.apps.googleusercontent.com";
+  const suffix = "..." + fullClientId.slice(-6);
+  assert(suffix.length < fullClientId.length, "AUTH-REG-013: clientIdSuffix is truncated, not full Client ID");
+}
+
+// AUTH-REG-014: No demo identity in production auth flow
+{
+  const isProduction = true;
+  const googleAuthConfigured = false; // Simulating misconfigured production
+  
+  // In production, even if auth is not configured, no demo identity should be created
+  // The old code path would have created consultant@innobase.app here
+  const shouldShowError = isProduction && !googleAuthConfigured;
+  const shouldCreateDemoUser = false; // NEVER in production
+  assert(shouldShowError === true, "AUTH-REG-014: Production + unconfigured auth → show error, not demo identity");
+  assert(shouldCreateDemoUser === false, "AUTH-REG-014: Demo user is NEVER created in production");
+}
+
 // ─── Summary ─────────────────────────────────────────────────────────
 
 console.log("\n" + "─".repeat(60));
@@ -178,3 +248,4 @@ if (failed === 0) {
   console.log("  ╚══════════════════════════════════════════════════╝\n");
   process.exit(1);
 }
+

@@ -44,17 +44,23 @@ const AUTH_STORAGE_KEY = "mep_v3_auth";
 const USER_STORAGE_KEY = "mep_v3_user";
 const TOKEN_STORAGE_KEY = "mep_v3_token";
 
-// Google Client ID — injected at build time by Vite from GOOGLE_CLIENT_ID env var
+// Google Client ID — injected at build time by Vite from GOOGLE_CLIENT_ID env var.
+// PRODUCTION GUARD: No placeholder fallback. If missing, auth is simply unconfigured.
 declare const __GOOGLE_CLIENT_ID__: string;
-export const GOOGLE_CLIENT_ID = (typeof __GOOGLE_CLIENT_ID__ !== 'undefined' && __GOOGLE_CLIENT_ID__)
+export const GOOGLE_CLIENT_ID: string = (typeof __GOOGLE_CLIENT_ID__ !== 'undefined' && __GOOGLE_CLIENT_ID__)
   ? __GOOGLE_CLIENT_ID__
-  : "52156375400-placeholder.apps.googleusercontent.com";
+  : "";
 
 /**
- * Check if we have a real (non-placeholder) Google Client ID configured.
+ * Check if we have a real Google Client ID configured.
+ * Returns true only when a non-empty, non-placeholder Client ID is present.
+ * In production, a missing Client ID means auth is not configured — NOT that
+ * we should fall back to a demo identity.
  */
 export function isGoogleAuthConfigured(): boolean {
-  return !GOOGLE_CLIENT_ID.includes("placeholder") && GOOGLE_CLIENT_ID.length > 10;
+  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.length < 10) return false;
+  if (GOOGLE_CLIENT_ID.includes("placeholder")) return false;
+  return true;
 }
 
 /**

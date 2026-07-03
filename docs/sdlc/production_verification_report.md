@@ -1,8 +1,9 @@
 # MEP-light™ — Production Verification Report
 
-**Version**: 4.1.0  
+**Version**: 4.1.1  
 **Date**: 2026-07-03  
-**Classification**: Internal
+**Classification**: Internal  
+**Status**: PRODUCTION-BLOCKED — Auth fix deployed pending
 
 ---
 
@@ -11,9 +12,12 @@
 | # | Endpoint | Method | Expected | Actual | Status |
 |---|----------|--------|----------|--------|--------|
 | 1 | `/api/health` | GET | 200, `healthy` | 200, `healthy`, v4.1.0 | ✅ |
-| 2 | `/api/v2/db/health` | GET | `ok:true, postgresql` | *(pending redeploy)* | 🔄 |
-| 3 | `/api/v2/adk/health` | GET | `enabled:true, controlled` | *(pending redeploy)* | 🔄 |
+| 2 | `/api/v2/db/health` | GET | `ok:true, postgresql` | `ok:true, postgresql, userCount:0` | ✅ (infra) / ⚠️ (auth) |
+| 3 | `/api/v2/adk/health` | GET | `enabled:true, controlled` | `enabled:true, controlled-deterministic` | ✅ |
 | 4 | `/api/v2/db/tables` | GET | `schemaComplete:true` | *(pending redeploy)* | 🔄 |
+| 5 | `/api/v2/auth/config-status` | GET | Auth config metadata | *(new in v4.1.1, pending redeploy)* | 🔄 |
+
+> **⚠️ Auth Blocker**: `userCount: 0` confirms no user has ever successfully authenticated against production. Root cause: placeholder Google Client ID in frontend bundle. Fix applied in v4.1.1, pending deploy.
 
 ---
 
@@ -28,6 +32,10 @@
 | 5 | No secrets in Git | `.gitignore` reviewed, repo scanned | ✅ |
 | 6 | DEMO_MODE guard | `process.exit(1)` if DEMO_MODE=true in production | ✅ |
 | 7 | SQLite guard | `process.exit(1)` if SQLite in production | ✅ |
+| 8 | PDF export auth | Requires JWT + Consultant/Admin role (v4.1.1) | ✅ (code), 🔄 (deploy) |
+| 9 | No demo identity | `consultant@innobase.app` removed from production code (v4.1.1) | ✅ (code), 🔄 (deploy) |
+| 10 | JWT audience validation | `aud` claim checked against expected Client ID (v4.1.1) | ✅ (code), 🔄 (deploy) |
+| 11 | Build-time Client ID guard | Dockerfile fails if GOOGLE_CLIENT_ID empty (v4.1.1) | ✅ |
 
 ---
 

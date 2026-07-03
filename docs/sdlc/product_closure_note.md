@@ -1,9 +1,9 @@
 # MEP-light™ — Product Closure Note
 
-**Version**: 4.1.0  
+**Version**: 4.1.1  
 **Date**: 2026-07-03  
 **Classification**: Internal  
-**Status**: PRODUCTION-CLOSED-PASS-WITH-ADK-STAGED
+**Status**: PRODUCTION-BLOCKED-AUTHENTICATION-REMEDIATION-REQUIRED (code fix applied, deploy pending)
 
 ---
 

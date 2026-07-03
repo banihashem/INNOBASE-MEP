@@ -1,9 +1,9 @@
 # MEP-light™ — Security Review
 
-**Version**: 4.1.0  
+**Version**: 4.1.1  
 **Date**: 2026-07-03  
 **Classification**: Internal  
-**Status**: Post-Remediation Security Assessment
+**Status**: Post-Incident Security Assessment (v4.1.1 Auth Remediation)
 
 ---
 
@@ -33,6 +33,33 @@
 | 7 | Session Tokens | Google-managed, no custom JWT issuance | ✅ Verified |
 | 8 | Demo mode disabled | DEMO_MODE not set in production env vars | ✅ Verified |
 | 9 | `/users/me` verified | Returns real user from Google JWT, not fallback | ✅ Verified |
+| 10 | Audience validation | JWT `aud` claim checked against expected Client ID | ✅ Added (v4.1.1) |
+| 11 | Demo identity removed | `consultant@innobase.app` removed from production code | ✅ Remediated (v4.1.1) |
+| 12 | Build-time Client ID guard | Dockerfile fails if GOOGLE_CLIENT_ID is empty | ✅ Added (v4.1.1) |
+| 13 | Sign-out loop prevention | UserProfileMenu prevents infinite 401→signOut cycle | ✅ Added (v4.1.1) |
+
+---
+
+## 1b. Security Incidents: Authentication Blocker (v4.1.1)
+
+| Item | Detail |
+|------|--------|
+| **Incident** | Production frontend contained placeholder Google Client ID |
+| **Date Detected** | 2026-07-03 |
+| **Severity** | P0 — Complete auth failure |
+| **Status** | ✅ Remediated (code), ⏳ Pending deploy |
+| **Root Cause** | `_GOOGLE_CLIENT_ID` Cloud Build substitution defaulted to empty string |
+| **Impact** | No user could log in; demo identity `consultant@innobase.app` was served |
+| **Actions Taken** | Removed placeholder fallback, removed demo identity from production code, added build-time guards, added audience validation |
+| **Reference** | `docs/sdlc/incident_auth_login_blocker.md` |
+
+| Item | Detail |
+|------|--------|
+| **Incident** | `/api/export-pdf` endpoint had no authentication |
+| **Date Detected** | 2026-07-03 |
+| **Severity** | Medium |
+| **Status** | ✅ Remediated |
+| **Actions Taken** | Added JWT auth requirement + role-based access (Consultant/Administrator) |
 
 ---
 
@@ -150,3 +177,7 @@ Documented in: [rollback_plan.md](rollback_plan.md)
 | Structured observability | ✅ |
 | CORS restricted | ✅ |
 | Production guards (DEMO_MODE, SQLite) | ✅ |
+| No demo identity in production bundle | ✅ (v4.1.1) |
+| PDF export requires authentication | ✅ (v4.1.1) |
+| JWT audience validation | ✅ (v4.1.1) |
+| Build-time Client ID validation | ✅ (v4.1.1) |

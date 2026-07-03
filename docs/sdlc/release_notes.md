@@ -1,8 +1,42 @@
 # MEP-light™ — Release Notes
 
-**Version**: 4.1.0  
+**Version**: 4.1.1  
 **Date**: 2026-07-03  
 **Classification**: Internal
+
+---
+
+## v4.1.1 — P0 Authentication Blocker Remediation
+
+### 🔴 Critical Fix: Production Login
+
+- **Root Cause**: Google OAuth Client ID was not injected into the Docker build, causing the frontend to use a placeholder value and fall back to a demo identity.
+- **Fix**: Removed placeholder fallback entirely. If `GOOGLE_CLIENT_ID` is missing at build time, the Dockerfile now **fails immediately** instead of producing a broken bundle.
+- **Demo Identity Removed**: `consultant@innobase.app` / `Strategy Consultant` / `demo-user-id` are no longer reachable in production builds. Demo mode is gated behind `import.meta.env.DEV && VITE_DEMO_MODE=true`.
+
+### Security
+
+- **PDF Export**: `/api/export-pdf` now requires JWT authentication and Consultant/Administrator role (was previously unauthenticated).
+- **JWT Audience Validation**: Backend now validates JWT `aud` claim matches the expected `GOOGLE_CLIENT_ID`.
+- **Sign-out Loop Prevention**: `UserProfileMenu` prevents infinite 401→signOut→mount→401 cycles.
+- **Build Guards**: Dockerfile fails if `GOOGLE_CLIENT_ID` is empty; post-build step scans `dist/` for forbidden strings.
+- **Cloud Build Validation**: Added validation step that fails if `_GOOGLE_CLIENT_ID` substitution is empty.
+
+### API Changes
+
+- `GET /api/v2/auth/config-status` — Safe diagnostic endpoint returning auth configuration metadata (no secrets exposed)
+- `POST /api/export-pdf` — Now requires `Authorization: Bearer <jwt>` header (401/403 without)
+- `GET /api/health` — Version updated to 4.1.1
+
+### Tests
+
+- Auth regression tests expanded from 15 to 28 assertions (AUTH-REG-011 through AUTH-REG-014)
+- New `tests/bundle_no_demo_identity.test.ts` — scans production bundle for forbidden demo strings
+
+### Documentation
+
+- New: `incident_auth_login_blocker.md`, `rollback_decision_record.md`
+- Updated: `security_review.md`, `risk_register.md`, `release_notes.md`, `version_manifest.md`
 
 ---
 

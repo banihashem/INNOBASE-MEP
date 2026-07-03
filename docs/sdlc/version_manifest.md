@@ -1,6 +1,6 @@
 # MEP-light™ — Version Manifest
 
-**Release**: v4.1.0  
+**Release**: v4.1.1  
 **Date**: 2026-07-03  
 **Classification**: Internal
 
@@ -10,11 +10,11 @@
 
 | Artifact | Value |
 |----------|-------|
-| **Semantic Version** | 4.1.0 |
+| **Semantic Version** | 4.1.1 |
 | **Git Branch** | master |
-| **Git Tag** | v4.1.0 |
-| **Git Commit SHA** | `13b548d37be7b38c9b010b06c96776df0e92baa7` |
-| **Container Image** | `gcr.io/innobase-mep-light/market-entry-prioritizer:v4.1.0` |
+| **Git Tag** | v4.1.1 (pending) |
+| **Git Commit SHA** | `pending deploy` |
+| **Container Image** | `gcr.io/innobase-mep-light/market-entry-prioritizer:v4.1.1` |
 | **Image Digest** | `sha256:acfe8670d7ebbc7da596f90ddea4bcf6fd24d382d2cead6bc9289ba47fb166dc` |
 | **Cloud Run Service** | market-entry-prioritizer |
 | **Cloud Run Region** | europe-west2 |
@@ -23,10 +23,10 @@
 | **Database** | mep_production |
 | **Migration Version** | 002 (002_fix_id_types) |
 | **Migration Checksum** | sha256 of 002_fix_id_types.sql |
-| **ADK Version** | 4.1.0 (controlled-deterministic) |
+| **ADK Version** | 4.1.1 (controlled-deterministic) |
 | **ADK Mode** | controlled — feature-flagged, role-gated |
-| **Rollback Target** | v4.0.2 / revision market-entry-prioritizer-00022-hdg |
-| **Previous Version** | 4.0.2 |
+| **Rollback Target** | v4.1.0 / revision market-entry-prioritizer-00027-2bc |
+| **Previous Version** | 4.1.0 |
 | **Secret Manager** | mep-db-password (version 4, active; v1-3 disabled) |
 
 ---
@@ -65,6 +65,7 @@
 
 | Version | Date | Summary |
 |---------|------|---------|
+| 4.1.1 | 2026-07-03 | P0 auth hotfix: placeholder Client ID removal, demo identity removal, PDF auth, build guards |
 | 4.1.0 | 2026-07-03 | Production remediation: password rotation, private DB, ADK controlled, SDLC complete |
 | 4.0.2 | 2026-07-03 | Cloud SQL integration, Secret Manager, initial production deployment |
 | 3.1.0 | 2026-07-03 | Google OAuth, CORS, user management |

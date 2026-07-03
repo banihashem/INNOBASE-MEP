@@ -188,7 +188,30 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "healthy",
     service: "MEP-light™ Scoring Engine API",
-    version: "4.1.0",
+    version: "4.1.1",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ─── Auth Config Diagnostic (safe, no secrets exposed) ──────────────
+
+app.get("/api/v2/auth/config-status", (_req: Request, res: Response) => {
+  const googleClientId = process.env.GOOGLE_CLIENT_ID || "";
+  const hasClientId = googleClientId.length > 10 && !googleClientId.includes("placeholder");
+  // Show only last 6 chars of client ID for debugging (safe partial reveal)
+  const clientIdSuffix = hasClientId ? "..." + googleClientId.slice(-6) : "NOT_SET";
+
+  res.json({
+    googleClientIdConfigured: hasClientId,
+    clientIdSuffix,
+    nodeEnv: NODE_ENV,
+    demoModeAllowed: DEMO_MODE,
+    authProvider: "google",
+    oauthOriginExpected: "https://mep.innobase.app",
+    dbUserPersistence: "postgresql",
+    productionGuard: IS_PRODUCTION ? (hasClientId ? "OK" : "WARN_NO_CLIENT_ID") : "DEV",
+    seedAdminConfigured: !!SEED_ADMIN_EMAIL,
+    adkEnabled: ADK_ENABLED,
     timestamp: new Date().toISOString(),
   });
 });
@@ -273,11 +296,53 @@ app.post("/api/score", (req: Request, res: Response) => {
 });
 
 // ─── PDF Export Route (Native Node.js Generation) ───────────────────
+// SECURITY: Requires authentication. Unauthenticated requests get 401.
 
 app.post("/api/export-pdf", async (req: Request, res: Response) => {
+  // ── Auth gate ──
+  const jwt = await extractAndVerifyJwtUser(req);
+  if (!jwt?.email) {
+    logEvent({
+      level: "warn",
+      component: "security",
+      event_type: "unauthenticated_pdf_export",
+      message: "Unauthenticated PDF export attempt blocked",
+    });
+    res.status(401).json({ error: "Authentication required for PDF export" });
+    return;
+  }
+
+  // ── Role check: require Consultant or Administrator ──
+  const user = await findUserByEmail(jwt.email);
+  if (!user || (user.role !== "Administrator" && user.role !== "Consultant")) {
+    logEvent({
+      level: "warn",
+      component: "security",
+      event_type: "unauthorized_pdf_export",
+      message: `Unauthorized PDF export attempt by ${jwt.email} (role: ${user?.role || 'unknown'})`,
+    });
+    res.status(403).json({ error: "Consultant or Administrator role required for PDF export" });
+    return;
+  }
+
   try {
-    console.log("Generating PDF report natively...");
+    logEvent({
+      level: "info",
+      component: "export",
+      event_type: "pdf_export_started",
+      user_role: user.role,
+      message: `PDF export by ${jwt.email}`,
+    });
     const pdfBuffer = await generatePdf(req.body);
+
+    // Record audit event for PDF export
+    await db.recordAuditEvent({
+      action: "pdf_export",
+      eventType: "report_exported",
+      userId: user.userId,
+      component: "export",
+      safeMetadata: { email: jwt.email, role: user.role, format: "pdf" },
+    });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=MEP-light_Report.pdf");
@@ -489,6 +554,18 @@ async function verifyGoogleJwt(token: string): Promise<Record<string, any> | nul
     const validIssuers = ["accounts.google.com", "https://accounts.google.com"];
     if (payload.iss && !validIssuers.includes(payload.iss)) {
       logEvent({ level: "warn", component: "auth", event_type: "invalid_issuer", message: `Invalid JWT issuer: ${payload.iss}` });
+      return null;
+    }
+
+    // Check audience — token must be issued for OUR Google Client ID
+    const expectedClientId = process.env.GOOGLE_CLIENT_ID || "";
+    if (expectedClientId && payload.aud && payload.aud !== expectedClientId) {
+      logEvent({
+        level: "warn",
+        component: "auth",
+        event_type: "audience_mismatch",
+        message: `JWT audience mismatch: expected suffix ...${expectedClientId.slice(-6)}, got ...${String(payload.aud).slice(-6)}`,
+      });
       return null;
     }
 

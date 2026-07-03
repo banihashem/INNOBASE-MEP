@@ -16,9 +16,24 @@
 # ══════════════════════════════════════════════════════════════════════
 
 steps:
+  # Step 0: Validate required substitution variables
+  - name: 'node:22-slim'
+    id: 'validate-config'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ -z "${_GOOGLE_CLIENT_ID}" ]; then
+          echo "FATAL: _GOOGLE_CLIENT_ID substitution variable is empty."
+          echo "Usage: gcloud builds submit --substitutions=_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com"
+          exit 1
+        fi
+        echo "✓ _GOOGLE_CLIENT_ID is set (suffix: ...${_GOOGLE_CLIENT_ID: -6})"
+
   # Step 1: Install dependencies and run scoring tests
   - name: 'node:22-slim'
     id: 'test-scoring'
+    waitFor: ['validate-config']
     entrypoint: 'bash'
     args:
       - '-c'
@@ -27,6 +42,7 @@ steps:
   # Step 2: Run auth regression tests
   - name: 'node:22-slim'
     id: 'test-auth'
+    waitFor: ['validate-config']
     entrypoint: 'bash'
     args:
       - '-c'
@@ -41,7 +57,7 @@ steps:
       - '--build-arg'
       - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.1.0'
+      - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.1.1'
       - '-t'
       - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
       - '.'
@@ -82,11 +98,11 @@ steps:
       - '--allow-unauthenticated'
 
 images:
-  - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.1.0'
+  - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.1.1'
   - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
 
 substitutions:
-  _GOOGLE_CLIENT_ID: ''
+  _GOOGLE_CLIENT_ID: ''  # REQUIRED — must be provided via --substitutions flag
   _CLOUD_SQL_CONN: 'innobase-mep-light:europe-west2:mep-light-db'
   _REGION: 'europe-west2'
   _ADK_ENABLED: 'controlled'

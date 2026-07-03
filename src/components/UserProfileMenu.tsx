@@ -57,6 +57,8 @@ export default function UserProfileMenu({ onOpenAdmin }: UserProfileMenuProps) {
   const [backendProfile, setBackendProfile] = useState<any>(null);
   const [profileError, setProfileError] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const signOutCalledRef = useRef(false);
+  const profileFetchedRef = useRef<string | null>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -69,9 +71,22 @@ export default function UserProfileMenu({ onOpenAdmin }: UserProfileMenuProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Reset sign-out guard when user changes
+  useEffect(() => {
+    if (!user) {
+      signOutCalledRef.current = false;
+      profileFetchedRef.current = null;
+    }
+  }, [user]);
+
   // Fetch backend profile on mount to sync role
+  // Guard against duplicate fetches and sign-out loops
   useEffect(() => {
     if (!user) return;
+    if (signOutCalledRef.current) return;
+    // Don't refetch for the same email within this component lifecycle
+    if (profileFetchedRef.current === user.email) return;
+    profileFetchedRef.current = user.email;
 
     apiClient.users.me()
       .then((data) => {
@@ -82,9 +97,13 @@ export default function UserProfileMenu({ onOpenAdmin }: UserProfileMenuProps) {
       })
       .catch((err) => {
         // If 401 → token expired or invalid → force re-authentication
+        // Guard: only sign out once to prevent infinite loop
         if (err?.status === 401) {
-          console.warn("[MEP Auth] Token rejected by backend — signing out");
-          signOut();
+          if (!signOutCalledRef.current) {
+            signOutCalledRef.current = true;
+            console.warn("[MEP Auth] Token rejected by backend — signing out (once)");
+            signOut();
+          }
           return;
         }
         setProfileError(true);
