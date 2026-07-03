@@ -867,7 +867,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between flex-wrap gap-2">
           <p>
             © 2026 Market Entry Prioritizer • MEP-light™ Diagnostic
-            System • Proprietary Enterprise Strategy Tool • v3.0.0
+            System • Proprietary Enterprise Strategy Tool • v{__APP_VERSION__}
           </p>
           {authUser && (
             <div className="flex items-center gap-3">
