@@ -365,18 +365,26 @@ app.post("/api/export-pdf", async (req: Request, res: Response) => {
     });
 
     // ── Human Review Gate Enforcement ──
-    // The payload should pass the sessionId, or we determine it from the payload
     const sessionId = req.body.sessionId;
-    if (sessionId) {
-      const session = await db.findSessionById(sessionId);
-      if (session && session.review_status !== 'approved' && !req.body.draft) {
-        res.status(403).json({ error: "Human review required before final export. An Administrator or Consultant must approve the assessment." });
-        return;
-      }
-      if (session && session.review_status !== 'approved' && req.body.draft) {
-        // Enforce watermark
-        req.body.watermark = "DRAFT - NOT HUMAN REVIEWED";
-      }
+    if (!sessionId) {
+      res.status(400).json({ error: "Missing required parameter: sessionId. Cannot export an empty or unsaved assessment." });
+      return;
+    }
+
+    const session = await db.findSessionById(sessionId);
+    if (!session) {
+      res.status(404).json({ error: "Session not found." });
+      return;
+    }
+
+    if (session.review_status !== 'approved' && !req.body.draft) {
+      res.status(403).json({ error: "Human review required before final export. An Administrator or Consultant must approve the assessment." });
+      return;
+    }
+
+    if (session.review_status !== 'approved' && req.body.draft) {
+      // Enforce watermark
+      req.body.watermark = "DRAFT - NOT HUMAN REVIEWED";
     }
 
     const pdfBuffer = await generatePdf(req.body);
@@ -1162,7 +1170,7 @@ app.post("/api/v2/sessions", async (req: Request, res: Response) => {
     return;
   }
 
-  const { id, title, companyName, offeringName, inputData } = req.body;
+  const { id, title, companyName, offeringName, inputData, stateSnapshot, currentStep, completionPercent, reviewStatus } = req.body;
   const sessionId = id || `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   const session = await db.createSession({
@@ -1172,6 +1180,10 @@ app.post("/api/v2/sessions", async (req: Request, res: Response) => {
     companyName: companyName || "",
     offeringName: offeringName || "",
     inputData: inputData || {},
+    stateSnapshot: stateSnapshot || {},
+    currentStep: currentStep ?? 1,
+    completionPercent: completionPercent ?? 0,
+    reviewStatus: reviewStatus || "pending",
   });
 
   await db.recordAuditEvent({

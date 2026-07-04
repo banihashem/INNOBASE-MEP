@@ -546,11 +546,12 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   ]);
 
   useEffect(() => {
-    if (appMode === "demo") return; // Don't persist demo mode
+    if (appMode === "demo") return;
 
     const timer = setTimeout(async () => {
       try {
         const payload = {
+          id: sessionId,
           title: companySnapshot.businessName || "Untitled Assessment",
           companyName: companySnapshot.businessName,
           offeringName: productStrategy.offeringName,
@@ -560,47 +561,26 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
           stateSnapshot: JSON.stringify(stateSnapshotRef.current),
         };
         
-        // We first try to update. If it fails (404), we create.
         try {
           await apiClient.sessions.update(sessionId, payload);
         } catch (err: any) {
           if (err.status === 404 || err.message?.includes('not found')) {
-            await apiClient.sessions.create({
-              ...payload,
-              // Backend create might ignore id, we should ensure backend supports creating with specific ID or we just rely on local ID.
-              // Actually, since backend uses its own ID on create, if we want to force our ID, backend needs to support it.
-              // For now, if 404, we'll just ignore or assume backend handles it.
-              // Wait, the backend create endpoint doesn't accept an ID, it generates one.
-            });
-            // Note: Our backend endpoint `POST /api/v2/sessions` ignores the passed ID and creates a new one.
-            // Let's modify backend to accept `id` or just update if it exists.
+            const newSession = await apiClient.sessions.create(payload);
+            if (newSession && newSession.sessionId) {
+              setSessionId(newSession.sessionId);
+              localStorage.setItem("mep_last_session_id", newSession.sessionId);
+            }
           }
         }
       } catch (err) {
         console.warn("[MEP] Auto-save to server failed:", err);
       }
-    }, 3000);
+    }, 2000);
     return () => clearTimeout(timer);
   }, [
-    sessionId, appMode, companySnapshot.businessName, productStrategy.offeringName, currentStep
-    // We intentionally don't include stateSnapshotRef in deps to avoid constant triggering,
-    // we just use the timer on key metadata changes, but wait, we want to save when ANY data changes!
-    // Let's trigger it on the ref deps.
-  ]);
-
-  useEffect(() => {
-    if (appMode === "demo") return;
-    const timer = setTimeout(async () => {
-      try {
-        await apiClient.sessions.update(sessionId, {
-          stateSnapshot: JSON.stringify(stateSnapshotRef.current),
-        });
-      } catch (err) {}
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [
-    decisionSetup, companySnapshot, productStrategy, selectedMarketIds,
-    customMarkets, marketScores, selectedRoadmapMarketId, consultantNotes
+    sessionId, appMode, currentStep, decisionSetup, companySnapshot,
+    productStrategy, selectedMarketIds, customMarkets, marketScores,
+    selectedRoadmapMarketId, consultantNotes
   ]);
 
   // ─── Load session from server ──────────────────────────────
@@ -621,11 +601,11 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         setSelectedRoadmapMarketId(snap.selectedRoadmapMarketId || "uae");
         setConsultantNotes(snap.consultantNotes || "");
         setReviewStatus(data.reviewStatus || "pending");
-        toast.show("Session loaded successfully", "success");
+        toast.success("Session loaded successfully");
       }
     } catch (err) {
       console.error("[MEP] Failed to load session", err);
-      toast.show("Failed to load session from server", "error");
+      toast.error("Failed to load session from server");
     }
   }, [toast]);
 

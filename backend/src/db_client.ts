@@ -451,31 +451,49 @@ class MepDatabase {
     companyName?: string;
     offeringName?: string;
     inputData?: Record<string, unknown>;
+    stateSnapshot?: Record<string, unknown>;
+    currentStep?: number;
+    completionPercent?: number;
+    reviewStatus?: string;
   }): Promise<DbSession> {
     if (this.config.type === "sqlite") {
       this.sqliteDb!.prepare(`
-        INSERT INTO assessment_sessions (id, user_id, title, company_name, offering_name, input_data)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO assessment_sessions (
+          id, user_id, title, company_name, offering_name, input_data,
+          state_snapshot, current_step, completion_percent, review_status
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         session.id, session.userId,
         session.title || "Untitled Session",
         session.companyName || "",
         session.offeringName || "",
-        JSON.stringify(session.inputData || {})
+        JSON.stringify(session.inputData || {}),
+        JSON.stringify(session.stateSnapshot || {}),
+        session.currentStep ?? 1,
+        session.completionPercent ?? 0,
+        session.reviewStatus || "pending"
       );
       return this.findSessionByIdSync(session.id)!;
     }
 
     const result = await this.pgPool.query(`
-      INSERT INTO assessment_sessions (id, user_id, title, company_name, offering_name, input_data)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO assessment_sessions (
+        id, user_id, title, company_name, offering_name, input_data,
+        state_snapshot, current_step, completion_percent, review_status
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `, [
       session.id, session.userId,
       session.title || "Untitled Session",
       session.companyName || "",
       session.offeringName || "",
-      JSON.stringify(session.inputData || {})
+      JSON.stringify(session.inputData || {}),
+      JSON.stringify(session.stateSnapshot || {}),
+      session.currentStep ?? 1,
+      session.completionPercent ?? 0,
+      session.reviewStatus || "pending"
     ]);
     return this.mapPgSession(result.rows[0]);
   }
