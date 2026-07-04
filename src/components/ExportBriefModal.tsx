@@ -25,6 +25,7 @@ interface Props {
   results: CalculatedResult[];
   consultantNotes: string;
   selectedRoadmapMarketId: string;
+  reviewStatus?: string;
 }
 
 export default function ExportBriefModal({
@@ -38,6 +39,7 @@ export default function ExportBriefModal({
   results,
   consultantNotes,
   selectedRoadmapMarketId,
+  reviewStatus,
 }: Props) {
   if (!isOpen) return null;
 
@@ -113,8 +115,15 @@ export default function ExportBriefModal({
         </div>
 
         {/* Scrollable Brief Content */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 print-brief">
-          <div className="max-w-4xl mx-auto space-y-10">
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 print-brief relative">
+          {reviewStatus !== "approved" && (
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden z-0 opacity-10">
+              <div className="transform -rotate-45 text-slate-500 font-black text-6xl md:text-8xl whitespace-nowrap">
+                DRAFT — NOT HUMAN REVIEWED
+              </div>
+            </div>
+          )}
+          <div className="max-w-4xl mx-auto space-y-10 relative z-10">
             {/* Title Block */}
             <div className="text-center space-y-2 pb-8 border-b border-slate-800">
               <h1 className="text-3xl font-bold font-display text-white">

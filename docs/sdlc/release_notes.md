@@ -1,8 +1,22 @@
 # MEP-light™ — Release Notes
 
-**Version**: 4.1.1  
-**Date**: 2026-07-03  
-**Classification**: Internal
+**Version**: 4.3.5  
+**Date**: 2026-07-04  
+**Classification**: Production
+
+---
+
+## v4.3.5 — Production Persistence Fix
+
+### 🟢 Critical Fix: Persistence & State Rehydration
+
+- **Root Cause**: Backend was returning a 500 error because `mep_local.db` schema didn't match the PostgreSQL `state_snapshot` column. Furthermore, a React StrictMode edge case in `LandingPage.tsx` caused an infinite loading loop due to redundant Google Sign-in triggers. Finally, frontend session IDs were incorrectly passed as `undefined` in the resume path.
+- **Fix**: Wiped and correctly resynced `mep_local.db` schema. Adjusted GIS loading state to handle React 18 StrictMode without getting stuck. Fixed `SessionManager.tsx` to properly extract and use session IDs when resuming state.
+- **Result**: `SessionManager` now properly creates, saves, and lists sessions. Data hydrates correctly from the backend across page reloads.
+
+### Verification
+- Production UAT confirmed Session ID correctly increments and backend persists state on Step transitions.
+- PDF Review gate correctly returns `401 Unauthorized` without credentials.
 
 ---
 

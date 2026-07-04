@@ -1,7 +1,7 @@
 {
   "name": "mep-light",
   "private": true,
-  "version": "4.3.5",
+  "version": "4.3.6",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -13,7 +13,8 @@
     "test:prep": "node --import tsx tests/product_prep.test.ts",
     "test:golden": "node --import tsx tests/golden_scenario_somayeh.ts",
     "test:pdf": "node --import tsx tests/pdf_export.test.ts",
-    "test:all": "npm run test && npm run test:prep && npm run test:golden && npm run test:persistence && npm run test:auth && npm run test:governance && npm run test:bundle",
+    "test:pdf-api": "node --import tsx tests/pdf_auth.test.ts",
+    "test:all": "npm run test && npm run test:prep && npm run test:golden && npm run test:persistence && npm run test:auth && npm run test:pdf-api && npm run test:governance && npm run test:bundle",
     "test:persistence": "node --import tsx tests/persistence.test.ts",
     "test:auth": "npx tsx tests/auth_regression.test.ts",
     "test:bundle": "npx tsx tests/bundle_regression.test.ts",

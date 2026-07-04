@@ -501,13 +501,9 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         sessionId,
         draft: reviewStatus !== "approved",
       };
-      const resp = await fetch("/api/export-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!resp.ok) throw new Error("PDF generation failed");
-      const blob = await resp.blob();
+      
+      const blob = await apiClient.exportPdf(payload);
+      
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -516,9 +512,21 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch (err: any) {
       console.error("PDF download error:", err);
-      alert("PDF generation service is not available. Please ensure the PDF service is running on port 5001.");
+      let errorMsg = "PDF generation failed. Please try again.";
+      if (err.status === 401) {
+        errorMsg = "Authentication required for PDF export.";
+      } else if (err.status === 403) {
+        errorMsg = "You do not have permission to export this PDF or the session is pending review.";
+      } else if (err.message) {
+        errorMsg = `PDF generation failed: ${err.message}`;
+      }
+      toast({
+        title: "Export Failed",
+        description: errorMsg,
+        variant: "destructive"
+      });
     } finally {
       setIsDownloadingPDF(false);
     }
@@ -1044,6 +1052,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
           results={calculatedResults}
           consultantNotes={consultantNotes}
           selectedRoadmapMarketId={selectedRoadmapMarketId}
+          reviewStatus={reviewStatus}
         />
       </Suspense>
 
