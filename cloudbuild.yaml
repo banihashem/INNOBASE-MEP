@@ -38,28 +38,19 @@ steps:
         fi
         echo "✓ _GOOGLE_CLIENT_ID is set (suffix: ...${_GOOGLE_CLIENT_ID: -6})"
 
-  # Step 1: Install dependencies and run scoring tests
+  # Step 1: Install dependencies and run tests
   - name: 'node:22-slim'
-    id: 'test-scoring'
+    id: 'test'
     waitFor: ['validate-config']
     entrypoint: 'bash'
     args:
       - '-c'
-      - 'npm ci && npm test'
+      - 'npm ci && npm test && npx tsx tests/auth_regression.test.ts'
 
-  # Step 2: Run auth regression tests
-  - name: 'node:22-slim'
-    id: 'test-auth'
-    waitFor: ['validate-config']
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - 'npm ci && npx tsx tests/auth_regression.test.ts'
-
-  # Step 3: Build production Docker image
+  # Step 2: Build production Docker image
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-image'
-    waitFor: ['test-scoring', 'test-auth']
+    waitFor: ['test']
     args:
       - 'build'
       - '--build-arg'
