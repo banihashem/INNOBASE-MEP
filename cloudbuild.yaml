@@ -28,6 +28,14 @@ steps:
           echo "Usage: gcloud builds submit --substitutions=_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com"
           exit 1
         fi
+        if echo "${_GOOGLE_CLIENT_ID}" | grep -q " "; then
+          echo "FATAL: _GOOGLE_CLIENT_ID contains whitespace. PowerShell substitution parsing likely failed."
+          exit 1
+        fi
+        if ! echo "${_GOOGLE_CLIENT_ID}" | grep -q "\.apps\.googleusercontent\.com$"; then
+          echo "FATAL: _GOOGLE_CLIENT_ID does not end with .apps.googleusercontent.com"
+          exit 1
+        fi
         echo "✓ _GOOGLE_CLIENT_ID is set (suffix: ...${_GOOGLE_CLIENT_ID: -6})"
 
   # Step 1: Install dependencies and run scoring tests

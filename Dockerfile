@@ -27,12 +27,23 @@ RUN npm ci
 COPY . .
 
 # Write GOOGLE_CLIENT_ID into .env so Vite's loadEnv() picks it up during build.
-# PRODUCTION GUARD: Fail if GOOGLE_CLIENT_ID is empty — prevents placeholder bake-in.
+# PRODUCTION GUARD: Fail if GOOGLE_CLIENT_ID is empty or corrupted.
 RUN if [ -z "$GOOGLE_CLIENT_ID" ]; then \
-      echo "FATAL: GOOGLE_CLIENT_ID build arg is empty. Cannot build production frontend without a valid Google OAuth Client ID." && \
-      echo "Usage: docker build --build-arg GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com ." && \
-      exit 1; \
+      echo "FATAL: GOOGLE_CLIENT_ID build arg is empty." && exit 1; \
+    fi && \
+    if echo "$GOOGLE_CLIENT_ID" | grep -q " "; then \
+      echo "FATAL: GOOGLE_CLIENT_ID contains whitespace. It was likely concatenated." && exit 1; \
+    fi && \
+    if echo "$GOOGLE_CLIENT_ID" | grep -q "_CLOUD_SQL"; then \
+      echo "FATAL: GOOGLE_CLIENT_ID contains _CLOUD_SQL substitution." && exit 1; \
+    fi && \
+    if echo "$GOOGLE_CLIENT_ID" | grep -q "_ADK"; then \
+      echo "FATAL: GOOGLE_CLIENT_ID contains _ADK substitution." && exit 1; \
+    fi && \
+    if ! echo "$GOOGLE_CLIENT_ID" | grep -q "\.apps\.googleusercontent\.com$"; then \
+      echo "FATAL: GOOGLE_CLIENT_ID does not end with .apps.googleusercontent.com" && exit 1; \
     fi
+
 RUN echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}" >> .env
 RUN npm run build
 
@@ -41,8 +52,11 @@ RUN npm run build
 RUN if grep -r "placeholder.apps.googleusercontent.com" dist/assets/*.js 2>/dev/null; then \
       echo "FATAL: Production bundle contains placeholder Client ID — real ID was not injected." && exit 1; \
     fi
+RUN if ! grep -rq "$GOOGLE_CLIENT_ID" dist/assets/*.js 2>/dev/null; then \
+      echo "FATAL: Production bundle does NOT contain the injected Client ID ($GOOGLE_CLIENT_ID)." && exit 1; \
+    fi
 RUN if grep -r "consultant@innobase.app" dist/assets/*.js 2>/dev/null; then \
-      echo "FATAL: Production bundle contains demo identity 'consultant@innobase.app'." && exit 1; \
+      echo "FATAL: Production bundle contains test/demo identity — security leak." && exit 1; \
     fi
 RUN if grep -r "demo-user-id" dist/assets/*.js 2>/dev/null; then \
       echo "FATAL: Production bundle contains demo sub 'demo-user-id'." && exit 1; \
