@@ -166,9 +166,14 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
    */
   const initializeAndRenderGis = useCallback(() => {
     if (!window.google?.accounts?.id) return;
-    if (gisInitializedRef.current) return;
+    
+    if (gisInitializedRef.current) {
+      renderGoogleButtons();
+      setAuthState("gis_ready");
+      return;
+    }
+    
     gisInitializedRef.current = true;
-
     console.log("[MEP Auth] gis_initializing");
 
     window.google.accounts.id.initialize({
@@ -194,8 +199,10 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
       return;
     }
 
-    setAuthState("gis_loading");
-    console.log("[MEP Auth] gis_loading — waiting for GIS script");
+    if (!gisInitializedRef.current && authState !== "gis_loading") {
+      setAuthState("gis_loading");
+      console.log("[MEP Auth] gis_loading — waiting for GIS script");
+    }
 
     // Check immediately
     if (isGoogleAuthReady()) {

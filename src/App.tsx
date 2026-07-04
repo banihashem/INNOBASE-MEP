@@ -143,13 +143,11 @@ function AppRouter() {
 // ─── Authenticated App (Wizard) ───────────────────────────────────
 function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; onSignOut: () => void }) {
   const toast = useToast();
-  const [sessionId, setSessionId] = useState<string>(() => {
-    // If there's a last active session in localStorage, we can use it, else generate new
-    const lastActive = localStorage.getItem("mep_last_session_id");
-    return lastActive || generateSessionId();
-  });
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [showSessionManager, setShowSessionManager] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const [appMode, setAppMode] = useState<AppMode>("demo");
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -189,9 +187,9 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   );
 
   // ─── Mode Toggle ────────────────────────────────────────
-  const handleModeToggle = () => {
+  const handleModeToggle = async () => {
     if (appMode === "demo") {
-      // Switch to Consultant — clear all data
+      // Switch to Consultant — clear all data and start new session
       setAppMode("consultant");
       setDecisionSetup({
         decisionMode: "compare",
@@ -210,6 +208,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       setConsultantNotes("");
       setCurrentStep(1);
       setMaxUnlockedStep(1);
+      setSessionId(null); // Clear to let autosave create a new one on first edit, or create explicitly
     } else {
       // Switch to Demo — restore demo data
       setAppMode("demo");
@@ -228,6 +227,8 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       );
       setCurrentStep(1);
       setMaxUnlockedStep(1);
+      setSessionId(null);
+      localStorage.removeItem("mep_last_session_id");
     }
   };
 
@@ -546,12 +547,12 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   ]);
 
   useEffect(() => {
-    if (appMode === "demo") return;
+    if (appMode === "demo" || isInitializing) return;
 
     const timer = setTimeout(async () => {
+      setSaveStatus("saving");
       try {
         const payload = {
-          id: sessionId,
           title: companySnapshot.businessName || "Untitled Assessment",
           companyName: companySnapshot.businessName,
           offeringName: productStrategy.offeringName,
@@ -561,30 +562,46 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
           stateSnapshot: JSON.stringify(stateSnapshotRef.current),
         };
         
-        try {
-          await apiClient.sessions.update(sessionId, payload);
-        } catch (err: any) {
-          if (err.status === 404 || err.message?.includes('not found')) {
-            const newSession = await apiClient.sessions.create(payload);
-            if (newSession && newSession.sessionId) {
-              setSessionId(newSession.sessionId);
-              localStorage.setItem("mep_last_session_id", newSession.sessionId);
+        if (sessionId) {
+          try {
+            await apiClient.sessions.update(sessionId, payload);
+            setSaveStatus("saved");
+          } catch (err: any) {
+            if (err.status === 404 || err.message?.includes('not found')) {
+              // Recreate if not found
+              const newSession = await apiClient.sessions.create({ id: sessionId, ...payload });
+              if (newSession && newSession.sessionId) {
+                setSessionId(newSession.sessionId);
+                localStorage.setItem("mep_last_session_id", newSession.sessionId);
+                setSaveStatus("saved");
+              }
+            } else {
+              throw err;
             }
+          }
+        } else {
+          // Explicitly create new session if we don't have an ID
+          const newSession = await apiClient.sessions.create(payload);
+          if (newSession && newSession.sessionId) {
+            setSessionId(newSession.sessionId);
+            localStorage.setItem("mep_last_session_id", newSession.sessionId);
+            setSaveStatus("saved");
           }
         }
       } catch (err) {
         console.warn("[MEP] Auto-save to server failed:", err);
+        setSaveStatus("error");
       }
     }, 2000);
     return () => clearTimeout(timer);
   }, [
-    sessionId, appMode, currentStep, decisionSetup, companySnapshot,
+    sessionId, appMode, isInitializing, currentStep, decisionSetup, companySnapshot,
     productStrategy, selectedMarketIds, customMarkets, marketScores,
     selectedRoadmapMarketId, consultantNotes
   ]);
 
   // ─── Load session from server ──────────────────────────────
-  const loadSession = useCallback(async (id: string) => {
+  const loadSession = useCallback(async (id: string, silent = false) => {
     try {
       const data = await apiClient.sessions.get(id);
       if (data && data.stateSnapshot) {
@@ -601,20 +618,32 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         setSelectedRoadmapMarketId(snap.selectedRoadmapMarketId || "uae");
         setConsultantNotes(snap.consultantNotes || "");
         setReviewStatus(data.reviewStatus || "pending");
-        toast.success("Session loaded successfully");
+        if (!silent) toast.success("Session loaded successfully");
       }
     } catch (err) {
       console.error("[MEP] Failed to load session", err);
-      toast.error("Failed to load session from server");
+      if (!silent) toast.error("Failed to load session from server");
+      throw err;
     }
   }, [toast]);
 
+  // ─── Initialize App State ──────────────────────────────
   useEffect(() => {
-    if (sessionId && appMode !== "demo") {
-      localStorage.setItem("mep_last_session_id", sessionId);
-      loadSession(sessionId);
-    }
-  }, [sessionId, appMode, loadSession]);
+    const init = async () => {
+      const lastSessionId = localStorage.getItem("mep_last_session_id");
+      if (lastSessionId && lastSessionId !== "undefined") {
+        try {
+          await loadSession(lastSessionId, true);
+          setSessionId(lastSessionId);
+        } catch (err) {
+          // Failed to load, clear local storage and stay in demo mode
+          localStorage.removeItem("mep_last_session_id");
+        }
+      }
+      setIsInitializing(false);
+    };
+    init();
+  }, [loadSession]);
   // ─── Calculate results for Export Brief ──────────────────
   const calculatedResults: CalculatedResult[] = useMemo(() => {
     return activeSelectedMarkets
@@ -776,6 +805,36 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
             <UserProfileMenu onOpenAdmin={() => setShowAdminPanel(true)} />
           </div>
         </div>
+        
+        {/* ─── Save Status Indicator ─── */}
+        {appMode !== "demo" && (
+          <div className="absolute top-16 right-4 flex items-center space-x-1.5 px-3 py-1 bg-slate-900/80 border border-slate-700/50 rounded-full text-[10px] font-mono text-slate-400">
+            {saveStatus === "saving" && (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span>Saving...</span>
+              </>
+            )}
+            {saveStatus === "saved" && (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span>Saved</span>
+              </>
+            )}
+            {saveStatus === "error" && (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                <span className="text-red-400">Save Failed</span>
+              </>
+            )}
+            {saveStatus === "idle" && (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                <span>Ready</span>
+              </>
+            )}
+          </div>
+        )}
       </header>
 
       {/* ─── Main Container ──────────────────────────────── */}
@@ -994,13 +1053,39 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         isOpen={showSessionManager}
         onClose={() => setShowSessionManager(false)}
         onResumeSession={(id) => {
+          if (!id || id === "undefined") {
+            toast.error("Invalid session ID");
+            return;
+          }
           toast.info(`Resuming session...`);
+          setSessionId(id);
+          localStorage.setItem("mep_last_session_id", id);
           loadSession(id);
           track.sessionResumed(id);
         }}
-        onStartNew={() => {
+        onStartNew={async () => {
+          setAppMode("consultant");
+          setDecisionSetup({
+            decisionMode: "compare",
+            expansionHorizon: "12 months",
+            strategicObjective: "",
+          });
+          setCompanySnapshot(BLANK_COMPANY_SNAPSHOT);
+          setProductStrategy({
+            offeringName: "",
+            selectedStrategy: "replication",
+            customAdaptationNotes: "",
+          });
+          setSelectedMarketIds([]);
+          setCustomMarkets([]);
+          setMarketScores({});
+          setConsultantNotes("");
+          setCurrentStep(1);
+          setMaxUnlockedStep(1);
+          setSessionId(null); // Clear to trigger a new session creation on next autosave or right away
+          
           toast.success("New assessment session started");
-          track.sessionStarted(sessionId);
+          track.sessionStarted(sessionId || "new");
         }}
         onDeleteSession={(id) => {
           toast.success("Session deleted");
