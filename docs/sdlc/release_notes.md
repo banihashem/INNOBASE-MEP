@@ -1,8 +1,26 @@
 # MEP-light™ — Release Notes
 
-**Version**: 4.3.5  
+**Version**: 4.3.6  
 **Date**: 2026-07-04  
 **Classification**: Production
+
+---
+
+## v4.3.6 — PDF Export Auth Remediation (Production Closure)
+
+### 🟢 Critical Fix: PDF Export 401 Authorization
+
+- **Root Cause**: The `POST /api/export-pdf` call in the frontend `App.tsx` was using a raw `fetch` call and failing to attach the `Authorization: Bearer <token>` header, leading to a `401 Unauthorized` response when invoked in production, even if the user was fully authenticated and the assessment was approved.
+- **Fix**: Refactored the client-side `handleDownloadPDF` method to use `apiClient.exportPdf(payload)`. This leverages the shared `fetchWithRetry` utility, automatically attaching the JWT from `sessionStorage`.
+- **UI Improvements**:
+  - Implemented robust UI error handling for PDF export failures via toast notifications.
+  - Added a `"DRAFT — NOT HUMAN REVIEWED"` watermark to the `ExportBriefModal` that is displayed when the `reviewStatus` is pending/not approved.
+- **Tests**: Created a new `tests/pdf_auth.test.ts` suite to verify PDF export endpoint auth gating.
+
+### Verification
+- Independent UAT confirmed PDF export succeeds (200 OK) with real assessment data for fully authenticated, approved sessions.
+- Unauthenticated requests correctly return 401. Empty bodies return 400.
+- All production persistence and health checks pass. **Production is closed.**
 
 ---
 
