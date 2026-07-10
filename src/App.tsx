@@ -433,17 +433,19 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
 
   // ─── Draft Score Generation (Demo Participant) ──────────────
   const handleGenerateDraftScores = useCallback(() => {
+    let wasRegeneration = false;
     setMarketScores((prev) => {
       const updated = { ...prev };
       for (const marketId of selectedMarketIds) {
         const draft = DEMO_MARKET_SCORES[marketId];
+        if (updated[marketId]?.draftGenerated) wasRegeneration = true;
         if (draft) {
           updated[marketId] = {
             ...draft,
             draftGenerated: true,
             userAdjusted: {},
           };
-        } else if (!updated[marketId]?.draftGenerated) {
+        } else {
           // For custom markets without pre-defined drafts, mark as draft with default scores
           updated[marketId] = {
             ...updated[marketId],
@@ -454,7 +456,11 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       }
       return updated;
     });
-    toast.success("Draft scores generated. Review and adjust as needed.");
+    toast.success(
+      wasRegeneration
+        ? "Draft scores regenerated. Previous adjustments have been reset."
+        : "Draft scores generated. Review and adjust as needed."
+    );
   }, [selectedMarketIds, toast]);
 
   const handleMarkUserAdjusted = useCallback((

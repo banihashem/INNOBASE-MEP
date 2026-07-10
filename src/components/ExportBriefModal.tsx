@@ -191,10 +191,10 @@ export default function ExportBriefModal({
               </div>
             </section>
 
-            {/* 3. Product Strategy */}
+            {/* 3. Offering Strategy */}
             <section className="space-y-3">
               <h2 className="text-lg font-bold font-display text-indigo-400 uppercase tracking-wider">
-                3. Product Strategy
+                3. Offering Strategy
               </h2>
               <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-2">
                 <p className="text-sm text-slate-200">

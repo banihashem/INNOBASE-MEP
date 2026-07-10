@@ -50,12 +50,15 @@ export default function SessionManager({
 }: SessionManagerProps) {
   const [sessions, setSessions] = useState<ApiSessionMeta[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
+      setIsLoading(true);
       apiClient.sessions.list()
         .then((res: { sessions: ApiSessionMeta[] }) => setSessions(res.sessions || []))
-        .catch((err) => console.error("Failed to list sessions:", err));
+        .catch((err) => console.error("Failed to list sessions:", err))
+        .finally(() => setIsLoading(false));
     }
   }, [isOpen]);
 
@@ -217,7 +220,14 @@ export default function SessionManager({
             </>
           )}
 
-          {pastSessions.length === 0 && !activeSession && (
+          {isLoading && (
+            <div className="text-center py-8">
+              <div className="w-6 h-6 border-2 border-slate-600 border-t-teal-400 rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm text-slate-400">Loading sessions…</p>
+            </div>
+          )}
+
+          {!isLoading && pastSessions.length === 0 && !activeSession && (
             <div className="text-center py-8">
               <FileText className="w-8 h-8 text-slate-600 mx-auto mb-3" />
               <p className="text-sm text-slate-400">No previous sessions</p>

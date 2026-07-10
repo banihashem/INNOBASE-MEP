@@ -140,10 +140,10 @@ assert(
   "ScoringEvidenceScreen renders User Adjusted badge with correct ID"
 );
 
-// 4.5 Badge appears only after draft generation
+// 4.5 Badge triggers on any score change (onMarkUserAdjusted called)
 assert(
-  scoringSrc.includes("currentScoreInput.draftGenerated"),
-  "User Adjusted badge only triggers after draft scores have been generated"
+  scoringSrc.includes("if (onMarkUserAdjusted)"),
+  "User Adjusted badge triggers on any score change when onMarkUserAdjusted exists"
 );
 
 // ─── 5. RBAC Regression Check ──────────────────────────

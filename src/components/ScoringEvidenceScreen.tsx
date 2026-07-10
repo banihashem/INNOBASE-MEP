@@ -6,6 +6,7 @@ import {
   EvidenceBasis,
   EVIDENCE_BASIS_OPTIONS,
   DEMO_MARKET_SCORES,
+  EVIDENCE_BASIS_SCORE_MAP,
   AppMode,
 } from "../types";
 import { AlertTriangle, ChevronRight, Sparkles, PenLine } from "lucide-react";
@@ -155,8 +156,8 @@ export default function ScoringEvidenceScreen({
     val: number
   ) => {
     onUpdateScores(currentId, { [dim]: val });
-    // Mark dimension as user-adjusted if changed after draft generation
-    if (isDemo && onMarkUserAdjusted && currentScoreInput.draftGenerated) {
+    // Mark dimension as user-adjusted whenever scores are changed
+    if (onMarkUserAdjusted) {
       onMarkUserAdjusted(currentId, dim);
     }
   };
@@ -166,6 +167,20 @@ export default function ScoringEvidenceScreen({
   ) => {
     onUpdateEvidence(currentId, currentScoreInput.evidenceBasis, conf);
   };
+
+  // Deterministic overall confidence from per-dimension evidence sources
+  const computedConfidence: MarketScoreInput["evidenceConfidence"] = (() => {
+    const dimEv = currentScoreInput.dimensionEvidence;
+    if (!dimEv) return currentScoreInput.evidenceConfidence || "Low";
+    const scores = Object.values(dimEv).map(
+      (basis) => EVIDENCE_BASIS_SCORE_MAP[basis as string] ?? 30
+    );
+    if (scores.length === 0) return currentScoreInput.evidenceConfidence || "Low";
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    if (avg >= 85) return "High";
+    if (avg >= 55) return "Medium";
+    return "Low";
+  })();
 
   const getConfidenceColor = (
     conf: MarketScoreInput["evidenceConfidence"]
@@ -190,7 +205,7 @@ export default function ScoringEvidenceScreen({
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold font-display text-white tracking-tight">
-            Strategic Metric Scoring
+            Scoring & Evidence
           </h2>
           <p className="text-sm text-slate-400 mt-1">
             {isDemo
@@ -202,16 +217,11 @@ export default function ScoringEvidenceScreen({
           <button
             type="button"
             onClick={onGenerateDraftScores}
-            disabled={anyDraftGenerated}
-            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-              anyDraftGenerated
-                ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed"
-                : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-950/40 cursor-pointer"
-            }`}
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-950/40 cursor-pointer"
             id="generate-draft-scores-btn"
           >
             <Sparkles className="w-4 h-4" />
-            <span>{anyDraftGenerated ? "Draft Scores Applied" : "Generate Draft Scores"}</span>
+            <span>{anyDraftGenerated ? "Regenerate Draft Scores" : "Generate Draft Scores"}</span>
           </button>
         )}
       </div>
@@ -304,14 +314,14 @@ export default function ScoringEvidenceScreen({
               </p>
             </div>
 
-            {/* Overall Confidence — Read-Only Computed */}
+            {/* Overall Confidence — Computed from per-dimension evidence */}
             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-3 min-w-[260px]">
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
                   Overall Confidence <span className="text-[9px] text-slate-600 font-normal ml-1">(System-Computed)</span>
                 </label>
-                <div className={`px-3 py-2 rounded border text-sm font-semibold text-center ${getConfidenceColor(currentScoreInput.evidenceConfidence)}`}>
-                  {currentScoreInput.evidenceConfidence}
+                <div className={`px-3 py-2 rounded border text-sm font-semibold text-center ${getConfidenceColor(computedConfidence)}`}>
+                  {computedConfidence}
                 </div>
                 <p className="text-[10px] text-slate-500 leading-relaxed mt-1">
                   Based on the evidence sources and validation status across the selected criteria.
