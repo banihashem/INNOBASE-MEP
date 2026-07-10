@@ -350,19 +350,27 @@ END;
 $$ language 'plpgsql';
 
 -- Apply auto-update trigger to all tables with updated_at
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_companies_updated_at ON companies;
 CREATE TRIGGER update_companies_updated_at BEFORE UPDATE ON companies
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_sessions_updated_at ON assessment_sessions;
 CREATE TRIGGER update_sessions_updated_at BEFORE UPDATE ON assessment_sessions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_options_updated_at ON expansion_options;
 CREATE TRIGGER update_options_updated_at BEFORE UPDATE ON expansion_options
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_scores_updated_at ON scores;
 CREATE TRIGGER update_scores_updated_at BEFORE UPDATE ON scores
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_assumptions_updated_at ON assumption_cards;
 CREATE TRIGGER update_assumptions_updated_at BEFORE UPDATE ON assumption_cards
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_risks_updated_at ON risk_cards;
 CREATE TRIGGER update_risks_updated_at BEFORE UPDATE ON risk_cards
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_roadmap_updated_at ON roadmap_actions;
 CREATE TRIGGER update_roadmap_updated_at BEFORE UPDATE ON roadmap_actions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
