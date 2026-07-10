@@ -166,14 +166,37 @@
 
 ## Summary
 
-**30/30 HTTP RBAC tests pass.**
+**43/43 HTTP RBAC tests pass** (including 8 admin governance tests).
 **37/37 code-path RBAC tests pass.**
 **117/117 scoring engine tests pass.**
+**23/23 PostgreSQL migration tests pass** (Docker-based, PostgreSQL 15).
 **5/5 copy scan tests pass.**
 **Browser UAT completed through Steps 1–7 with API server running.**
+**Custom market UAT: Iraq + Germany added, scored, dashboarded.**
 
-### Known Limitations
+### Admin Governance (NEW)
+- Administrator self-demotion: BLOCKED (403 + audit event)
+- Last-admin removal: BLOCKED (403 + audit event)
+- Demo self-promotion: BLOCKED (403)
+- Consultant role change: BLOCKED (403)
+- Valid admin operations: PRESERVED (200)
 
-1. **Iraq/Germany custom markets**: Not tested as custom add-market feature during browser UAT. Default starter markets were used instead.
-2. **PDF export signature**: Crafted test JWTs cannot pass Google signature verification. Server logs confirm real PDF export functionality works for Admin/Consultant roles.
-3. **Sign-out/sign-in resume**: Requires real Google OAuth flow which cannot be automated with crafted JWTs.
+### Custom Market Verification (RESOLVED)
+- Iraq added as custom market ✅
+- Germany added as custom market ✅
+- All 3 markets (UAE, Iraq, Germany) scored ✅
+- Dashboard: UAE (77), Germany (57), Iraq (56) ✅
+- Scoring adjustments persisted ✅
+
+### PostgreSQL Migration (NEW)
+- All 5 migrations execute on PostgreSQL 15 ✅
+- CHECK constraint includes `demo_participant` ✅
+- Administrator/Consultant roles preserved ✅
+- Idempotent re-run verified ✅
+- No destructive mutations ✅
+
+### Known Limitations (Remaining)
+
+1. **PDF export signature**: Crafted test JWTs cannot pass Google signature verification. Server logs confirm real PDF export functionality works for Admin/Consultant roles.
+2. **Sign-out/sign-in resume**: Requires real Google OAuth flow which cannot be automated with crafted JWTs. Requires Demo Participant Google test email to be provided.
+3. **Custom market refresh persistence**: Session API autosave was operational during UAT, but explicit refresh-persistence test was not completed. Custom markets are stored in `stateSnapshot.customMarkets` which is persisted via session update.

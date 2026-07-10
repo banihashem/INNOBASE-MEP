@@ -68,7 +68,7 @@
 
 | Version | Date | Summary |
 |---------|------|---------|
-| 4.3.6+demo | 2026-07-10 | Demo refinement sprint: demo_participant role, AI-assisted scoring, RBAC hardening (branch: feature/demo-refinement-sprint, NOT DEPLOYED) |
+| 4.3.6+demo | 2026-07-10 | Demo refinement sprint: demo_participant role, AI-assisted scoring, admin governance (self-demotion/last-admin), PostgreSQL migration verified (branch: feature/demo-refinement-sprint, NOT DEPLOYED) |
 | 4.3.6 | 2026-07-04 | Final production PDF export auth remediation |
 | 4.3.5 | 2026-07-04 | Final production persistence fix (SessionManager hydrate & auth loop fix) |
 | 4.1.1 | 2026-07-03 | P0 auth hotfix: placeholder Client ID removal, demo identity removal, PDF auth, build guards |

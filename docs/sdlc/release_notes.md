@@ -13,7 +13,7 @@
 **Status**: DEMO-ROLE-REFINEMENT-READY-FOR-INDEPENDENT-UAT  
 
 ### Summary
-Demo Participant role RBAC implementation with AI-assisted scoring, user adjustment tracking, and full-stack verification pass.
+Demo Participant role RBAC implementation with AI-assisted scoring, user adjustment tracking, admin governance security, and full-stack + PostgreSQL verification pass.
 
 ### Changes
 - **New RBAC role**: `demo_participant` — auto-provisioned on first login
@@ -21,7 +21,12 @@ Demo Participant role RBAC implementation with AI-assisted scoring, user adjustm
 - **User adjustment markers**: "User Adjusted" badges on manually modified dimensions
 - **Server-side persistence**: Auto-save enabled for free-demo sessions (was incorrectly bypassed)
 - **Migration 005**: Idempotent `demo_participant` role addition with dynamic constraint discovery and rollback plan
-- **RBAC enforcement**: 30 real HTTP tests + 37 code-path assertions verifying demo_participant access controls
+- **Admin governance (SECURITY)**:
+  - Administrator cannot change own role (self-demotion prevention)
+  - Last remaining Administrator cannot be demoted or deleted (last-admin preservation)
+  - Audit events logged for blocked self-role-change and last-admin-change attempts
+  - `countAdministrators()` DB method added for guard checks
+- **RBAC enforcement**: 43 real HTTP tests + 37 code-path assertions verifying access controls
 
 ### Locked for Demo Participant
 - PDF export (403)
@@ -37,10 +42,12 @@ Demo Participant role RBAC implementation with AI-assisted scoring, user adjustm
 ### Verification
 - Scoring engine: 117/117 pass
 - Code-path RBAC: 37/37 pass
-- HTTP RBAC: 30/30 pass
+- HTTP RBAC: 43/43 pass (includes 8 admin governance tests)
+- PostgreSQL migration: 23/23 pass (Docker-based, PostgreSQL 15)
 - Copy scan: 5/5 pass
 - Build: clean (1703 modules)
 - Browser UAT: Steps 1–7 completed with full-stack
+- Custom market UAT: Iraq + Germany added, scored, dashboarded
 - Migration: idempotent, no existing user data affected
 
 ---
