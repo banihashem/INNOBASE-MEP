@@ -12,6 +12,7 @@
 **Branch**: `feature/demo-refinement-sprint`  
 **Date**: 2026-07-11  
 **Status**: DEMO-REFINEMENT-PRODUCTION-DEPLOYED-PASS  
+**Independent Smoke**: PRODUCTION-SMOKE-PASS (2026-07-11)  
 **Tag**: `v4.3.7-demo-refinement`
 
 ### Summary

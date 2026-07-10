@@ -3,7 +3,7 @@
 **Date**: 2026-07-11  
 **Version**: 4.3.7  
 **Tag**: v4.3.7-demo-refinement  
-**Status**: PRODUCTION-VERIFIED-PASS
+**Status**: PRODUCTION-VERIFIED-PASS / PRODUCTION-SMOKE-PASS
 
 ---
 
@@ -98,3 +98,26 @@
 | **Rollback Digest** | `sha256:c9ce8cb27bd6d9dc37696701eb819ec089be3bf3cf5a0316d099551c8cdc7a0e` |
 | **Rollback Command** | `gcloud run services update-traffic market-entry-prioritizer --to-revisions=market-entry-prioritizer-00040-x7z=100 --region=europe-west2` |
 | **DB Rollback** | See migration 005 rollback plan in SQL file |
+
+---
+
+## Independent Production Smoke (2026-07-11)
+
+**Result**: PRODUCTION-SMOKE-PASS  
+**Verified by**: Independent UAT  
+
+- [x] Production URL loads: https://mep.innobase.app
+- [x] Demo Participant login (innobaseae@gmail.com) works
+- [x] role = demo_participant
+- [x] productMode = free-demo
+- [x] label = MEP-light Beta Demo v1.6
+- [x] POST /api/v2/sessions → 201
+- [x] PATCH /api/v2/sessions/:id → 200
+- [x] Refresh persistence passes
+- [x] Step 5 heading = Strategic Metric Scoring
+- [x] Export Brief shows MEP-light Beta Demo v1.6
+- [x] Step 8 locked
+- [x] Download Report — Full Version locked
+- [x] Human Review approve/flag unavailable
+- [x] Consultant/Admin UI unavailable
+- [x] No rollback recommended

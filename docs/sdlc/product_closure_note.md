@@ -2,7 +2,8 @@
 
 **Date**: 2026-07-11  
 **Version**: 4.3.7  
-**Status**: PRODUCTION-CLOSED-PASS  
+**Status**: DEMO-REFINEMENT-PRODUCTION-DEPLOYED-PASS  
+**Independent Smoke**: PRODUCTION-SMOKE-PASS (2026-07-11)  
 **Tag**: v4.3.7-demo-refinement
 
 ---
@@ -65,3 +66,4 @@ MEP-light™ v4.3.7 is the Demo Refinement Sprint production release. It introdu
 ## Known Non-Blocking Follow-ups
 - `v4.3.7` and `CONSULTANT MODE` strings exist in compiled JS but are behind `appMode !== "free-demo"` ternary gates — never rendered for Demo Participant
 - Consider merging `feature/demo-refinement-sprint` into `main` after stabilization period
+- **Step 5→6 progression**: Document intended behavior for demo accounts when evidence confidence caps keep the "Continue" button disabled. If Overall Confidence remains "Low" (e.g., no per-dimension evidence sources selected), the step-progression gate may block advancement to Step 6. Determine whether demo accounts should auto-unlock Step 6 after Generate Draft Scores, or whether the confidence-based gate should apply equally to all modes.
