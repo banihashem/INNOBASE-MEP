@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const client = new pg.Client({
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD,
-  database: 'mep_staging',
+  database: process.env.DB_NAME || 'mep_staging',
   host: process.env.CLOUD_SQL_SOCKET || '/cloudsql/innobase-mep-light:europe-west2:mep-light-db',
 });
 

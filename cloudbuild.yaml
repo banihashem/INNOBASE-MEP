@@ -56,7 +56,7 @@ steps:
       - '--build-arg'
       - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.3.1'
+      - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.3.7'
       - '-t'
       - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
       - '.'
@@ -70,10 +70,29 @@ steps:
       - 'push'
       - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
 
+  # Step 4.5: Run database migrations via Cloud Run Job
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'migrate'
+    waitFor: ['push-image']
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud run jobs deploy migrate-production \
+          --image gcr.io/$PROJECT_ID/market-entry-prioritizer:latest \
+          --command node \
+          --args backend/apply_migrations.js \
+          --region ${_REGION} \
+          --set-cloudsql-instances ${_CLOUD_SQL_CONN} \
+          --set-secrets DB_PASSWORD=mep-db-password:latest \
+          --update-env-vars DB_USER=mep_app,DB_NAME=mep_production
+
+        gcloud run jobs execute migrate-production --region ${_REGION} --wait
+
   # Step 5: Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'deploy'
-    waitFor: ['push-image']
+    waitFor: ['migrate']
     entrypoint: 'gcloud'
     args:
       - 'run'
@@ -106,7 +125,7 @@ steps:
       - '--allow-unauthenticated'
 
 images:
-  - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.3.1'
+  - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:v4.3.7'
   - 'gcr.io/$PROJECT_ID/market-entry-prioritizer:latest'
 
 substitutions:
