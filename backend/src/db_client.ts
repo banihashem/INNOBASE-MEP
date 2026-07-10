@@ -442,6 +442,20 @@ class MepDatabase {
     return result.rows.map((r: any) => this.mapPgUser(r));
   }
 
+  async countAdministrators(): Promise<number> {
+    if (this.config.type === "sqlite") {
+      const row = this.sqliteDb!.prepare(
+        "SELECT COUNT(*) as count FROM users WHERE role = 'Administrator' AND status = 'active'"
+      ).get() as { count: number };
+      return row.count;
+    }
+    const result = await this.pgPool.query(
+      "SELECT COUNT(*) as count FROM users WHERE role = 'Administrator' AND status = 'active'"
+    );
+    return parseInt(result.rows[0].count, 10);
+  }
+
+
   // ─── Session Operations ─────────────────────────────────────────
 
   async createSession(session: {

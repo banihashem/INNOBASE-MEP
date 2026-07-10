@@ -1071,8 +1071,59 @@ app.patch("/api/v2/users/:id", async (req: Request, res: Response) => {
   }
 
   const { role } = req.body;
-  // Currently only role update is supported via db_client
+
   if (role !== undefined) {
+    // ── Guard 1: Prevent Administrator self-demotion ──
+    if (dbUser.email === caller.email && caller.role === "Administrator" && role !== "Administrator") {
+      await db.recordAuditEvent({
+        action: "self_role_change_blocked",
+        eventType: "admin_self_demotion_blocked",
+        component: "security",
+        safeMetadata: {
+          email: caller.email,
+          attemptedRole: role,
+          currentRole: "Administrator",
+        },
+      });
+      logEvent({
+        level: "warn",
+        component: "security",
+        event_type: "admin_self_demotion_blocked",
+        message: `Administrator self-demotion blocked: ${caller.email} attempted to change own role to ${role}`,
+      });
+      res.status(403).json({
+        error: "Administrators cannot change their own role. Ask another Administrator to perform this action.",
+      });
+      return;
+    }
+
+    // ── Guard 2: Preserve last Administrator ──
+    if (dbUser.role === "Administrator" && role !== "Administrator") {
+      const adminCount = await db.countAdministrators();
+      if (adminCount <= 1) {
+        await db.recordAuditEvent({
+          action: "last_admin_change_blocked",
+          eventType: "last_admin_preservation",
+          component: "security",
+          safeMetadata: {
+            email: dbUser.email,
+            attemptedRole: role,
+            adminCount,
+          },
+        });
+        logEvent({
+          level: "warn",
+          component: "security",
+          event_type: "last_admin_preservation",
+          message: `Last Administrator preservation: cannot change ${dbUser.email} from Administrator to ${role} (${adminCount} admin(s) remaining)`,
+        });
+        res.status(403).json({
+          error: "At least one Administrator must remain.",
+        });
+        return;
+      }
+    }
+
     await db.updateUserRole(dbUser.email, role);
   }
 
@@ -1083,6 +1134,18 @@ app.patch("/api/v2/users/:id", async (req: Request, res: Response) => {
   }
 
   const user = mapDbUserToUserRecord(updated);
+
+  await db.recordAuditEvent({
+    action: "user_role_updated",
+    eventType: "admin_role_change",
+    component: "admin",
+    safeMetadata: {
+      targetEmail: user.email,
+      newRole: user.role,
+      changedBy: caller.email,
+    },
+  });
+
   console.log(`[User] Updated by admin: ${user.email} → role=${user.role}, status=${user.status}`);
   res.json({ success: true, user: sanitizeUser(user) });
 });
@@ -1101,6 +1164,23 @@ app.delete("/api/v2/users/:id", async (req: Request, res: Response) => {
   if (!dbUser) {
     res.status(404).json({ error: "User not found" });
     return;
+  }
+
+  // ── Guard: Preserve last Administrator ──
+  if (dbUser.role === "Administrator") {
+    const adminCount = await db.countAdministrators();
+    if (adminCount <= 1) {
+      logEvent({
+        level: "warn",
+        component: "security",
+        event_type: "last_admin_delete_blocked",
+        message: `Cannot deactivate last Administrator: ${dbUser.email}`,
+      });
+      res.status(403).json({
+        error: "At least one Administrator must remain.",
+      });
+      return;
+    }
   }
 
   // Deactivate via role update (deactivation support pending full CRUD in db_client)

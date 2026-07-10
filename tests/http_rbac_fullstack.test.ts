@@ -331,7 +331,8 @@ async function run() {
   );
 
   // Verify admin can upgrade a user's role
-  const usersData = adminUsersRes.body as any;
+  const usersRaw = adminUsersRes.body as any;
+  const usersData = usersRaw?.users || (Array.isArray(usersRaw) ? usersRaw : []);
   let consultantUserId: string | null = null;
   if (Array.isArray(usersData)) {
     const consultantUser = usersData.find((u: any) => u.email === "consultant@kashkam.test");
@@ -351,6 +352,108 @@ async function run() {
     );
   } else {
     console.log("    ℹ Skipping role update test — consultant user not found");
+  }
+
+  // 5.5. Admin Governance — Self-Demotion & Last-Admin Protection
+  console.log("\n  Section 5.5: Admin Governance — Self-Demotion & Last-Admin\n");
+
+  // Find admin user ID from the user list
+  let adminUserId: string | null = null;
+  if (Array.isArray(usersData)) {
+    const adminUser = usersData.find((u: any) => u.email === "ehsan.banihashem@gmail.com");
+    if (adminUser) {
+      adminUserId = adminUser.userId || adminUser.id;
+    }
+  }
+
+  if (adminUserId) {
+    // Test 1: Admin cannot demote self to demo_participant
+    const selfDemote1 = await http("PATCH", `/api/v2/users/${adminUserId}`, ADMIN_JWT, {
+      role: "demo_participant",
+    });
+    assert(
+      selfDemote1.status === 403,
+      `Admin cannot demote self to demo_participant (403)`, `got ${selfDemote1.status}`
+    );
+    const selfDemote1Body = selfDemote1.body as any;
+    assert(
+      selfDemote1Body?.error?.includes("cannot change their own role"),
+      `Self-demotion error message is correct`,
+      `got "${selfDemote1Body?.error}"`
+    );
+
+    // Test 2: Admin cannot change own role to Consultant
+    const selfDemote2 = await http("PATCH", `/api/v2/users/${adminUserId}`, ADMIN_JWT, {
+      role: "Consultant",
+    });
+    assert(
+      selfDemote2.status === 403,
+      `Admin cannot change own role to Consultant (403)`, `got ${selfDemote2.status}`
+    );
+
+    // Test 3: Admin cannot remove last Administrator (Ehsan is the only admin)
+    // Since Ehsan is the only admin and trying to change self → already blocked by Guard 1
+    // To test Guard 2 (last-admin), we need a second admin to try to demote Ehsan
+    // We'll use the "other-user" account: first make them admin, then try to demote Ehsan from that account
+    // But since we only have one real admin, we verify the last-admin guard via a different approach:
+    // Try to DELETE the admin user
+    const deleteAdmin = await http("DELETE", `/api/v2/users/${adminUserId}`, ADMIN_JWT);
+    assert(
+      deleteAdmin.status === 403,
+      `Cannot delete last Administrator (403)`, `got ${deleteAdmin.status}`
+    );
+    const deleteBody = deleteAdmin.body as any;
+    assert(
+      deleteBody?.error?.includes("at least one Administrator") || deleteBody?.error?.includes("At least one Administrator"),
+      `Last-admin delete error message is correct`,
+      `got "${deleteBody?.error}"`
+    );
+
+    // Test 4: Verify Ehsan's role is still Administrator after blocked attempts
+    const verifyRes = await http("GET", "/api/v2/users", ADMIN_JWT);
+    const verifyData = verifyRes.body as any;
+    if (Array.isArray(verifyData)) {
+      const ehsanAfter = verifyData.find((u: any) => u.email === "ehsan.banihashem@gmail.com");
+      assert(
+        ehsanAfter?.role === "Administrator",
+        `Ehsan's role unchanged after blocked attempts`, `got "${ehsanAfter?.role}"`
+      );
+    }
+  } else {
+    console.log("    ℹ Skipping admin governance tests — admin user ID not found");
+  }
+
+  // Test 5: Demo Participant still cannot self-promote
+  const demoSelfPromote = await http("PATCH", `/api/v2/users/user_demo_001`, DEMO_JWT, {
+    role: "Administrator",
+  });
+  assert(
+    demoSelfPromote.status === 403,
+    `Demo cannot self-promote to Administrator (403)`, `got ${demoSelfPromote.status}`
+  );
+
+  // Test 6: Consultant cannot change any roles
+  const consultantRoleChange = await http("PATCH", `/api/v2/users/user_demo_001`, CONSULTANT_JWT, {
+    role: "Consultant",
+  });
+  assert(
+    consultantRoleChange.status === 403,
+    `Consultant cannot change user roles (403)`, `got ${consultantRoleChange.status}`
+  );
+
+  // Test 7: Valid admin operation — admin can change a non-admin user's role
+  if (consultantUserId) {
+    const validChange = await http("PATCH", `/api/v2/users/${consultantUserId}`, ADMIN_JWT, {
+      role: "demo_participant",
+    });
+    assert(
+      validChange.status === 200,
+      `Admin can change non-admin user's role (200)`, `got ${validChange.status}`
+    );
+    // Restore back to Consultant
+    await http("PATCH", `/api/v2/users/${consultantUserId}`, ADMIN_JWT, {
+      role: "Consultant",
+    });
   }
 
   // 6. No 5xx errors
