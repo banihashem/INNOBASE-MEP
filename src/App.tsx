@@ -582,7 +582,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
           status: currentStep >= 7 ? "completed" : "in_progress",
           currentStep,
           completionPercent: Math.round((Math.max(currentStep - 1, 0) / 7) * 100),
-          stateSnapshot: JSON.stringify(stateSnapshotRef.current),
+          stateSnapshot: stateSnapshotRef.current,
         };
         
         if (sessionId) {
@@ -614,6 +614,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       } catch (err) {
         console.warn("[MEP] Auto-save to server failed:", err);
         setSaveStatus("error");
+        toast.error("Changes could not be saved. Please check your connection before continuing.");
       }
     }, 2000);
     return () => clearTimeout(timer);
@@ -808,7 +809,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         </div>
         
         {/* ─── Save Status Indicator ─── */}
-        {appMode !== "free-demo" && (
+        {authUser && (
           <div className="absolute top-16 right-4 flex items-center space-x-1.5 px-3 py-1 bg-slate-900/80 border border-slate-700/50 rounded-full text-[10px] font-mono text-slate-400">
             {saveStatus === "saving" && (
               <>

@@ -1255,6 +1255,14 @@ app.post("/api/v2/sessions", async (req: Request, res: Response) => {
   const sessionId = id || `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   let finalStateSnapshot = stateSnapshot || {};
+  // Guard: deserialize stateSnapshot if it arrives as a JSON string
+  if (typeof finalStateSnapshot === "string") {
+    try {
+      finalStateSnapshot = JSON.parse(finalStateSnapshot);
+    } catch {
+      finalStateSnapshot = {};
+    }
+  }
   if (user.role === "demo_participant") {
     if (finalStateSnapshot.appMode && finalStateSnapshot.appMode !== "free-demo") {
       logEvent({
@@ -1352,70 +1360,109 @@ app.get("/api/v2/sessions/:id", async (req: Request, res: Response) => {
 // ─── PATCH /api/v2/sessions/:id — Update session ────────
 
 app.patch("/api/v2/sessions/:id", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
-  if (!jwt?.email) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
-  }
+  try {
+    const jwt = extractJwtUser(req);
+    if (!jwt?.email) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
 
-  const session = await db.findSessionById(req.params.id);
-  if (!session) {
-    res.status(404).json({ error: "Session not found" });
-    return;
-  }
+    const session = await db.findSessionById(req.params.id);
+    if (!session) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
 
-  const user = await findUserByEmail(jwt.email);
-  if (!user || session.user_id !== user.userId) {
-    res.status(403).json({ error: "Access denied" });
-    return;
-  }
+    const user = await findUserByEmail(jwt.email);
+    if (!user || session.user_id !== user.userId) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
 
-  const { title, status, inputData, outputData, stateSnapshot, currentStep, completionPercent, reviewStatus } = req.body;
+    const { title, status, inputData, outputData, stateSnapshot, currentStep, completionPercent, reviewStatus } = req.body;
 
-  let finalStateSnapshot = stateSnapshot;
-  if (user.role === "demo_participant" && finalStateSnapshot) {
-    if (finalStateSnapshot.appMode && finalStateSnapshot.appMode !== "free-demo") {
+    // Guard: deserialize stateSnapshot if it arrives as a JSON string (double-serialization)
+    let finalStateSnapshot = stateSnapshot;
+    if (typeof finalStateSnapshot === "string") {
+      try {
+        finalStateSnapshot = JSON.parse(finalStateSnapshot);
+      } catch {
+        logEvent({
+          level: "warn",
+          component: "sessions",
+          event_type: "session_update_failed",
+          message: `Invalid stateSnapshot JSON string in PATCH for session ${req.params.id}`,
+        });
+        res.status(400).json({ error: "Invalid stateSnapshot format" });
+        return;
+      }
+    }
+
+    // Normalize mode for demo_participant
+    if (user.role === "demo_participant" && finalStateSnapshot) {
+      if (finalStateSnapshot.appMode && finalStateSnapshot.appMode !== "free-demo") {
+        logEvent({
+          level: "warn",
+          component: "sessions",
+          event_type: "demo_escalation_attempt",
+          message: `Demo participant attempted to update session with escalated appMode: ${finalStateSnapshot.appMode}`,
+        });
+      }
+      finalStateSnapshot.appMode = "free-demo";
+    }
+
+    // Block demo_participant from setting reviewStatus to approved
+    let finalReviewStatus = reviewStatus;
+    if (user.role === "demo_participant" && reviewStatus === "approved") {
       logEvent({
         level: "warn",
         component: "sessions",
         event_type: "demo_escalation_attempt",
-        message: `Demo participant attempted to update session with escalated appMode: ${finalStateSnapshot.appMode}`,
+        message: `Demo participant attempted to set reviewStatus to approved for session ${req.params.id}`,
       });
+      finalReviewStatus = undefined; // Do not update reviewStatus
     }
-    finalStateSnapshot.appMode = "free-demo";
+
+    const updated = await db.updateSession(req.params.id, {
+      title,
+      status,
+      inputData,
+      outputData,
+      stateSnapshot: finalStateSnapshot,
+      currentStep,
+      completionPercent,
+      reviewStatus: finalReviewStatus,
+    });
+
+    if (!updated) {
+      res.status(500).json({ error: "Failed to update session" });
+      return;
+    }
+
+    await db.recordAuditEvent({
+      action: "session_updated",
+      eventType: "session_updated",
+      userId: user.userId,
+      sessionId: req.params.id,
+      component: "sessions",
+    });
+
+    res.json({
+      sessionId: updated.id,
+      title: updated.title,
+      status: updated.status,
+      reviewStatus: updated.review_status,
+      updatedAt: updated.updated_at,
+    });
+  } catch (error: any) {
+    logEvent({
+      level: "error",
+      component: "sessions",
+      event_type: "session_update_failed",
+      message: `PATCH /api/v2/sessions/${req.params.id} failed: ${error?.message || "Unknown error"}`,
+    });
+    res.status(500).json({ error: "Internal server error during session update" });
   }
-
-  const updated = await db.updateSession(req.params.id, {
-    title,
-    status,
-    inputData,
-    outputData,
-    stateSnapshot: finalStateSnapshot,
-    currentStep,
-    completionPercent,
-    reviewStatus,
-  });
-
-  if (!updated) {
-    res.status(500).json({ error: "Failed to update session" });
-    return;
-  }
-
-  await db.recordAuditEvent({
-    action: "session_updated",
-    eventType: "session_updated",
-    userId: user.userId,
-    sessionId: req.params.id,
-    component: "sessions",
-  });
-
-  res.json({
-    sessionId: updated.id,
-    title: updated.title,
-    status: updated.status,
-    reviewStatus: updated.review_status,
-    updatedAt: updated.updated_at,
-  });
 });
 
 // ─── POST /api/v2/sessions/:id/review — Set review status ──
