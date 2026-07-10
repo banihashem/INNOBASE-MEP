@@ -258,13 +258,6 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
 
   const features = [
     {
-      icon: <BarChart3 className="w-6 h-6" />,
-      title: "Deterministic Scoring Engine",
-      description:
-        "Pure mathematical scoring — no AI hallucinations. Every score is reproducible, auditable, and board-ready.",
-      color: "from-teal-400 to-cyan-400",
-    },
-    {
       icon: <Globe2 className="w-6 h-6" />,
       title: "9-Dimension Analysis",
       description:
@@ -272,33 +265,19 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
       color: "from-indigo-400 to-purple-400",
     },
     {
-      icon: <Shield className="w-6 h-6" />,
-      title: "Certainty Guardrail™",
-      description:
-        "Automatic downgrade when high potential meets low confidence. Prevents premature Tier A classification.",
-      color: "from-amber-400 to-orange-400",
-    },
-    {
-      icon: <Route className="w-6 h-6" />,
-      title: "90-Day Validation Roadmap",
-      description:
-        "Phase-gated action plans with decision milestones. Regulatory, channel, and pilot phases mapped automatically.",
-      color: "from-emerald-400 to-teal-400",
-    },
-    {
       icon: <Layers className="w-6 h-6" />,
-      title: "Evidence-Based Tier System",
+      title: "Evidence-Based Classification",
       description:
-        "Tier A / B / C classification with confidence scoring. Each tier backed by quantified evidence basis.",
+        "Categorize markets into structured tiers with confidence scoring. Each tier is backed by quantified evidence.",
       color: "from-rose-400 to-pink-400",
     },
     {
-      icon: <FileText className="w-6 h-6" />,
-      title: "PDF Export & Board Pack",
+      icon: <Route className="w-6 h-6" />,
+      title: "Validation Roadmap",
       description:
-        "One-click executive-ready report generation. Complete strategic brief with scoring breakdown and assumptions.",
-      color: "from-blue-400 to-indigo-400",
-    },
+        "Generate phase-gated action plans. Structure your regulatory, channel, and pilot phases systematically.",
+      color: "from-emerald-400 to-teal-400",
+    }
   ];
 
   const steps = [
@@ -394,7 +373,7 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
             <div className="landing-logo-icon">
               <Globe2 className="w-5 h-5" />
             </div>
-            <span className="landing-logo-text">MEP-light™</span>
+            <span className="landing-logo-text">MEP-light Beta Demo v1.6</span>
             <span className="landing-logo-tag">by INNOBASE</span>
           </div>
           {renderGoogleButtonContainer(navButtonRef, "nav-google-signin", "Sign in")}
@@ -410,12 +389,12 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
           </div>
           <h1 className="landing-hero-title">
             Prioritize your next market with{" "}
-            <span className="landing-gradient-text">board-ready confidence</span>
+            <span className="landing-gradient-text">strategic clarity</span>
           </h1>
           <p className="landing-hero-subtitle">
-            The deterministic market-entry framework that transforms strategic
-            intuition into evidence-backed, tier-classified expansion roadmaps.
-            No AI hallucinations — pure mathematical scoring.
+            The evidence-informed market-entry framework that transforms strategic
+            intuition into structured expansion roadmaps.
+            No AI hallucinations — pure analytical scoring.
           </p>
           <div className="landing-hero-ctas">
             {renderGoogleButtonContainer(heroButtonRef, "hero-google-signin", "Sign in with Google")}

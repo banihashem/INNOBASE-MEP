@@ -788,7 +788,7 @@ function generateUserId(): string {
  */
 async function autoProvisionUser(jwt: JwtUser): Promise<UserRecord> {
   const isAdminSeed = SEED_ADMIN_EMAIL && jwt.email.toLowerCase() === SEED_ADMIN_EMAIL.toLowerCase();
-  const role = isAdminSeed ? "Administrator" : "Consultant";
+  const role = isAdminSeed ? "Administrator" : "demo_participant";
 
   const dbUser = await db.upsertUser({
     id: generateUserId(),
@@ -948,7 +948,7 @@ app.get("/api/v2/users/stats", async (req: Request, res: Response) => {
   res.json({
     total: allUsers.length,
     byRole,
-    roles: ["Administrator", "Consultant", "Viewer"],
+    roles: ["Administrator", "Consultant", "demo_participant", "Viewer"],
     statuses: Array.from(statuses),
   });
 });
@@ -1027,7 +1027,7 @@ app.post("/api/v2/users", async (req: Request, res: Response) => {
     email,
     name: displayName || email.split("@")[0],
     pictureUrl: "",
-    role: role || "Consultant",
+    role: role || "demo_participant",
   });
 
   const newUser = mapDbUserToUserRecord(dbUser);

@@ -261,7 +261,7 @@ export default function MarketShortlistScreen({
                     </h3>
                   </div>
 
-                  {!isEditing ? (
+                  {appMode === "free-demo" ? null : !isEditing ? (
                     <button
                       onClick={() => startEditing(m)}
                       className="text-slate-400 hover:text-indigo-400 flex items-center space-x-1 text-xs cursor-pointer"
@@ -280,7 +280,11 @@ export default function MarketShortlistScreen({
                   )}
                 </div>
 
-                {isEditing ? (
+                {appMode === "free-demo" ? (
+                  <p className="text-sm text-slate-400 leading-relaxed bg-slate-950/40 p-4 rounded-lg border border-slate-800/40 italic">
+                    Custom market context requires the Consultant tier.
+                  </p>
+                ) : isEditing ? (
                   <textarea
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 min-h-24"
                     value={editingDesc}

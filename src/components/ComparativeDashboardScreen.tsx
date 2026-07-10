@@ -4,6 +4,9 @@ import {
   MarketScoreInput,
   EVIDENCE_BASIS_SCORE_MAP,
   CONFIDENCE_SCORE_MAP,
+  AppMode,
+  CompanySnapshot,
+  ProductStrategy,
 } from "../types";
 import { Trophy, ArrowRight, AlertTriangle } from "lucide-react";
 import StrategicDisclaimer from "./StrategicDisclaimer";
@@ -12,6 +15,9 @@ interface Props {
   selectedMarkets: Market[];
   marketScores: Record<string, MarketScoreInput>;
   onSelectPrimaryMarketForRoadmap: (marketId: string) => void;
+  appMode?: AppMode;
+  companySnapshot?: CompanySnapshot;
+  productStrategy?: ProductStrategy;
 }
 
 export interface CalculatedResult {
@@ -47,6 +53,9 @@ export default function ComparativeDashboardScreen({
   selectedMarkets,
   marketScores,
   onSelectPrimaryMarketForRoadmap,
+  appMode,
+  companySnapshot,
+  productStrategy,
 }: Props) {
   const results: CalculatedResult[] = selectedMarkets.map((market) => {
     const input = marketScores[market.id] || {
@@ -176,6 +185,12 @@ export default function ComparativeDashboardScreen({
       discrepancyAlert,
     };
   });
+
+  const leadingCandidate = results.length > 0 ? results.reduce((prev, current) => 
+    (prev.potentialScore > current.potentialScore) ? prev : current
+  ) : null;
+
+  const isSME = appMode === "free-demo" || (companySnapshot && companySnapshot.sector && companySnapshot.sector.toLowerCase().includes("sme"));
 
   const sortedResults = [...results].sort(
     (a, b) => b.potentialScore - a.potentialScore
@@ -441,21 +456,21 @@ export default function ComparativeDashboardScreen({
       {/* Weight Model Description */}
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-4">
         <h4 className="text-sm uppercase font-semibold text-indigo-400 tracking-wider">
-          SME Diagnostic Weight Framework
+          {isSME ? "SME " : ""}Diagnostic Weight Framework {leadingCandidate ? `— For Leading Candidate (${leadingCandidate.name})` : ""}
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-2">
           {[
             {
               label: "Opportunity (25%)",
-              desc: "Market size adjusted by competitive concentration.",
+              desc: `Market size adjusted by competitive concentration for ${productStrategy?.offeringName || "your offering"}.`,
             },
             {
               label: "Fit (20%)",
-              desc: "Product alignment and brand transferability.",
+              desc: `Product alignment and brand transferability based on ${productStrategy?.selectedStrategy || "selected strategy"}.`,
             },
             {
               label: "Feasibility (25%)",
-              desc: "Distributor path, operations, regulation.",
+              desc: `Distributor path, operations, and ${companySnapshot?.sector ? `${companySnapshot.sector} regulations` : "regulations"}.`,
             },
             {
               label: "Strategic Value (10%)",

@@ -71,18 +71,23 @@ export default function DecisionSetupScreen({
               Decision Mode <span className="text-red-500">*</span>
             </label>
             <select
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
               value={data.decisionMode}
               onChange={(e) =>
                 onChange({ decisionMode: e.target.value as DecisionMode })
               }
+              disabled={appMode === "free-demo"}
               id="decision-mode-select"
             >
-              {DECISION_MODES.map((dm) => (
-                <option key={dm.value} value={dm.value}>
-                  {dm.label}
-                </option>
-              ))}
+              {appMode === "free-demo" ? (
+                <option value="compare">Compare several possible markets + choose the best product-market-channel combination</option>
+              ) : (
+                DECISION_MODES.map((dm) => (
+                  <option key={dm.value} value={dm.value}>
+                    {dm.label}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -113,12 +118,15 @@ export default function DecisionSetupScreen({
               Strategic Objective <span className="text-red-500">*</span>
             </label>
             <textarea
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors h-32 resize-none"
+              className={`w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none transition-colors h-32 resize-none ${
+                appMode === "free-demo" ? "opacity-75 focus:border-slate-800" : "focus:border-indigo-500"
+              }`}
               placeholder="What must this market entry accomplish?"
-              value={data.strategicObjective}
+              value={appMode === "free-demo" ? "Assess baseline viability and market fit before investing in localized product adaptations." : data.strategicObjective}
               onChange={(e) =>
                 onChange({ strategicObjective: e.target.value })
               }
+              readOnly={appMode === "free-demo"}
               id="strategic-objective-input"
             />
           </div>
@@ -143,7 +151,7 @@ export default function DecisionSetupScreen({
           <div className="mt-8 pt-6 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-500">
             <span>Framework: MEP-light™ Decision Framing</span>
             <span className="font-mono bg-slate-800/40 px-2 py-1 rounded text-indigo-300">
-              {appMode === "demo" ? "DEMO_MODE" : "CONSULTANT_MODE"}
+              {appMode === "free-demo" ? "FREE_DEMO_MODE" : appMode === "admin" ? "ADMIN_MODE" : "FACILITATED_MODE"}
             </span>
           </div>
         </div>

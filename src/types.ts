@@ -1,6 +1,6 @@
 export type EvidenceState = "Confirmed" | "Estimated" | "Unknown";
 
-export type AppMode = "demo" | "consultant";
+export type AppMode = "free-demo" | "facilitated" | "admin" | "demo" | "consultant";
 
 export interface CompanySnapshot {
   businessName: string;
@@ -19,7 +19,7 @@ export interface CompanySnapshot {
   };
 }
 
-export type DecisionMode = "compare" | "assess_one" | "entry_mode" | "readiness";
+export type DecisionMode = "New Market Entry Readiness" | "Existing Market Expansion Readiness" | "compare" | "assess_one" | "entry_mode" | "readiness";
 
 export interface DecisionSetup {
   decisionMode: DecisionMode;

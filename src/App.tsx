@@ -149,7 +149,21 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [isInitializing, setIsInitializing] = useState(true);
 
-  const [appMode, setAppMode] = useState<AppMode>("demo");
+  const [appMode, setAppMode] = useState<AppMode>(() => {
+    if (authUser?.role === "demo_participant") return "free-demo";
+    if (authUser?.role === "Consultant") return "facilitated";
+    if (authUser?.role === "Administrator") return "admin";
+    return "free-demo";
+  });
+
+  useEffect(() => {
+    if (authUser) {
+      if (authUser.role === "demo_participant") setAppMode("free-demo");
+      else if (authUser.role === "Consultant") setAppMode("facilitated");
+      else if (authUser.role === "Administrator") setAppMode("admin");
+      else setAppMode("free-demo");
+    }
+  }, [authUser?.role]);
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [maxUnlockedStep, setMaxUnlockedStep] = useState<number>(1);
   const [exportBriefOpen, setExportBriefOpen] = useState(false);
@@ -186,51 +200,6 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
     "Strategic Workshop Notes — June 2026\nInitial assessment session with the executive team."
   );
 
-  // ─── Mode Toggle ────────────────────────────────────────
-  const handleModeToggle = async () => {
-    if (appMode === "demo") {
-      // Switch to Consultant — clear all data and start new session
-      setAppMode("consultant");
-      setDecisionSetup({
-        decisionMode: "compare",
-        expansionHorizon: "12 months",
-        strategicObjective: "",
-      });
-      setCompanySnapshot(BLANK_COMPANY_SNAPSHOT);
-      setProductStrategy({
-        offeringName: "",
-        selectedStrategy: "replication",
-        customAdaptationNotes: "",
-      });
-      setSelectedMarketIds([]);
-      setCustomMarkets([]);
-      setMarketScores({});
-      setConsultantNotes("");
-      setCurrentStep(1);
-      setMaxUnlockedStep(1);
-      setSessionId(null); // Clear to let autosave create a new one on first edit, or create explicitly
-    } else {
-      // Switch to Demo — restore demo data
-      setAppMode("demo");
-      setDecisionSetup(DEMO_DECISION_SETUP);
-      setCompanySnapshot(DEMO_COMPANY_SNAPSHOT);
-      setProductStrategy(DEMO_PRODUCT_STRATEGY);
-      setSelectedMarketIds([
-        "uae",
-        "eu",
-        "north-america",
-      ]);
-      setCustomMarkets([]);
-      setMarketScores(DEMO_MARKET_SCORES);
-      setConsultantNotes(
-        "Strategic Workshop Notes — June 2026\nInitial assessment session."
-      );
-      setCurrentStep(1);
-      setMaxUnlockedStep(1);
-      setSessionId(null);
-      localStorage.removeItem("mep_last_session_id");
-    }
-  };
 
   // Computed
   const allMarkets = useMemo(
@@ -555,7 +524,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   ]);
 
   useEffect(() => {
-    if (appMode === "demo" || isInitializing) return;
+    if (appMode === "free-demo" || isInitializing) return;
 
     const timer = setTimeout(async () => {
       setSaveStatus("saving");
@@ -787,35 +756,13 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
               <FolderOpen className="w-3.5 h-3.5" />
               Sessions
             </button>
-            {/* Mode Toggle */}
-            <button
-              onClick={handleModeToggle}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
-                appMode === "demo"
-                  ? "bg-indigo-950/60 border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/80"
-                  : "bg-emerald-950/60 border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/80"
-              }`}
-              id="mode-toggle-btn"
-            >
-              {appMode === "demo" ? (
-                <>
-                  <Beaker className="w-3.5 h-3.5" />
-                  <span>Demo Mode</span>
-                </>
-              ) : (
-                <>
-                  <BriefcaseBusiness className="w-3.5 h-3.5" />
-                  <span>Consultant Mode</span>
-                </>
-              )}
-            </button>
 
             <UserProfileMenu onOpenAdmin={() => setShowAdminPanel(true)} />
           </div>
         </div>
         
         {/* ─── Save Status Indicator ─── */}
-        {appMode !== "demo" && (
+        {appMode !== "free-demo" && (
           <div className="absolute top-16 right-4 flex items-center space-x-1.5 px-3 py-1 bg-slate-900/80 border border-slate-700/50 rounded-full text-[10px] font-mono text-slate-400">
             {saveStatus === "saving" && (
               <>
@@ -917,6 +864,9 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
                 onSelectPrimaryMarketForRoadmap={
                   handleSelectPrimaryMarketForRoadmap
                 }
+                appMode={appMode}
+                companySnapshot={companySnapshot}
+                productStrategy={productStrategy}
               />
             )}
 
@@ -955,7 +905,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         {/* ─── Notes & Action Bar ────────────────────────── */}
         <div className="mt-8 pt-6 border-t border-slate-800/60">
           {/* Notes only on screens 5-7 */}
-          {currentStep >= 5 && (
+          {currentStep >= 5 && appMode !== "free-demo" && (
             <ConsultantNotes
               notes={consultantNotes}
               onChange={setConsultantNotes}
@@ -981,7 +931,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
               STEP {currentStep} OF {showPrepPhase ? 8 : 7} •{" "}
               {currentStep === 8
                 ? "PREPARATION PHASE"
-                : appMode === "demo"
+                : appMode === "free-demo"
                 ? "DEMO PRE-LOADED"
                 : "CONSULTANT MODE"}
             </div>
@@ -997,7 +947,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
                 }`}
                 id="global-next-btn"
               >
-                <span>Continue</span>
+                <span>{currentStep === 5 ? "Generate Draft Scores" : "Continue"}</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             ) : currentStep === 8 ? (

@@ -357,7 +357,8 @@ export default function RoadmapScreen({
 
           <button
             onClick={onDownloadPDF}
-            disabled={isDownloadingPDF}
+            disabled={isDownloadingPDF || appMode === "free-demo"}
+            title={appMode === "free-demo" ? "PDF Export requires Consultant tier" : ""}
             className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center space-x-2 transition-all cursor-pointer shadow-md shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
             id="download-pdf-btn"
           >
@@ -366,7 +367,7 @@ export default function RoadmapScreen({
             ) : (
               <Download className="w-3.5 h-3.5" />
             )}
-            <span>{isDownloadingPDF ? 'Generating...' : 'Download Strategic Prioritisation Report (PDF)'}</span>
+            <span>{isDownloadingPDF ? 'Generating...' : appMode === 'free-demo' ? 'PDF Export Locked' : 'Download Strategic Prioritisation Report (PDF)'}</span>
           </button>
         </div>
       </div>
@@ -857,21 +858,24 @@ export default function RoadmapScreen({
       <div className="bg-gradient-to-r from-emerald-950/30 via-slate-900 to-slate-900 border border-emerald-500/20 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="space-y-2">
           <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 font-mono">
-            Next Phase
+            {appMode === "free-demo" ? "Next Phase: Locked (Demo)" : "Next Phase"}
           </span>
           <h3 className="text-lg font-bold font-display text-white">
             Ready to prepare {offeringName} for {activeMarket.name}?
           </h3>
           <p className="text-sm text-slate-400">
-            Transition to the Entry Readiness Workspace to validate regulatory compliance, logistics feasibility, and commercial economics.
+            {appMode === "free-demo"
+              ? "The Entry Readiness Workspace (Step 8) is locked in the free demo. Upgrade to full Consultant access to run regulatory, logistics, and compliance checks."
+              : "Transition to the Entry Readiness Workspace to validate regulatory compliance, logistics feasibility, and commercial economics."}
           </p>
         </div>
         <button
           onClick={onProceedToPrep}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl flex items-center space-x-3 transition-all cursor-pointer shadow-md shadow-emerald-600/20 shrink-0"
+          disabled={appMode === "free-demo"}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl flex items-center space-x-3 transition-all cursor-pointer shadow-md shadow-emerald-600/20 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           id="proceed-to-prep-btn"
         >
-          <span>Proceed to Entry Readiness Workspace</span>
+          <span>{appMode === "free-demo" ? "Workspace Locked" : "Proceed to Entry Readiness Workspace"}</span>
           <ArrowRight className="w-5 h-5" />
         </button>
       </div>

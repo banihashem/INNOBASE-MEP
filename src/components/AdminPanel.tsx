@@ -40,14 +40,15 @@ interface AdminPanelProps {
 
 function RoleBadge({ role }: { role: string }) {
   const styles: Record<string, string> = {
-    Administrator: "bg-indigo-950/60 text-indigo-300 border-indigo-500/40",
+    Administrator: "bg-purple-950/60 text-purple-300 border-purple-500/40",
     Consultant: "bg-emerald-950/60 text-emerald-300 border-emerald-500/40",
-    Viewer: "bg-slate-800/60 text-slate-300 border-slate-600/40",
+    Viewer: "bg-slate-800 text-slate-300 border-slate-600",
+    demo_participant: "bg-sky-950/60 text-sky-300 border-sky-500/40",
   };
 
   return (
     <span className={`text-[10px] font-mono px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${styles[role] || styles.Viewer}`}>
-      {role}
+      {role === "demo_participant" ? "Demo Participant" : role}
     </span>
   );
 }
@@ -200,6 +201,12 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
               icon={<Globe2 className="w-5 h-5 text-slate-400" />}
               accent="slate"
             />
+            <StatsCard
+              label="Demo Participants"
+              value={stats.byRole?.demo_participant || 0}
+              icon={<Globe2 className="w-5 h-5 text-sky-400" />}
+              accent="sky"
+            />
           </div>
         )}
 
@@ -225,6 +232,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             <option value="Administrator">Administrator</option>
             <option value="Consultant">Consultant</option>
             <option value="Viewer">Viewer</option>
+            <option value="demo_participant">Demo Participant</option>
           </select>
           <select
             value={statusFilter}
@@ -317,9 +325,10 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                               onChange={(e) => setEditingRole(e.target.value)}
                               className="bg-slate-800 border border-indigo-500 rounded text-xs text-white px-2 py-1 focus:outline-none cursor-pointer"
                             >
-                              <option value="Viewer">Viewer</option>
-                              <option value="Consultant">Consultant</option>
                               <option value="Administrator">Administrator</option>
+                              <option value="Consultant">Consultant</option>
+                              <option value="Viewer">Viewer</option>
+                              <option value="demo_participant">Demo Participant</option>
                             </select>
                             <button
                               onClick={() => handleUpdateRole(u.userId, editingRole)}
@@ -571,13 +580,15 @@ function CreateUserModal({
               Role
             </label>
             <select
+              id="create-role"
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+              className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
-              <option value="Viewer">Viewer — Read-only dashboard access</option>
+              <option value="Viewer">Viewer — Read-only access</option>
               <option value="Consultant">Consultant — Full CRUD, scoring, PDF export</option>
-              <option value="Administrator">Administrator — Unrestricted management</option>
+              <option value="Administrator">Administrator — Manage users and roles</option>
+              <option value="demo_participant">Demo Participant — Free Demo access</option>
             </select>
           </div>
 

@@ -47,6 +47,11 @@ const ROLE_STYLES: Record<string, { bg: string; text: string; border: string }> 
     text: "text-slate-300",
     border: "border-slate-600/40",
   },
+  demo_participant: {
+    bg: "bg-sky-950/60",
+    text: "text-sky-300",
+    border: "border-sky-500/40",
+  },
 };
 
 // ─── Component ──────────────────────────────────────────────────────
@@ -159,7 +164,7 @@ export default function UserProfileMenu({ onOpenAdmin }: UserProfileMenuProps) {
 
         {/* Role Badge */}
         <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${roleStyle.bg} ${roleStyle.text} ${roleStyle.border} font-bold uppercase tracking-wider`}>
-          {role === "Administrator" ? "Admin" : role}
+          {role === "Administrator" ? "Admin" : role === "demo_participant" ? "Demo" : role}
         </span>
 
         <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -193,7 +198,7 @@ export default function UserProfileMenu({ onOpenAdmin }: UserProfileMenuProps) {
             <div className="flex items-center gap-2 mt-2">
               <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${roleStyle.bg} ${roleStyle.text} ${roleStyle.border} font-bold uppercase tracking-wider`}>
                 <Shield className="w-3 h-3 inline mr-1" />
-                {role}
+                {role === "demo_participant" ? "Demo Participant" : role}
               </span>
               <span className="text-[10px] text-slate-500 font-mono">
                 {totalSessions} session{totalSessions !== 1 ? "s" : ""}

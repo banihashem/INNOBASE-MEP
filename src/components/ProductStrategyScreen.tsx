@@ -66,11 +66,16 @@ export default function ProductStrategyScreen({
                   key={profile.id}
                   type="button"
                   onClick={() => selectStrategy(profile.id)}
-                  className={`text-left p-5 rounded-xl border transition-all flex flex-col justify-between h-full relative cursor-pointer group ${
+                  className={`text-left p-5 rounded-xl border transition-all flex flex-col justify-between h-full relative group ${
                     isSelected
                       ? "bg-indigo-950/40 border-indigo-500/80 shadow-lg shadow-indigo-950/20 ring-1 ring-indigo-500/20"
                       : "bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-950/90"
+                  } ${
+                    appMode === "free-demo" && profile.id !== "replication"
+                      ? "opacity-50 cursor-not-allowed"
+                      : "cursor-pointer"
                   }`}
+                  disabled={appMode === "free-demo" && profile.id !== "replication"}
                   id={`strategy-card-${profile.id}`}
                 >
                   <div className="space-y-2">
