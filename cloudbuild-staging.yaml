@@ -1,0 +1,106 @@
+steps:
+  # Step 0: Validate required substitution variables
+  - name: 'node:22-slim'
+    id: 'validate-config'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Validating config for staging deployment..."
+
+  # Step 1: Install dependencies and run tests
+  - name: 'node:22-slim'
+    id: 'test'
+    waitFor: ['validate-config']
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - 'npm ci && npm test && npx tsx tests/auth_regression.test.ts'
+
+  # Step 2: Build staging Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
+    waitFor: ['test']
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/mep-staging:latest'
+      - '.'
+
+  # Step 3: Push image to registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    waitFor: ['build-image']
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/mep-staging:latest'
+
+  # Step 4: Run migrations via Cloud Run Job
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'migrate'
+    waitFor: ['push-image']
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud run jobs deploy migrate-staging \
+          --image gcr.io/$PROJECT_ID/mep-staging:latest \
+          --command node \
+          --args backend/apply_migrations.js \
+          --region ${_REGION} \
+          --set-cloudsql-instances ${_CLOUD_SQL_CONN} \
+          --set-secrets DB_PASSWORD=mep-db-password:latest \
+          --update-env-vars DB_USER=mep_app,DB_NAME=mep_staging
+
+        gcloud run jobs execute migrate-staging --region ${_REGION} --wait
+
+  # Step 5: Deploy to Cloud Run Staging
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy'
+    waitFor: ['migrate']
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'mep-light-demo-refinement-staging'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/mep-staging:latest'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--add-cloudsql-instances'
+      - '${_CLOUD_SQL_CONN}'
+      - '--set-secrets'
+      - 'DB_PASSWORD=mep-db-password:latest'
+      - '--update-env-vars'
+      - 'NODE_ENV=production,GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID},CLOUD_SQL_CONNECTION=${_CLOUD_SQL_CONN},DB_NAME=mep_staging,DB_USER=mep_app,ADK_ENABLED=${_ADK_ENABLED},SEED_ADMIN_EMAIL=ehsan.banihashem@gmail.com'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--max-instances'
+      - '3'
+      - '--min-instances'
+      - '1'
+      - '--concurrency'
+      - '80'
+      - '--port'
+      - '8080'
+      - '--allow-unauthenticated'
+
+images:
+  - 'gcr.io/$PROJECT_ID/mep-staging:latest'
+
+substitutions:
+  _GOOGLE_CLIENT_ID: ''
+  _CLOUD_SQL_CONN: 'innobase-mep-light:europe-west2:mep-light-db'
+  _REGION: 'europe-west2'
+  _ADK_ENABLED: 'controlled'
+
+timeout: '900s'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
