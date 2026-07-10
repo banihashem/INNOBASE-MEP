@@ -6,6 +6,45 @@
 
 ---
 
+## v4.3.6+demo — Demo Refinement Sprint (NOT DEPLOYED)
+
+**Branch**: `feature/demo-refinement-sprint`  
+**Date**: 2026-07-10  
+**Status**: DEMO-ROLE-REFINEMENT-READY-FOR-INDEPENDENT-UAT  
+
+### Summary
+Demo Participant role RBAC implementation with AI-assisted scoring, user adjustment tracking, and full-stack verification pass.
+
+### Changes
+- **New RBAC role**: `demo_participant` — auto-provisioned on first login
+- **AI-assisted scoring**: "Generate Draft Scores" button populates scores from prior inputs
+- **User adjustment markers**: "User Adjusted" badges on manually modified dimensions
+- **Server-side persistence**: Auto-save enabled for free-demo sessions (was incorrectly bypassed)
+- **Migration 005**: Idempotent `demo_participant` role addition with dynamic constraint discovery and rollback plan
+- **RBAC enforcement**: 30 real HTTP tests + 37 code-path assertions verifying demo_participant access controls
+
+### Locked for Demo Participant
+- PDF export (403)
+- Step 8 / Entry Readiness Workspace (UI locked)
+- Consultant Notes / Annotation Pad (UI hidden)
+- Admin endpoints: user management, stats, role changes (403)
+- Other user's sessions (403)
+
+### Preserved
+- Administrator capabilities: user management, PDF export, session review
+- Consultant capabilities: PDF export, full scoring, annotation workspace
+
+### Verification
+- Scoring engine: 117/117 pass
+- Code-path RBAC: 37/37 pass
+- HTTP RBAC: 30/30 pass
+- Copy scan: 5/5 pass
+- Build: clean (1703 modules)
+- Browser UAT: Steps 1–7 completed with full-stack
+- Migration: idempotent, no existing user data affected
+
+---
+
 ## v4.3.6 — PDF Export Auth Remediation (Production Closure)
 
 ### 🟢 Critical Fix: PDF Export 401 Authorization

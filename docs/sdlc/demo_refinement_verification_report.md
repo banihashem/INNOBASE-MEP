@@ -78,3 +78,27 @@
 
 Total requirements mapped: 42
 All automated test evidence verified against: `tests/rbac_demo.test.ts` (37/37 pass), `tests/scoring_engine.test.ts` (117/117 pass), `tests/bundle_no_demo_identity.test.ts` (5/5 pass)
+
+## Full-Stack Verification (Added 2026-07-10)
+
+### HTTP RBAC Tests (30/30 pass)
+Full-stack HTTP RBAC verification: `tests/http_rbac_fullstack.test.ts`
+- API server running on localhost:3001 with SQLite
+- Crafted JWTs used for endpoints using base64 decode (sessions, users, score)
+- Google JWT signature endpoints (PDF export, /users/me) tested via server logs
+
+### Migration Verification
+- `demo_participant` role accepted by DB: ✅
+- Ehsan's Administrator role preserved: ✅
+- Consultant role preserved: ✅
+- Idempotent re-insert (no duplicates): ✅
+- `tests/verify_migration.ts` — direct SQLite verification
+
+### Browser UAT (Kashkam Scenario)
+- Steps 1–7 completed with API server running
+- Generate Draft Scores: functional
+- User Adjusted badges: visible
+- Download Report: locked
+- Step 8: locked
+- Consultant Workspace: hidden
+- See: `docs/sdlc/demo_refinement_uat.md` for full details
