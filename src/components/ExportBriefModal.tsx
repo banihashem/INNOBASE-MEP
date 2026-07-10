@@ -304,10 +304,9 @@ export default function ExportBriefModal({
             <div className="pt-8 border-t border-slate-800 text-center space-y-2">
               <p className="text-[11px] text-slate-500 leading-relaxed max-w-2xl mx-auto">
                 MEP-light™ is a readiness and prioritization intelligence. It
-                clarifies preparedness; it does NOT predict success, guarantee
-                ROI, or provide formal legal, regulatory, or financial advice.
-                All results must be validated by human experts prior to
-                commercial commitment.
+                clarifies preparedness; it does NOT predict success, or provide
+                formal regulatory or investment guidance. All results must be
+                validated by human experts prior to commercial commitment.
               </p>
               <p className="text-[10px] text-slate-600 font-mono">
                 © 2026 MEP-light™ • Proprietary Enterprise Strategy Tool

@@ -407,40 +407,6 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
           {/* Auth error banner */}
           {renderAuthError()}
 
-          {/* ─── Floating Score Cards ───────────────────────────── */}
-          <div className="landing-floating-cards">
-            <div className="landing-float-card landing-float-1">
-              <div className="landing-float-label">UAE Market</div>
-              <div className="landing-float-score">72</div>
-              <div className="landing-float-tier tier-b">Tier B</div>
-            </div>
-            <div className="landing-float-card landing-float-2">
-              <div className="landing-float-label">Germany</div>
-              <div className="landing-float-score">68</div>
-              <div className="landing-float-tier tier-b">Tier B</div>
-            </div>
-            <div className="landing-float-card landing-float-3">
-              <div className="landing-float-label">Canada</div>
-              <div className="landing-float-score">65</div>
-              <div className="landing-float-tier tier-b">Tier B</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Social Proof ───────────────────────────────────────── */}
-      <section className="landing-proof">
-        <p className="landing-proof-label">
-          TRUSTED BY STRATEGY LEADERS & CONSULTANTS
-        </p>
-        <div className="landing-proof-logos">
-          {["INNOBASE", "Strategy Co", "Global Advisory", "Market Intel", "Trade Bureau"].map(
-            (name, i) => (
-              <div key={i} className="landing-proof-logo">
-                {name}
-              </div>
-            )
-          )}
         </div>
       </section>
 
