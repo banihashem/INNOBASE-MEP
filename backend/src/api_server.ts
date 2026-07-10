@@ -1220,6 +1220,7 @@ app.get("/api/v2/sessions", async (req: Request, res: Response) => {
   const sessions = await db.listSessionsByUser(user.userId);
   res.json({
     sessions: sessions.map(s => ({
+      id: s.id,
       sessionId: s.id,
       title: s.title,
       companyName: s.company_name,
@@ -1253,6 +1254,19 @@ app.post("/api/v2/sessions", async (req: Request, res: Response) => {
   const { id, title, companyName, offeringName, inputData, stateSnapshot, currentStep, completionPercent, reviewStatus } = req.body;
   const sessionId = id || `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+  let finalStateSnapshot = stateSnapshot || {};
+  if (user.role === "demo_participant") {
+    if (finalStateSnapshot.appMode && finalStateSnapshot.appMode !== "free-demo") {
+      logEvent({
+        level: "warn",
+        component: "sessions",
+        event_type: "demo_escalation_attempt",
+        message: `Demo participant attempted to create session with escalated appMode: ${finalStateSnapshot.appMode}`,
+      });
+    }
+    finalStateSnapshot.appMode = "free-demo";
+  }
+
   const session = await db.createSession({
     id: sessionId,
     userId: user.userId,
@@ -1260,7 +1274,7 @@ app.post("/api/v2/sessions", async (req: Request, res: Response) => {
     companyName: companyName || "",
     offeringName: offeringName || "",
     inputData: inputData || {},
-    stateSnapshot: stateSnapshot || {},
+    stateSnapshot: finalStateSnapshot,
     currentStep: currentStep ?? 1,
     completionPercent: completionPercent ?? 0,
     reviewStatus: reviewStatus || "pending",
@@ -1357,12 +1371,26 @@ app.patch("/api/v2/sessions/:id", async (req: Request, res: Response) => {
   }
 
   const { title, status, inputData, outputData, stateSnapshot, currentStep, completionPercent, reviewStatus } = req.body;
+
+  let finalStateSnapshot = stateSnapshot;
+  if (user.role === "demo_participant" && finalStateSnapshot) {
+    if (finalStateSnapshot.appMode && finalStateSnapshot.appMode !== "free-demo") {
+      logEvent({
+        level: "warn",
+        component: "sessions",
+        event_type: "demo_escalation_attempt",
+        message: `Demo participant attempted to update session with escalated appMode: ${finalStateSnapshot.appMode}`,
+      });
+    }
+    finalStateSnapshot.appMode = "free-demo";
+  }
+
   const updated = await db.updateSession(req.params.id, {
     title,
     status,
     inputData,
     outputData,
-    stateSnapshot,
+    stateSnapshot: finalStateSnapshot,
     currentStep,
     completionPercent,
     reviewStatus,
@@ -1400,7 +1428,7 @@ app.post("/api/v2/sessions/:id/review", async (req: Request, res: Response) => {
 
   const user = await findUserByEmail(jwt.email);
   if (!user || (user.role !== "Administrator" && user.role !== "Consultant")) {
-    res.status(403).json({ error: "Administrator or Consultant role required" });
+    res.status(403).json({ error: "Human review actions are available only to Consultant or Administrator roles." });
     return;
   }
 

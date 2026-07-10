@@ -155,12 +155,9 @@ export default function ScoringEvidenceScreen({
     val: number
   ) => {
     onUpdateScores(currentId, { [dim]: val });
-    // Mark dimension as user-adjusted if value differs from draft
-    if (isDemo && onMarkUserAdjusted) {
-      const draftScores = DEMO_MARKET_SCORES[currentId];
-      if (draftScores && draftScores.scores[dim] !== val) {
-        onMarkUserAdjusted(currentId, dim);
-      }
+    // Mark dimension as user-adjusted if changed after draft generation
+    if (isDemo && onMarkUserAdjusted && currentScoreInput.draftGenerated) {
+      onMarkUserAdjusted(currentId, dim);
     }
   };
 
@@ -193,7 +190,7 @@ export default function ScoringEvidenceScreen({
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold font-display text-white tracking-tight">
-            Strategic Metric Scoring & Evidence
+            Strategic Metric Scoring
           </h2>
           <p className="text-sm text-slate-400 mt-1">
             {isDemo

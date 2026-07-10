@@ -115,8 +115,8 @@ assert(step8Locked, 'Step 8 / Entry Readiness Workspace locked for free-demo (sh
 
 // 2.2 PDF Download locked for free-demo
 const pdfLocked = roadmapSrc.includes('disabled={isDownloadingPDF || appMode === "free-demo"}') &&
-  roadmapSrc.includes("PDF Export Locked");
-assert(pdfLocked, 'PDF Download button disabled for free-demo (shows "PDF Export Locked")');
+  roadmapSrc.includes("Download Report — Full Version");
+assert(pdfLocked, 'PDF Download button disabled for free-demo (shows "Download Report — Full Version")');
 
 // 2.3 Consultant Notes hidden for free-demo
 const notesHidden = appSrc.includes('appMode !== "free-demo"') &&

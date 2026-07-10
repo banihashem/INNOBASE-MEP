@@ -23,11 +23,9 @@ export default function DecisionSetupScreen({
   appMode,
 }: Props) {
   const getDecisionStatement = () => {
-    const org = businessName || "Client Company";
-
     const modeText: Record<string, string> = {
-      "New Market Entry Readiness": "evaluating new market entry readiness",
-      "Existing Market Expansion Readiness": "evaluating existing market expansion readiness",
+      "New Market Entry Readiness": "evaluate new market entry readiness",
+      "Existing Market Expansion Readiness": "evaluate existing market expansion readiness",
     };
 
     const horizon = data.expansionHorizon || "";
@@ -39,7 +37,7 @@ export default function DecisionSetupScreen({
       return "Your decision statement will appear here after the required fields are completed.";
     }
 
-    return `${org} is ${modeText[mode] || "evaluating new market entry readiness"} within a ${horizon} expansion horizon. The stated strategic objective is: "${objective}".`;
+    return `The business wants to ${modeText[mode] || "evaluate new market entry readiness"} within a ${horizon} expansion horizon. The stated strategic objective is: "${objective}".`;
   };
 
   return (

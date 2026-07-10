@@ -110,9 +110,6 @@ export default function CompanySnapshotScreen({ data, onChange, appMode }: Props
 
   // Dynamic organizational context summary — consultant-quality synthesis
   const getContextSummary = (): string => {
-    if (appMode === "free-demo") {
-      return "Client company is an SME with modular capabilities exploring expansion.";
-    }
     const name = data.businessName?.trim() || "";
     const sector = data.sector?.trim() || "";
     const marketSize = data.domesticMarketSize?.trim() || "";

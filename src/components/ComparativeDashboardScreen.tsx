@@ -284,7 +284,7 @@ export default function ComparativeDashboardScreen({
           Strategic Comparative Dashboard
         </h2>
         <p className="text-sm text-slate-400 mt-1">
-          Side-by-side diagnostics with SME weight model, evidence
+          Side-by-side diagnostics with weighted models, evidence
           confidence scoring, and automatic discrepancy alerts.
         </p>
       </div>

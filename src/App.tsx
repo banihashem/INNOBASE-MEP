@@ -629,7 +629,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       const data = await apiClient.sessions.get(id);
       if (data && data.stateSnapshot) {
         const snap = typeof data.stateSnapshot === 'string' ? JSON.parse(data.stateSnapshot) : data.stateSnapshot;
-        setAppMode(snap.appMode || "consultant");
+        setAppMode(authUser?.role === "demo_participant" ? "free-demo" : (snap.appMode || "consultant"));
         setCurrentStep(snap.currentStep || 1);
         setMaxUnlockedStep(snap.maxUnlockedStep || 1);
         setDecisionSetup(snap.decisionSetup || DEMO_DECISION_SETUP);
@@ -648,7 +648,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       if (!silent) toast.error("Failed to load session from server");
       throw err;
     }
-  }, [toast]);
+  }, [toast, authUser]);
 
   // ─── Initialize App State ──────────────────────────────
   useEffect(() => {
@@ -977,7 +977,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
 
             <div className="text-xs text-slate-500 font-mono hidden md:block">
               STEP {currentStep} OF {showPrepPhase ? 8 : 7} •{" "}
-              {currentStep === 8
+                {currentStep === 8
                 ? "PREPARATION PHASE"
                 : appMode === "free-demo"
                 ? "DEMO PRE-LOADED"
@@ -1018,7 +1018,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between flex-wrap gap-2">
           <p>
             © 2026 Market Entry Prioritizer • MEP-light™ Diagnostic
-            System • Proprietary Enterprise Strategy Tool • {appMode === "free-demo" ? "Beta Demo v1.6" : `v${__APP_VERSION__}`}
+            System • Proprietary Enterprise Strategy Tool • {appMode === "free-demo" ? "MEP-light Beta Demo v1.6" : `v${__APP_VERSION__}`}
           </p>
           {authUser && (
             <div className="flex items-center gap-3">
@@ -1061,7 +1061,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         onClose={() => setShowSessionManager(false)}
         onResumeSession={(id) => {
           if (!id || id === "undefined") {
-            toast.error("Invalid session ID");
+            toast.error("Unable to resume this assessment because the session ID is missing.");
             return;
           }
           toast.info(`Resuming session...`);
@@ -1071,16 +1071,15 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
           track.sessionResumed(id);
         }}
         onStartNew={async () => {
-          setAppMode("consultant");
           setDecisionSetup({
-            decisionMode: "compare",
+            decisionMode: "New Market Entry Readiness",
             expansionHorizon: "12 months",
             strategicObjective: "",
           });
           setCompanySnapshot(BLANK_COMPANY_SNAPSHOT);
           setProductStrategy({
             offeringName: "",
-            selectedStrategy: "replication",
+            selectedStrategy: "",
             customAdaptationNotes: "",
           });
           setSelectedMarketIds([]);
@@ -1089,10 +1088,24 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
           setConsultantNotes("");
           setCurrentStep(1);
           setMaxUnlockedStep(1);
-          setSessionId(null); // Clear to trigger a new session creation on next autosave or right away
           
-          toast.success("New assessment session started");
-          track.sessionStarted(sessionId || "new");
+          try {
+            const newSession = await apiClient.sessions.create({
+              title: "Untitled Assessment",
+              currentStep: 1,
+              completionPercent: 0,
+            });
+            if (newSession && newSession.sessionId) {
+              setSessionId(newSession.sessionId);
+              localStorage.setItem("mep_last_session_id", newSession.sessionId);
+              toast.success("New assessment session started");
+              track.sessionStarted(newSession.sessionId);
+            }
+          } catch (err) {
+            console.error("Failed to create new session", err);
+            setSessionId(null);
+            toast.error("Started new assessment locally, but failed to sync to server.");
+          }
         }}
         onDeleteSession={(id) => {
           toast.success("Session deleted");

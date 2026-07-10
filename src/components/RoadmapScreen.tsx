@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import StrategicDisclaimer from "./StrategicDisclaimer";
 import { apiClient } from "../lib/apiClient";
+import { useToast } from "./Toast";
 
 interface Props {
   selectedMarkets: Market[];
@@ -146,19 +147,30 @@ export default function RoadmapScreen({
   // Human Review Gate state
   const [reviewNotes, setReviewNotes] = useState("");
   
+  const { toast } = useToast();
+
   const handleReviewAction = async (status: string, notes?: string) => {
-    if (onReviewStatusChange) {
-      onReviewStatusChange(status);
-    }
-    if (notes !== undefined) {
-      setReviewNotes(notes);
-    }
     if (sessionId) {
       try {
         await apiClient.sessions.review(sessionId, status === "flagged" ? "revision_requested" : status);
-      } catch (err) {
+        if (onReviewStatusChange) {
+          onReviewStatusChange(status);
+        }
+        if (notes !== undefined) {
+          setReviewNotes(notes);
+        }
+      } catch (err: any) {
         console.error("Failed to update review status on server:", err);
+        if (err?.status === 403) {
+          toast.error("Human review is available in the facilitated or Pro version. The free demo provides a validation roadmap but does not constitute reviewed approval.");
+        } else {
+          toast.error("Failed to update review status.");
+        }
       }
+    } else {
+      // Offline / no session
+      if (onReviewStatusChange) onReviewStatusChange(status);
+      if (notes !== undefined) setReviewNotes(notes);
     }
   };
 
@@ -358,7 +370,7 @@ export default function RoadmapScreen({
           <button
             onClick={onDownloadPDF}
             disabled={isDownloadingPDF || appMode === "free-demo"}
-            title={appMode === "free-demo" ? "PDF Export requires Consultant tier" : ""}
+            title={appMode === "free-demo" ? "Full report export is available in the facilitated or Pro version." : ""}
             className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center space-x-2 transition-all cursor-pointer shadow-md shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
             id="download-pdf-btn"
           >
@@ -367,7 +379,7 @@ export default function RoadmapScreen({
             ) : (
               <Download className="w-3.5 h-3.5" />
             )}
-            <span>{isDownloadingPDF ? 'Generating...' : appMode === 'free-demo' ? 'PDF Export Locked' : 'Download Strategic Prioritisation Report (PDF)'}</span>
+            <span>{isDownloadingPDF ? 'Generating...' : appMode === 'free-demo' ? 'Download Report — Full Version' : 'Download Strategic Prioritisation Report (PDF)'}</span>
           </button>
         </div>
       </div>
@@ -458,44 +470,52 @@ export default function RoadmapScreen({
               )}
             </div>
             <div className="flex flex-col space-y-2 shrink-0">
-              {appMode !== "demo" && !adkResult && (
-                <button
-                  onClick={handleRunAdk}
-                  disabled={adkRunning}
-                  className="px-4 py-2 text-xs font-semibold text-indigo-400 bg-indigo-950/40 border border-indigo-900/40 rounded-lg hover:bg-indigo-900/40 transition-colors flex items-center justify-center space-x-2"
-                >
-                  {adkRunning && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Run Agent Review</span>
-                </button>
-              )}
-              {reviewStatus !== "approved" && (
-                <button
-                  onClick={() => handleReviewAction("approved")}
-                  className="px-4 py-2 text-xs font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-900/40 rounded-lg hover:bg-emerald-900/40 transition-colors"
-                >
-                  Approve
-                </button>
-              )}
-              {reviewStatus !== "flagged" && (
-                <button
-                  onClick={() => {
-                    const note = prompt("Enter review notes (optional):");
-                    if (note !== null) {
-                      handleReviewAction("flagged", note || "");
-                    }
-                  }}
-                  className="px-4 py-2 text-xs font-semibold text-amber-400 bg-amber-950/40 border border-amber-900/40 rounded-lg hover:bg-amber-900/40 transition-colors"
-                >
-                  Flag for Revision
-                </button>
-              )}
-              {reviewStatus !== "pending" && (
-                <button
-                  onClick={() => handleReviewAction("pending", "")}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 bg-slate-800/40 border border-slate-700/40 rounded-lg hover:bg-slate-700/40 transition-colors"
-                >
-                  Reset
-                </button>
+              {appMode !== "free-demo" ? (
+                <>
+                  {appMode !== "demo" && !adkResult && (
+                    <button
+                      onClick={handleRunAdk}
+                      disabled={adkRunning}
+                      className="px-4 py-2 text-xs font-semibold text-indigo-400 bg-indigo-950/40 border border-indigo-900/40 rounded-lg hover:bg-indigo-900/40 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      {adkRunning && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      <span>Run Agent Review</span>
+                    </button>
+                  )}
+                  {reviewStatus !== "approved" && (
+                    <button
+                      onClick={() => handleReviewAction("approved")}
+                      className="px-4 py-2 text-xs font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-900/40 rounded-lg hover:bg-emerald-900/40 transition-colors"
+                    >
+                      Approve
+                    </button>
+                  )}
+                  {reviewStatus !== "flagged" && (
+                    <button
+                      onClick={() => {
+                        const note = prompt("Enter review notes (optional):");
+                        if (note !== null) {
+                          handleReviewAction("flagged", note || "");
+                        }
+                      }}
+                      className="px-4 py-2 text-xs font-semibold text-amber-400 bg-amber-950/40 border border-amber-900/40 rounded-lg hover:bg-amber-900/40 transition-colors"
+                    >
+                      Flag for Revision
+                    </button>
+                  )}
+                  {reviewStatus !== "pending" && (
+                    <button
+                      onClick={() => handleReviewAction("pending", "")}
+                      className="px-4 py-2 text-xs font-semibold text-slate-400 bg-slate-800/40 border border-slate-700/40 rounded-lg hover:bg-slate-700/40 transition-colors"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="text-xs text-slate-400 mt-2 bg-slate-950/40 p-3 rounded-lg border border-slate-800/40 w-48 text-center leading-relaxed">
+                  Human review is available in the facilitated or Pro version. The free demo provides a validation roadmap but does not constitute reviewed approval.
+                </div>
               )}
             </div>
           </div>
@@ -865,7 +885,7 @@ export default function RoadmapScreen({
           </h3>
           <p className="text-sm text-slate-400">
             {appMode === "free-demo"
-              ? "The Entry Readiness Workspace (Step 8) is locked in the free demo. Upgrade to full Consultant access to run regulatory, logistics, and compliance checks."
+              ? "The free demo ends here. Detailed entry readiness, compliance preparation, localization planning, channel readiness, and exportable reporting are available in the facilitated or Pro version."
               : "Transition to the Entry Readiness Workspace to validate regulatory compliance, logistics feasibility, and commercial economics."}
           </p>
         </div>
