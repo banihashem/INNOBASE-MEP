@@ -1,8 +1,9 @@
 # MEP-light™ — Version Manifest
 
-**Release**: v4.3.6  
-**Date**: 2026-07-04  
-**Classification**: Production
+**Release**: v4.3.7  
+**Date**: 2026-07-11  
+**Classification**: Production  
+**Client-Facing Label**: MEP-light Beta Demo v1.6
 
 ---
 
@@ -10,25 +11,25 @@
 
 | Artifact | Value |
 |----------|-------|
-| **Semantic Version** | 4.3.6 |
-| **Git Branch** | main |
-| **Git Tag** | v4.3.6 |
-| **Git Commit SHA** | `7b8acbbe1987afc0ab3736ad688fe99fc0624546` |
-| **Container Image** | `gcr.io/innobase-mep-light/market-entry-prioritizer:v4.3.6` |
-| **Image Digest** | `sha256:c9ce8cb27bd6d9dc37696701eb819ec089be3bf3cf5a0316d099551c8cdc7a0e` |
+| **Semantic Version** | 4.3.7 |
+| **Git Branch** | feature/demo-refinement-sprint |
+| **Git Tag** | v4.3.7-demo-refinement |
+| **Git Commit SHA** | `320fcc1` (release commit) |
+| **Container Image** | `gcr.io/innobase-mep-light/market-entry-prioritizer:v4.3.7` |
+| **Image Digest** | `sha256:581d4fc7f9bb5a7d0b9b1b9b37104b314393b03c7b4100ff2d871f5a9be4016f` |
 | **Cloud Run Service** | market-entry-prioritizer |
 | **Cloud Run Region** | europe-west2 |
-| **Cloud Run Revision** | `market-entry-prioritizer-00040-x7z` |
+| **Cloud Run Revision** | `market-entry-prioritizer-00041-dqw` |
 | **Primary Production URL** | `https://mep.innobase.app` |
 | **Cloud Run Service URL** | `https://market-entry-prioritizer-52156375400.europe-west2.run.app` |
 | **Cloud SQL Instance** | mep-light-db |
 | **Database** | mep_production |
-| **Migration Version** | 002 (002_fix_id_types) |
-| **Migration Checksum** | sha256 of 002_fix_id_types.sql |
-| **ADK Version** | 4.3.6 (controlled-deterministic) |
+| **Migration Version** | 005 (005_add_demo_participant_role) |
+| **ADK Version** | 4.3.7 (controlled-deterministic) |
 | **ADK Mode** | controlled — feature-flagged, role-gated |
-| **Rollback Target** | v4.3.5 / revision market-entry-prioritizer-00039-j6b |
-| **Previous Version** | 4.3.5 |
+| **Rollback Target** | v4.3.6 / revision market-entry-prioritizer-00040-x7z |
+| **Rollback Digest** | `sha256:c9ce8cb27bd6d9dc37696701eb819ec089be3bf3cf5a0316d099551c8cdc7a0e` |
+| **Previous Version** | 4.3.6 |
 | **Secret Manager** | mep-db-password (version 4, active; v1-3 disabled) |
 
 ---
@@ -60,7 +61,9 @@
 |---------|------|---------|
 | 1 | 001_initial_schema | 2026-07-03T11:38:56Z |
 | 2 | 002_fix_id_types | 2026-07-03T13:00:34Z |
-| 5 | 005_add_demo_participant_role | pending (not yet deployed) |
+| 3 | 003_assessment_state_persistence | 2026-07-10 |
+| 4 | 004_fix_session_columns | 2026-07-10 |
+| 5 | 005_add_demo_participant_role | 2026-07-11 (production deploy v4.3.7) |
 
 ---
 
@@ -68,7 +71,7 @@
 
 | Version | Date | Summary |
 |---------|------|---------|
-| 4.3.6+demo | 2026-07-10 | Demo refinement sprint: demo_participant role, AI-assisted scoring, admin governance (self-demotion/last-admin), PostgreSQL migration verified (branch: feature/demo-refinement-sprint, NOT DEPLOYED) |
+| 4.3.7 | 2026-07-11 | Demo Refinement production release: Demo Participant role, free-demo mode, RBAC hardening, session persistence, 7-step demo, User Adjusted badge, evidence confidence, migration 005 |
 | 4.3.6 | 2026-07-04 | Final production PDF export auth remediation |
 | 4.3.5 | 2026-07-04 | Final production persistence fix (SessionManager hydrate & auth loop fix) |
 | 4.1.1 | 2026-07-03 | P0 auth hotfix: placeholder Client ID removal, demo identity removal, PDF auth, build guards |

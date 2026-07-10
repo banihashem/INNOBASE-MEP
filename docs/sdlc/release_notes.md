@@ -1,16 +1,18 @@
 # MEP-light™ — Release Notes
 
-**Version**: 4.3.6  
-**Date**: 2026-07-04  
-**Classification**: Production
+**Version**: 4.3.7  
+**Date**: 2026-07-11  
+**Classification**: Production  
+**Client-Facing Label**: MEP-light Beta Demo v1.6
 
 ---
 
-## v4.3.6+demo — Demo Refinement Sprint (NOT DEPLOYED)
+## v4.3.7 — Demo Refinement Sprint (PRODUCTION)
 
 **Branch**: `feature/demo-refinement-sprint`  
-**Date**: 2026-07-10  
-**Status**: DEMO-ROLE-REFINEMENT-READY-FOR-INDEPENDENT-UAT  
+**Date**: 2026-07-11  
+**Status**: DEMO-REFINEMENT-PRODUCTION-DEPLOYED-PASS  
+**Tag**: `v4.3.7-demo-refinement`
 
 ### Summary
 Demo Participant role RBAC implementation with AI-assisted scoring, user adjustment tracking, admin governance security, and full-stack + PostgreSQL verification pass.

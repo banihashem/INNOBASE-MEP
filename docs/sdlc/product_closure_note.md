@@ -1,117 +1,67 @@
-# MEP-light™ v4.3.6 — PRODUCTION-CLOSED-PASS.
+# MEP-light™ — Product Closure Note (v4.3.7)
 
-**Version**: 4.3.6  
-**Date**: 2026-07-04  
-**Classification**: Production  
-**Status**: PRODUCTION-CLOSED-PASS
-
----
-
-## Product Summary
-
-MEP-light™ is a market-entry assessment platform that provides structured, evidence-based diagnostic intelligence for expansion opportunities. It offers:
-
-1. **Scoring Engine** — Deterministic multi-factor scoring across market attractiveness, readiness, risk, strategic alignment, and competitive positioning.
-2. **Session Management** — Full CRUD lifecycle for assessment sessions with PostgreSQL persistence.
-3. **ADK Multi-Agent Workflow** — Controlled deterministic assessment pipeline with governance guardrails and human review gates.
-4. **Reporting** — PDF export with uncertainty markers and evidence confidence levels, including draft-gating functionality.
-
-### Charter
-> "Clarify Preparedness, Do Not Predict Success."
+**Date**: 2026-07-11  
+**Version**: 4.3.7  
+**Status**: PRODUCTION-CLOSED-PASS  
+**Tag**: v4.3.7-demo-refinement
 
 ---
 
-## Acceptance Criteria Evidence
+## Release Summary
 
-### Section 1: Safety Actions
+MEP-light™ v4.3.7 is the Demo Refinement Sprint production release. It introduces the Demo Participant role and free-demo product mode, enabling external users to experience a 7-step market entry assessment workflow without access to consultant-grade features.
 
-| # | Criterion | Evidence | Status |
-|---|-----------|----------|--------|
-| 1 | DB password rotated | Secret Manager v3 active, v1-2 disabled | ✅ |
-| 2 | Old password invalidated | Cloud SQL user updated with new password | ✅ |
-| 3 | Secret Manager current version ≥ 2 | Version 3 (active) | ✅ |
-| 4 | Authorized networks empty | `gcloud sql instances describe` confirms | ✅ |
+## What's New
 
-### Section 2: Database
+### Demo Participant Role
+- New RBAC role: `demo_participant` — auto-provisioned on first Google OAuth login
+- Product mode: `free-demo` — isolated from consultant/admin workflows
+- Client-facing label: **MEP-light Beta Demo v1.6**
 
-| # | Criterion | Evidence | Status |
-|---|-----------|----------|--------|
-| 5 | Cloud SQL PostgreSQL 16 | `mep-light-db` instance running | ✅ |
-| 6 | 13+ core tables exist | 15 tables verified via migration script | ✅ |
-| 7 | Migration history tracked | `schema_migrations` table with v1, v2 | ✅ |
-| 8 | `/api/v2/db/health` returns `ok:true` | Verified independent UAT | ✅ |
+### 7-Step Demo Experience
+- Steps 1–7 fully functional for Demo Participant
+- Step 8 (Entry Readiness Workspace) locked with upgrade prompt
+- Full PDF/Report export locked with upgrade prompt
+- Human Review approval/flagging unavailable
+- Consultant Workspace / Annotation Pad hidden
 
-### Section 3: API Health
+### Scoring & Evidence
+- Generate Draft Scores: deterministic pre-loaded scores for UAE/Iraq/Germany
+- User Adjusted badge: visible when manual score changes are made
+- Evidence confidence: deterministic recomputation from per-dimension evidence sources
+- Custom markets supported (no pre-loaded scores)
 
-| # | Criterion | Evidence | Status |
-|---|-----------|----------|--------|
-| 9 | `/api/health` returns 200 | `status: "healthy", version: "4.3.6"` | ✅ |
-| 10 | API version is 4.3.6 | Health endpoint confirms | ✅ |
+### Admin Governance (Security)
+- Self-demotion prevention: Administrator cannot change own role
+- Last-admin preservation: last Administrator cannot be demoted or deleted
+- Audit logging for blocked governance actions
 
-### Section 4: ADK & Workflows
+### Session Persistence
+- Autosave via PATCH /api/v2/sessions/:id (2s debounce)
+- Refresh persistence via stateSnapshot
+- Session resume from SessionManager modal
+- Loading state prevents "No previous sessions" flicker
 
-| # | Criterion | Evidence | Status |
-|---|-----------|----------|--------|
-| 11 | ADK_ENABLED=controlled | Cloud Run env var set | ✅ |
-| 12 | PDF Export Authentication | Authenticated 200, Unauthenticated 401 | ✅ |
-| 13 | PDF Draft Watermark | Draft exports show DRAFT indicator | ✅ |
-| 14 | Persistence Works | Session restores from DB correctly | ✅ |
+### Infrastructure
+- Migration 005: idempotent demo_participant role addition
+- Production Cloud Build includes migration step
+- apply_migrations.js uses DB_NAME env var (supports staging + production)
 
-### Section 5: Security
+## What's Preserved
+- Administrator capabilities: full access, Admin Panel, PDF export, Human Review
+- Consultant capabilities: full access, PDF export, Step 8, Annotation Pad
+- Scoring engine: mathematical accuracy (117/117 tests)
+- OAuth: Google Sign-In, real JWT validation
+- ADK: controlled-deterministic mode, role-gated
 
-| # | Criterion | Evidence | Status |
-|---|-----------|----------|--------|
-| 17 | No secrets in Git | `.gitignore` excludes `.env*`, `data/`, `*.db` | ✅ |
-| 18 | DEMO_MODE guard active | `process.exit(1)` in production | ✅ |
-| 19 | SQLite guard active | `process.exit(1)` if SQLite in production | ✅ |
-| 20 | CORS restricted | Only known origins allowed | ✅ |
+## Test Evidence
+- 117 unit tests (scoring engine)
+- 37 RBAC code-path tests
+- 43 full-stack HTTP RBAC tests (run against production)
+- 5 bundle identity tests
+- 21 session persistence tests
+- **Total: 223 tests, 0 failures**
 
-### Section 6: Versioning & Git
-
-| # | Criterion | Evidence | Status |
-|---|-----------|----------|--------|
-| 21 | All code committed | `git status` clean | ✅ |
-| 22 | Git tag v4.3.6 | `git tag -a v4.3.6` | ✅ |
-| 23 | Pushed to GitHub | `git push origin master` | ✅ |
-| 24 | Version manifest complete | `docs/sdlc/version_manifest.md` | ✅ |
-
-### Section 7: SDLC Documentation
-
-| # | Criterion | Evidence | Status |
-|---|-----------|----------|--------|
-| 25 | Security review updated | `docs/sdlc/security_review.md` | ✅ |
-| 26 | Rollback plan documented | `docs/sdlc/rollback_plan.md` | ✅ |
-| 27 | Release notes complete | `docs/sdlc/release_notes.md` | ✅ |
-| 28 | Risk register updated | `docs/sdlc/risk_register.md` | ✅ |
-| 29 | Operations runbooks | `docs/sdlc/operations_runbooks.md` | ✅ |
-| 30 | Production verification | `docs/sdlc/production_verification_report.md` | ✅ |
-
----
-
-## Non-Blocking Backlog Follow-ups
-
-| Item ID | Description | Scope |
-|---------|-------------|-------|
-| OBS-1 | Server-side `/api/export-pdf` Hydration | Should hydrate from stored `stateSnapshot` when only `sessionId` is provided instead of requiring full payload. |
-| OBS-2 | PDF Watermark Prominence | Improve server draft PDF watermark prominence for better visibility. |
-
----
-
-## Governance Statement
-
-This product adheres to MEP-light™ governance rules:
-- **Clarify Preparedness, Do Not Predict Success** — No final market-entry approvals
-- **Neutral Strategic Advisor** — All outputs are diagnostic, not prescriptive
-- **Separation of Evidence from Uncertainty** — Confidence levels clearly labeled
-- **Prohibited Agency** — No autonomous decisions; all outputs require human review
-
----
-
-## Sign-Off
-
-| Role | Status |
-|------|--------|
-| Product Owner | ✅ APPROVED |
-| Security Lead | ✅ APPROVED |
-| DevOps Lead | ✅ APPROVED |
-| SDLC Owner | ✅ APPROVED |
+## Known Non-Blocking Follow-ups
+- `v4.3.7` and `CONSULTANT MODE` strings exist in compiled JS but are behind `appMode !== "free-demo"` ternary gates — never rendered for Demo Participant
+- Consider merging `feature/demo-refinement-sprint` into `main` after stabilization period
