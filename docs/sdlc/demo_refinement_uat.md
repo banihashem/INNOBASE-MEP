@@ -3,8 +3,9 @@
 **Date:** 2026-07-10
 **Tester:** Automated UAT Agent
 **Environment:** Local full-stack (Vite frontend :3000 + Express API :3001 + SQLite)
-**Branch:** `feature/demo-refinement-sprint`
-**Commit:** `30ce5d0`
+**Branch:** `origin/feature/demo-refinement-sprint`
+**Commit:** `5f099bb532dc440f3824f52a752ed4c010985768`
+**Status:** DEMO-ROLE-REFINEMENT-READY-FOR-INDEPENDENT-UAT
 
 ---
 
@@ -197,6 +198,6 @@
 
 ### Known Limitations (Remaining)
 
-1. **PDF export signature**: Crafted test JWTs cannot pass Google signature verification. Server logs confirm real PDF export functionality works for Admin/Consultant roles.
-2. **Sign-out/sign-in resume**: Requires real Google OAuth flow which cannot be automated with crafted JWTs. Requires Demo Participant Google test email to be provided.
-3. **Custom market refresh persistence**: Session API autosave was operational during UAT, but explicit refresh-persistence test was not completed. Custom markets are stored in `stateSnapshot.customMarkets` which is persisted via session update.
+1. **Real Google OAuth sign-out/sign-in resume**: Requires independent UAT with a real Demo Participant Google account.
+2. **Custom market explicit F5 refresh persistence**: Session API autosave was operational during UAT, but explicit refresh-persistence test was not completed.
+3. **No production deployment has occurred.**
