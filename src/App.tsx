@@ -431,6 +431,52 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
     });
   };
 
+  // ─── Draft Score Generation (Demo Participant) ──────────────
+  const handleGenerateDraftScores = useCallback(() => {
+    setMarketScores((prev) => {
+      const updated = { ...prev };
+      for (const marketId of selectedMarketIds) {
+        const draft = DEMO_MARKET_SCORES[marketId];
+        if (draft) {
+          updated[marketId] = {
+            ...draft,
+            draftGenerated: true,
+            userAdjusted: {},
+          };
+        } else if (!updated[marketId]?.draftGenerated) {
+          // For custom markets without pre-defined drafts, mark as draft with default scores
+          updated[marketId] = {
+            ...updated[marketId],
+            draftGenerated: true,
+            userAdjusted: {},
+          };
+        }
+      }
+      return updated;
+    });
+    toast.success("Draft scores generated. Review and adjust as needed.");
+  }, [selectedMarketIds, toast]);
+
+  const handleMarkUserAdjusted = useCallback((
+    marketId: string,
+    dimension: keyof DimensionScores
+  ) => {
+    setMarketScores((prev) => {
+      const current = prev[marketId];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [marketId]: {
+          ...current,
+          userAdjusted: {
+            ...current.userAdjusted,
+            [dimension]: true,
+          },
+        },
+      };
+    });
+  }, []);
+
   const handleSelectPrimaryMarketForRoadmap = (marketId: string) => {
     setSelectedRoadmapMarketId(marketId);
     setCurrentStep(7);
@@ -524,7 +570,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   ]);
 
   useEffect(() => {
-    if (appMode === "free-demo" || isInitializing) return;
+    if (isInitializing) return;
 
     const timer = setTimeout(async () => {
       setSaveStatus("saving");
@@ -853,6 +899,8 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
                 onUpdateDimensionEvidence={
                   handleUpdateDimensionEvidence
                 }
+                onGenerateDraftScores={handleGenerateDraftScores}
+                onMarkUserAdjusted={handleMarkUserAdjusted}
                 appMode={appMode}
               />
             )}

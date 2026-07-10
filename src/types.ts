@@ -80,6 +80,10 @@ export interface MarketScoreInput {
   dimensionEvidence: Record<keyof DimensionScores, EvidenceBasis>;
   evidenceBasis: string;
   evidenceConfidence: "High" | "Medium" | "Low" | "Unknown";
+  /** Tracks which dimensions were manually adjusted from draft scores */
+  userAdjusted?: Partial<Record<keyof DimensionScores, boolean>>;
+  /** Whether draft scores have been generated for this market */
+  draftGenerated?: boolean;
 }
 
 export interface AppState {

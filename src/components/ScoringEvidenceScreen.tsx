@@ -5,9 +5,10 @@ import {
   DimensionScores,
   EvidenceBasis,
   EVIDENCE_BASIS_OPTIONS,
+  DEMO_MARKET_SCORES,
   AppMode,
 } from "../types";
-import { AlertTriangle, ChevronRight } from "lucide-react";
+import { AlertTriangle, ChevronRight, Sparkles, PenLine } from "lucide-react";
 
 interface Props {
   selectedMarkets: Market[];
@@ -25,6 +26,11 @@ interface Props {
     marketId: string,
     dimension: keyof DimensionScores,
     basis: EvidenceBasis
+  ) => void;
+  onGenerateDraftScores?: () => void;
+  onMarkUserAdjusted?: (
+    marketId: string,
+    dimension: keyof DimensionScores
   ) => void;
   appMode: AppMode;
 }
@@ -90,8 +96,12 @@ export default function ScoringEvidenceScreen({
   onUpdateScores,
   onUpdateEvidence,
   onUpdateDimensionEvidence,
+  onGenerateDraftScores,
+  onMarkUserAdjusted,
   appMode,
 }: Props) {
+  const isDemo = appMode === "free-demo";
+  const anyDraftGenerated = Object.values(marketScores).some(s => s.draftGenerated);
   const [activeMarketId, setActiveMarketId] = useState<string>(
     selectedMarkets.length > 0 ? selectedMarkets[0].id : ""
   );
@@ -145,6 +155,13 @@ export default function ScoringEvidenceScreen({
     val: number
   ) => {
     onUpdateScores(currentId, { [dim]: val });
+    // Mark dimension as user-adjusted if draft was generated and value differs from draft
+    if (isDemo && currentScoreInput.draftGenerated && onMarkUserAdjusted) {
+      const draftScores = DEMO_MARKET_SCORES[currentId];
+      if (draftScores && draftScores.scores[dim] !== val) {
+        onMarkUserAdjusted(currentId, dim);
+      }
+    }
   };
 
   const handleConfidenceChange = (
@@ -173,14 +190,33 @@ export default function ScoringEvidenceScreen({
       className="space-y-8 animate-fade-slide-in"
       id="scoring-evidence-container"
     >
-      <div>
-        <h2 className="text-2xl font-semibold font-display text-white tracking-tight">
-          Strategic Metric Scoring & Evidence
-        </h2>
-        <p className="text-sm text-slate-400 mt-1">
-          Score each market across 9 dimensions. Tag the evidence source per
-          dimension.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold font-display text-white tracking-tight">
+            Strategic Metric Scoring & Evidence
+          </h2>
+          <p className="text-sm text-slate-400 mt-1">
+            {isDemo
+              ? "Generate draft scores from your inputs, then review and adjust. Your changes are marked as user adjustments."
+              : "Score each market across 9 dimensions. Tag the evidence source per dimension."}
+          </p>
+        </div>
+        {isDemo && onGenerateDraftScores && (
+          <button
+            type="button"
+            onClick={onGenerateDraftScores}
+            disabled={anyDraftGenerated}
+            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+              anyDraftGenerated
+                ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed"
+                : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-950/40 cursor-pointer"
+            }`}
+            id="generate-draft-scores-btn"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>{anyDraftGenerated ? "Draft Scores Applied" : "Generate Draft Scores"}</span>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -295,18 +331,30 @@ export default function ScoringEvidenceScreen({
                 currentScoreInput.dimensionEvidence?.[dim.key] ||
                 "Expert Judgment";
 
+              const isAdjusted = isDemo && currentScoreInput.userAdjusted?.[dim.key];
+
               return (
                 <div
                   key={dim.key}
-                  className="space-y-3 bg-slate-950/30 border border-slate-800/40 p-4 rounded-xl flex flex-col justify-between"
+                  className={`space-y-3 bg-slate-950/30 border p-4 rounded-xl flex flex-col justify-between ${
+                    isAdjusted
+                      ? "border-amber-700/50 ring-1 ring-amber-600/20"
+                      : "border-slate-800/40"
+                  }`}
                 >
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-slate-200 font-display flex items-center space-x-1">
+                      <span className="text-sm font-semibold text-slate-200 font-display flex items-center space-x-1 flex-wrap gap-1">
                         <span>{dim.label}</span>
                         {dim.isNegative && (
                           <span className="text-[10px] font-mono text-amber-400 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-900/40">
                             Negative
+                          </span>
+                        )}
+                        {isAdjusted && (
+                          <span className="text-[10px] font-mono text-sky-300 bg-sky-950/50 px-1.5 py-0.5 rounded border border-sky-800/50 flex items-center space-x-0.5" id={`adjusted-badge-${dim.key}`}>
+                            <PenLine className="w-2.5 h-2.5" />
+                            <span>User Adjusted</span>
                           </span>
                         )}
                       </span>
