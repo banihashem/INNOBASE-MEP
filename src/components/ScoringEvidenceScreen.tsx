@@ -205,7 +205,7 @@ export default function ScoringEvidenceScreen({
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold font-display text-white tracking-tight">
-            Scoring & Evidence
+            Strategic Metric Scoring
           </h2>
           <p className="text-sm text-slate-400 mt-1">
             {isDemo

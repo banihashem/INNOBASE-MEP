@@ -133,7 +133,7 @@ export default function ExportBriefModal({
                 Market Entry Prioritizer • Confidential Strategy Document
               </p>
               <p className="text-xs text-slate-500 font-mono mt-2">
-                Generated: {new Date().toISOString().split("T")[0]} • Version 1.4.0
+                Generated: {new Date().toISOString().split("T")[0]} • MEP-light Beta Demo v1.6
               </p>
             </div>
 
