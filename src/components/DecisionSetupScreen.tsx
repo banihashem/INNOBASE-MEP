@@ -10,14 +10,8 @@ interface Props {
 }
 
 const DECISION_MODES: { value: DecisionMode; label: string }[] = [
-  {
-    value: "compare",
-    label:
-      "Compare several possible markets + choose the best product-market-channel combination",
-  },
-  { value: "assess_one", label: "Assess one target market" },
-  { value: "entry_mode", label: "Select the best entry mode" },
-  { value: "readiness", label: "Assess expansion readiness" },
+  { value: "New Market Entry Readiness", label: "New Market Entry Readiness" },
+  { value: "Existing Market Expansion Readiness", label: "Existing Market Expansion Readiness" },
 ];
 
 const HORIZONS = ["12 months", "24 months", "36 months"];
@@ -32,23 +26,20 @@ export default function DecisionSetupScreen({
     const org = businessName || "Client Company";
 
     const modeText: Record<string, string> = {
-      compare:
-        "comparing selected markets to identify the most practical product-market-channel pathway",
-      assess_one: "assessing one target market for entry feasibility",
-      entry_mode: "selecting the best entry mode for its target market",
-      readiness: "assessing its overall expansion readiness",
+      "New Market Entry Readiness": "evaluating new market entry readiness",
+      "Existing Market Expansion Readiness": "evaluating existing market expansion readiness",
     };
 
     const horizon = data.expansionHorizon || "";
     const objective = data.strategicObjective || "";
-    const mode = data.decisionMode || "compare";
+    const mode = data.decisionMode || "New Market Entry Readiness";
 
     // Show placeholder until all required fields are filled
     if (!horizon.trim() || !objective.trim()) {
       return "Your decision statement will appear here after the required fields are completed.";
     }
 
-    return `${org} is ${modeText[mode] || modeText.compare} within a ${horizon} expansion horizon. The stated strategic objective is: "${objective}".`;
+    return `${org} is ${modeText[mode] || "evaluating new market entry readiness"} within a ${horizon} expansion horizon. The stated strategic objective is: "${objective}".`;
   };
 
   return (
@@ -76,25 +67,20 @@ export default function DecisionSetupScreen({
               onChange={(e) =>
                 onChange({ decisionMode: e.target.value as DecisionMode })
               }
-              disabled={appMode === "free-demo"}
               id="decision-mode-select"
             >
-              {appMode === "free-demo" ? (
-                <option value="compare">Compare several possible markets + choose the best product-market-channel combination</option>
-              ) : (
-                DECISION_MODES.map((dm) => (
-                  <option key={dm.value} value={dm.value}>
-                    {dm.label}
-                  </option>
-                ))
-              )}
+              {DECISION_MODES.map((dm) => (
+                <option key={dm.value} value={dm.value}>
+                  {dm.label}
+                </option>
+              ))}
             </select>
           </div>
 
           {/* Expansion Horizon Dropdown */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-300">
-              Expansion Horizon <span className="text-red-500">*</span>
+              Entry / Expansion Horizon <span className="text-red-500">*</span>
             </label>
             <select
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
@@ -118,15 +104,12 @@ export default function DecisionSetupScreen({
               Strategic Objective <span className="text-red-500">*</span>
             </label>
             <textarea
-              className={`w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none transition-colors h-32 resize-none ${
-                appMode === "free-demo" ? "opacity-75 focus:border-slate-800" : "focus:border-indigo-500"
-              }`}
-              placeholder="What must this market entry accomplish?"
-              value={appMode === "free-demo" ? "Assess baseline viability and market fit before investing in localized product adaptations." : data.strategicObjective}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none transition-colors h-32 resize-none focus:border-indigo-500"
+              placeholder="State the main strategic objective behind this market entry or expansion decision."
+              value={data.strategicObjective}
               onChange={(e) =>
                 onChange({ strategicObjective: e.target.value })
               }
-              readOnly={appMode === "free-demo"}
               id="strategic-objective-input"
             />
           </div>

@@ -55,14 +55,14 @@ import {
 
 // ─── Demo Scenario Defaults ──────────────────────────────
 const DEMO_DECISION_SETUP: DecisionSetup = {
-  decisionMode: "compare",
+  decisionMode: "New Market Entry Readiness",
   expansionHorizon: "12 months",
   strategicObjective:
     "Identify the most practical growth opportunity that can be validated quickly and scaled if early signals are positive",
 };
 
 const DEMO_COMPANY_SNAPSHOT: CompanySnapshot = {
-  businessName: "Client Company",
+  businessName: "",
   sector: "Food & Beverage Manufacturing",
   domesticMarketSize: "$15M annual revenue, 8% market share",
   exportExperience: "Limited/Indirect Exporting",
@@ -82,7 +82,7 @@ const DEMO_COMPANY_SNAPSHOT: CompanySnapshot = {
 
 const DEMO_PRODUCT_STRATEGY: ProductStrategy = {
   offeringName: "Selected Offering",
-  selectedStrategy: "replication",
+  selectedStrategy: "",
   customAdaptationNotes: "",
 };
 
@@ -784,7 +784,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
                   MEP-light™
                 </h1>
                 <span className="text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-900/60 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                  v{__APP_VERSION__}
+                  {appMode === "free-demo" ? "Beta Demo v1.6" : `v${__APP_VERSION__}`}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-mono leading-none">
@@ -1018,7 +1018,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between flex-wrap gap-2">
           <p>
             © 2026 Market Entry Prioritizer • MEP-light™ Diagnostic
-            System • Proprietary Enterprise Strategy Tool • v{__APP_VERSION__}
+            System • Proprietary Enterprise Strategy Tool • {appMode === "free-demo" ? "Beta Demo v1.6" : `v${__APP_VERSION__}`}
           </p>
           {authUser && (
             <div className="flex items-center gap-3">

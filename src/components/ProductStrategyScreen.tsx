@@ -28,7 +28,7 @@ export default function ProductStrategyScreen({
     >
       <div>
         <h2 className="text-2xl font-semibold font-display text-white tracking-tight">
-          Product Strategy Selection
+          Offering Strategy Selection
         </h2>
         <p className="text-sm text-slate-400 mt-1">
           Establish the specific product or offering strategy to test. Select
@@ -70,12 +70,7 @@ export default function ProductStrategyScreen({
                     isSelected
                       ? "bg-indigo-950/40 border-indigo-500/80 shadow-lg shadow-indigo-950/20 ring-1 ring-indigo-500/20"
                       : "bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-950/90"
-                  } ${
-                    appMode === "free-demo" && profile.id !== "replication"
-                      ? "opacity-50 cursor-not-allowed"
-                      : "cursor-pointer"
-                  }`}
-                  disabled={appMode === "free-demo" && profile.id !== "replication"}
+                  } cursor-pointer`}
                   id={`strategy-card-${profile.id}`}
                 >
                   <div className="space-y-2">

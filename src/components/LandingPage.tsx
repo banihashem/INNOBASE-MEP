@@ -259,23 +259,23 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
   const features = [
     {
       icon: <Globe2 className="w-6 h-6" />,
-      title: "9-Dimension Analysis",
+      title: "Compare Options",
       description:
-        "Evaluate markets across Attractiveness, Offering Fit, Channel Access, Competitive Intensity, and 5 more dimensions.",
+        "Assess potential markets, segments, channels, or entry pathways side by side.",
       color: "from-indigo-400 to-purple-400",
     },
     {
       icon: <Layers className="w-6 h-6" />,
-      title: "Evidence-Based Classification",
+      title: "Expose Assumptions",
       description:
-        "Categorize markets into structured tiers with confidence scoring. Each tier is backed by quantified evidence.",
+        "Identify what is supported by evidence and what still needs validation.",
       color: "from-rose-400 to-pink-400",
     },
     {
       icon: <Route className="w-6 h-6" />,
-      title: "Validation Roadmap",
+      title: "Plan Validation",
       description:
-        "Generate phase-gated action plans. Structure your regulatory, channel, and pilot phases systematically.",
+        "Generate a practical 30–60–90 day roadmap for market entry or expansion testing.",
       color: "from-emerald-400 to-teal-400",
     }
   ];
@@ -385,24 +385,20 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
         <div className="landing-hero-content">
           <div className="landing-hero-badge">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Enterprise Market Intelligence</span>
+            <span>Decision-Support Demo</span>
           </div>
           <h1 className="landing-hero-title">
-            Prioritize your next market with{" "}
-            <span className="landing-gradient-text">strategic clarity</span>
+            Market Entry & Expansion Decision Support
           </h1>
           <p className="landing-hero-subtitle">
-            The evidence-informed market-entry framework that transforms strategic
-            intuition into structured expansion roadmaps.
-            No AI hallucinations — pure analytical scoring.
+            Compare possible pathways, assess readiness, and define the next validation step.
           </p>
           <div className="landing-hero-ctas">
-            {renderGoogleButtonContainer(heroButtonRef, "hero-google-signin", "Sign in with Google")}
-            <button className="landing-cta-secondary">
-              <span>Watch 90-sec Overview</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            {renderGoogleButtonContainer(heroButtonRef, "hero-google-signin", "Start Demo Assessment")}
           </div>
+          <p className="mt-6 text-sm text-slate-400 max-w-2xl mx-auto italic">
+            Positioning Note: MEP-light is a decision-support demo. It does not predict or guarantee market success. It helps structure expansion thinking and clarify what should be validated next.
+          </p>
 
           {/* Auth error banner */}
           {renderAuthError()}
@@ -415,13 +411,12 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
         <div className="landing-section-header">
           <span className="landing-section-tag">CAPABILITIES</span>
           <h2 className="landing-section-title">
-            Built for enterprise-grade
+            Built for structured
             <br />
-            <span className="landing-gradient-text">market intelligence</span>
+            <span className="landing-gradient-text">expansion planning</span>
           </h2>
           <p className="landing-section-desc">
-            Every feature is designed to reduce uncertainty and maximize strategic
-            confidence in market-entry decisions.
+            Every feature is designed to reduce uncertainty and clarify market-entry decisions.
           </p>
         </div>
         <div className="landing-bento">
@@ -495,7 +490,7 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
             Start your first strategic assessment in under 3 minutes.
             No credit card required.
           </p>
-          {renderGoogleButtonContainer(ctaButtonRef, "cta-google-signin", "Get Started with Google")}
+          {renderGoogleButtonContainer(ctaButtonRef, "cta-google-signin", "Start Demo Assessment")}
         </div>
       </section>
 
@@ -504,11 +499,11 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
         <div className="landing-footer-inner">
           <div className="landing-footer-brand">
             <Globe2 className="w-4 h-4 text-teal-400" />
-            <span>MEP-light™ by INNOBASE</span>
+            <span>INNOBASE</span>
           </div>
           <p className="landing-footer-copy">
             © 2026 INNOBASE Consulting • Market Entry Prioritizer •
-            Proprietary Enterprise Strategy Tool • v{__APP_VERSION__}
+            Proprietary Enterprise Strategy Tool • Beta Demo v1.6
           </p>
           <p className="landing-footer-charter">
             Charter: "Clarify Preparedness, Do Not Predict Success"

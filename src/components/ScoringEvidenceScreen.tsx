@@ -155,8 +155,8 @@ export default function ScoringEvidenceScreen({
     val: number
   ) => {
     onUpdateScores(currentId, { [dim]: val });
-    // Mark dimension as user-adjusted if draft was generated and value differs from draft
-    if (isDemo && currentScoreInput.draftGenerated && onMarkUserAdjusted) {
+    // Mark dimension as user-adjusted if value differs from draft
+    if (isDemo && onMarkUserAdjusted) {
       const draftScores = DEMO_MARKET_SCORES[currentId];
       if (draftScores && draftScores.scores[dim] !== val) {
         onMarkUserAdjusted(currentId, dim);

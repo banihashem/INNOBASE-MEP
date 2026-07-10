@@ -115,7 +115,7 @@ export const STRATEGY_PROFILES: StrategyProfile[] = [
     name: "Core Offering Replication",
     tagline: "Replication",
     description:
-      "Test an existing product/offering in the target market with minimal adaptation.",
+      "Test an existing product, service, or offering in the target market with minimal adaptation.",
     bestUsed:
       "Best used when the offering already has demand signals, diaspora appeal, or clear transferability.",
     targetGroups:
@@ -130,7 +130,7 @@ export const STRATEGY_PROFILES: StrategyProfile[] = [
     name: "Localized Offering Adaptation",
     tagline: "Adaptation",
     description:
-      "Test an existing offering after adapting it to local market needs, regulations, channels, or consumer expectations.",
+      "Test an existing offering after adapting it to local market needs, regulations, channels, or customer expectations.",
     bestUsed:
       "Best used when local customer behavior or price sensitivity require modification.",
     targetGroups:
@@ -187,10 +187,10 @@ export const DEFAULT_MARKETS: Market[] = [
 export const STEPS = [
   { id: 1, label: "Decision Setup", phase: "diagnostic" as const },
   { id: 2, label: "Company Snapshot", phase: "diagnostic" as const },
-  { id: 3, label: "Product Strategy", phase: "diagnostic" as const },
+  { id: 3, label: "Offering Strategy Selection", phase: "diagnostic" as const },
   { id: 4, label: "Potential Markets", phase: "diagnostic" as const },
-  { id: 5, label: "Score & Evidence", phase: "diagnostic" as const },
-  { id: 6, label: "Dashboard", phase: "diagnostic" as const },
+  { id: 5, label: "Strategic Metric Scoring", phase: "diagnostic" as const },
+  { id: 6, label: "Comparative Dashboard", phase: "diagnostic" as const },
   { id: 7, label: "Roadmap", phase: "diagnostic" as const },
   { id: 8, label: "Entry Readiness", phase: "preparation" as const },
 ];

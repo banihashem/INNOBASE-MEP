@@ -190,8 +190,6 @@ export default function ComparativeDashboardScreen({
     (prev.potentialScore > current.potentialScore) ? prev : current
   ) : null;
 
-  const isSME = appMode === "free-demo" || (companySnapshot && companySnapshot.sector && companySnapshot.sector.toLowerCase().includes("sme"));
-
   const sortedResults = [...results].sort(
     (a, b) => b.potentialScore - a.potentialScore
   );
@@ -456,7 +454,7 @@ export default function ComparativeDashboardScreen({
       {/* Weight Model Description */}
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-4">
         <h4 className="text-sm uppercase font-semibold text-indigo-400 tracking-wider">
-          {isSME ? "SME " : ""}Diagnostic Weight Framework {leadingCandidate ? `— For Leading Candidate (${leadingCandidate.name})` : ""}
+          Diagnostic Weight Framework {companySnapshot?.sector ? `— ${companySnapshot.sector}` : ""} {leadingCandidate ? `— For Leading Candidate (${leadingCandidate.name})` : ""}
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-2">
           {[
