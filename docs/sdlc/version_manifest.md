@@ -10,7 +10,7 @@
 ## Unreleased — Demo Scenario v0.2 candidate (+ Cure-01)
 
 > **Not released, not deployed, not tagged.** Local development activity on branch
-> `feature/demo-scenario-v0.2-cure-01`, held for staging authorization. The accepted v4.3.7
+> `feature/demo-scenario-v0.2-cure-01`, held for push and staging authorization. The accepted v4.3.7
 > production release below is **unchanged** (revision `market-entry-prioritizer-00041-dqw`).
 
 | Field | Value |
@@ -22,13 +22,17 @@
 | Cure-01 initial commit | `0ac38da` fix(demo): cure v0.2 scoring UX, TS gate, narrative, identity marker |
 | Cure-01 precision commit | `1a91492` fix(cure): TS precision + narrative consistency + cure regression tests |
 | Cure-01 evidence commit | `bb6a5a5` docs(sdlc): cure-v0.2-01 evidence report + SHA-256 manifest |
+| Cure-01 docs reconciliation | `90575b5` docs(sdlc): cure-01 final reconciliation |
+| **STAGING_SOURCE_CANDIDATE** | **`3661d6b`** fix(build): make v0.2 runtime marker commit-exact |
+| Final docs/evidence commit | *(recorded after this document is committed)* |
 | Product version | **unchanged (4.3.7)** — no version bump; no new tag selected |
 | Client-facing label | **unchanged** (`MEP-light Beta Demo v1.6`), now centralized in `CLIENT_FACING_LABEL` |
 | Development identifier | `demo-scenario-v0.2-cure-01` (branch name; non-release convention) |
-| Runtime marker | `label: demo-scenario-v0.2-cure-01` (via `window.__MEP_BUILD__`) |
+| Runtime marker | `{ version: "4.3.7", sha: "3661d6b", label: "demo-scenario-v0.2-cure-01", runtimeMode: "production" }` |
 | Migration | none created / none required |
-| Local verification | 580 TS/Node + 133 Python = **713 total assertions** pass; TypeScript zero errors; production build OK |
+| Local verification | 464 TS/Node + 8 Governance + 133 Python = **605 unique assertions**; TypeScript zero errors; production build OK |
 | Requires before any deploy | separate **Human GO** for push / staging / migration / production / tag |
+
 
 
 ---

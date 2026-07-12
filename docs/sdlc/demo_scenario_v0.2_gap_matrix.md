@@ -12,7 +12,8 @@
 | DOCX SHA-256 | `8f33266cb1d607cf60fe6d584b1e00eeba0d186134955266d83d4987377c097b` |
 | Baseline commit | `c25a037a9745c505b6608a6b7f993bcce5272663` (v4.3.7 closure) |
 | Feature branch | `feature/demo-scenario-v0.2` |
-| Cure branch | `feature/demo-scenario-v0.2-cure-01` (current HEAD: `bb6a5a5`) |
+| Cure branch | `feature/demo-scenario-v0.2-cure-01` (current HEAD) |
+| STAGING_SOURCE_CANDIDATE | `3661d6b` |
 | Client-facing label (retained) | `MEP-light Beta Demo v1.6` |
 
 **Baseline status legend:** `SATISFIED` (v4.3.7 already meets spec), `PARTIAL`, `MISSING`, `CONFLICT`.

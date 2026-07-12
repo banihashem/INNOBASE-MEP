@@ -10,6 +10,7 @@
 | Baseline commit | `c25a037a9745c505b6608a6b7f993bcce5272663` (v4.3.7 closure) |
 | Feature branch | `feature/demo-scenario-v0.2` (v0.2 implementation) |
 | Cure branch | `feature/demo-scenario-v0.2-cure-01` (cure + evidence; current HEAD) |
+| STAGING_SOURCE_CANDIDATE | `3661d6b` fix(build): make v0.2 runtime marker commit-exact |
 | Client-facing label | `MEP-light Beta Demo v1.6` (retained; now centralized) |
 
 ## 1. Architecture & UX changes

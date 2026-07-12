@@ -6,13 +6,15 @@
 | Field | Value |
 |-------|-------|
 | Branch | `feature/demo-scenario-v0.2-cure-01` |
-| Cure Commit | `1a91492` |
-| Cure Full SHA | `1a9149209b0e71d1f6dc022d1f15a40c270aea29` |
-| Base Commit | `0ac38da` (initial cure) |
+| Initial Cure Commit | `0ac38da` fix(demo): cure v0.2 scoring UX, TS gate, narrative, identity marker |
+| Precision Commit | `1a91492` fix(cure): TS precision + narrative consistency + cure regression tests |
+| Evidence Commit | `bb6a5a5` docs(sdlc): cure-v0.2-01 evidence report + SHA-256 manifest |
+| Docs Reconciliation | `90575b5` docs(sdlc): cure-01 final reconciliation |
+| **STAGING_SOURCE_CANDIDATE** | **`3661d6b`** (`3661d6b740a32751f9207046aa3a881cd230d351`) fix(build): make v0.2 runtime marker commit-exact |
 | Original v0.2 HEAD | `cf7233c` |
-| Commit Subject | `fix(cure): TS precision + narrative consistency + cure regression tests (67 assertions)` |
 | Date | 2026-07-12 |
 | Executor | Cure technical executor (not independent QA) |
+| Runtime marker | `{ version: "4.3.7", sha: "3661d6b", label: "demo-scenario-v0.2-cure-01", runtimeMode: "production" }` |
 
 ## Defects Cured (This Commit)
 
@@ -52,15 +54,17 @@
 | Governance (Python) | `npm run test:governance` | 8/8 | ✅ PASS |
 | Session Patch | `npx tsx tests/session_patch_autosave.test.ts` | 21/21 | ✅ PASS |
 | Bundle Identity | `npx tsx tests/bundle_no_demo_identity.test.ts` | 5/5 | ✅ PASS |
-| **Cure Regression** | `node --import tsx tests/cure_regression_v0.2.test.ts` | **67/67** | ✅ PASS |
+| **Cure Regression** | `node --import tsx tests/cure_regression_v0.2.test.ts` | **87/87** | ✅ PASS |
 | Python Parity | `python -m pytest tests/python/test_scoring.py ...test_pdf.py` | 133/133 | ✅ PASS |
-| Vite Build | `npm run build` | 0 errors, 1.50s | ✅ PASS |
+| Vite Build | `npm run build` | 1706 modules, 1.48s | ✅ PASS |
+| TypeScript | `npx tsc --noEmit` | 0 errors | ✅ PASS |
 | `git diff --check` | whitespace | clean | ✅ PASS |
-| **TS/Node Total** | | **580/580** | ✅ ALL PASS |
-| **Python Total** | | **133/133** | ✅ ALL PASS |
-| **Grand Total** | | **713/713** | ✅ ALL PASS |
+| **TS/Node subtotal** | | **464** | ✅ ALL PASS |
+| **Governance** | | **8** | ✅ ALL PASS |
+| **Python Total** | | **133** | ✅ ALL PASS |
+| **Grand Total** | | **464 + 8 + 133 = 605** | ✅ ALL PASS |
 
-## Cure Regression Coverage (67 assertions)
+## Cure Regression Coverage (87 assertions)
 
 | Section | Assertions | Coverage Area |
 |---------|-----------|---------------|
@@ -68,8 +72,10 @@
 | §5.2 | 9 | User-adjusted badge, persistence, regeneration guard |
 | §5.3 | 10 | Narrative entry/expansion mode consistency |
 | §5.4 | 14 | Low-confidence flow, no dead-ends, discrepancy alerts |
-| §5.5 | 14 | Runtime identity marker contract, bundle safety |
+| §5.5 | 16 | Runtime identity marker contract, runtimeMode, bundle safety |
 | §5.6 | 7 | ErrorBoundary declare statements, lifecycle, no suppressions |
+| §5.7 | 18 | Build SHA resolution, CI override, fail-fast, bundle SHA verification |
+
 
 ## Changed Files (from cf7233c baseline)
 

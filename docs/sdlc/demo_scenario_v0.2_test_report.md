@@ -4,14 +4,17 @@
 > No cloud resource was mutated; production remains on v4.3.7 / revision
 > `market-entry-prioritizer-00041-dqw`.
 >
-> **Cure branch**: `feature/demo-scenario-v0.2-cure-01` · **HEAD**: `bb6a5a5`
+> **Cure branch**: `feature/demo-scenario-v0.2-cure-01`
+> **STAGING_SOURCE_CANDIDATE_COMMIT**: `3661d6b` (`3661d6b740a32751f9207046aa3a881cd230d351`)
 
 ## 1. Commands, counts & results
+
+All gates run against STAGING_SOURCE_CANDIDATE_COMMIT `3661d6b`.
 
 | # | Gate | Command | Assertions | Exit | Status |
 |---|------|---------|-----------|------|--------|
 | G1 | TypeScript | `npx tsc --noEmit` | — | 0 | ✅ PASS (zero errors) |
-| G2 | Vite build | `npm run build` | — | 0 | ✅ PASS (1706 modules, 1.50s) |
+| G2 | Vite build | `npm run build` | — | 0 | ✅ PASS (1706 modules, 1.48s) |
 | G3 | Scoring engine | `npm run test` | 117 | 0 | ✅ PASS |
 | G4 | Product prep | `npm run test:prep` | 23 | 0 | ✅ PASS |
 | G5 | Golden scenario | `npm run test:golden` | 20 | 0 | ✅ PASS |
@@ -23,25 +26,28 @@
 | G11 | RBAC enforcement | `npm run test:rbac` | 37 | 0 | ✅ PASS |
 | G12 | Demo v0.2 tests | `npm run test:demo-v0.2` | 83 | 0 | ✅ PASS |
 | G13 | Governance (Python) | `npm run test:governance` | 8 | 0 | ✅ PASS |
-| G14 | **Cure regression** | `node --import tsx tests/cure_regression_v0.2.test.ts` | **67** | 0 | ✅ PASS |
+| G14 | **Cure regression** | `node --import tsx tests/cure_regression_v0.2.test.ts` | **87** | 0 | ✅ PASS |
 | G15 | Python parity | `python -m pytest tests/python/test_scoring.py ...test_pdf.py` | 133 | 0 | ✅ PASS |
-| G16 | `git diff --check` | Whitespace check | — | 0 | ✅ PASS |
+| G16 | `git diff --check` | Whitespace check (cf7233c..HEAD) | — | 0 | ✅ clean |
 | G17 | Stale version scan | Source + bundle scan | — | 0 | ✅ clean |
 | G18 | Secret-blind scan | Source scan for API keys/passwords | — | 0 | ✅ clean |
 | G19 | Dead-selector scan | CSS↔component cross-reference | — | 0 | ✅ clean |
-| G20 | Runtime marker | Bundle contains `__MEP_BUILD__` | — | 0 | ✅ verified |
+| G20 | Runtime marker | Bundle SHA = `3661d6b`, not placeholder | — | 0 | ✅ verified |
 
 ### Test-count reconciliation
 
 | Category | Suites | Assertions |
 |----------|--------|------------|
-| TypeScript/Node (G3–G12, G14) | 12 suites | 452 |
-| Governance via npm (G13) | 1 suite (Python, invoked via npm) | 8 |
-| TS/Node subtotal | | **460** |
-| Cure regression (G14, already in TS/Node) | (included above) | (67) |
-| Python parity (G15) | 6 test files | 133 |
+| TS/Node functional (G3–G12) | 10 suites | 117+23+20+35+28+8+5+21+37+83 = **377** |
+| Cure regression (G14) | 1 suite | **87** |
+| TS/Node subtotal | 11 suites | **464** |
+| Governance via npm (G13) | 1 suite (Python, invoked via npm) | **8** |
+| Python parity (G15) | 6 test files | **133** |
 | Non-test gates (G1, G2, G16–G20) | 7 gates | 0 (exit-code only) |
-| **Grand total: unique assertions** | | **580 TS/Node + 133 Python = 713** |
+| **Grand total: unique assertions** | | **464 + 8 + 133 = 605** |
+
+> **Duplicates excluded**: `npm run build` is run once for G2 and not re-counted.
+> G16–G20 are exit-code-only scans, not counted as assertions.
 
 ## 2. New v0.2 unit coverage (`tests/demo_scenario_v0.2.test.ts`, 83 assertions)
 
