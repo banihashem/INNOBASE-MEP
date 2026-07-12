@@ -11,12 +11,16 @@
 
 // ─── Evidence & Confidence ───────────────────────────────────────────
 
-/** Evidence basis source — how was this information gathered? */
+/**
+ * Evidence basis source — how was this information gathered?
+ * Reduced to the three canonical spec values (Demo Scenario v0.2 §8.3, item #18).
+ * MarketScoreInput.evidenceBasis remains `EvidenceBasis | string` so legacy
+ * persisted values / regression fixtures continue to hydrate without loss.
+ */
 export type EvidenceBasis =
-  | "Internal experience"
-  | "Market reports"
-  | "Expert judgment"
-  | "Desk research / assumptions only";
+  | "Direct Evidence"
+  | "Market Reports"
+  | "Expert Judgment";
 
 /** Qualitative confidence level assigned per market */
 export type EvidenceConfidenceLevel = "High" | "Medium" | "Low" | "Unknown";
@@ -31,8 +35,8 @@ export type EvidenceConfidenceLabel =
   | "Assumption-Based"   // Low
   | "Evidence Gap";      // Unknown
 
-/** Evidence state for individual company snapshot fields */
-export type EvidenceState = "Confirmed" | "Estimated" | "Unknown";
+/** Evidence state for individual company snapshot fields (spec 5.3). "Unknown" kept as legacy alias. */
+export type EvidenceState = "Confirmed" | "Estimated" | "To Validate" | "Unknown";
 
 // ─── Company & Offering Profiles ─────────────────────────────────────
 
@@ -133,12 +137,21 @@ export interface CategoryScores {
   financial: number;       // FinancialLogic (pass-through)
 }
 
-/** Tier classification for a market */
+/** Tier classification for a market (coarse internal taxonomy). */
 export type TierClassification =
   | "Tier A: Priority"
   | "Tier B: Promising"
   | "Tier C: Do not prioritize"
   | "Tier D: Exclude from current agenda";
+
+/**
+ * Granular letter grade for the dashboard "Tier" column (spec 9.4).
+ * This is a DISPLAY layer over the composite score. Per spec, a score of 77
+ * displays as "A-" (validation-oriented), not "A" (which would read as certainty).
+ * The coarse TierClassification above is retained for confidence decoupling
+ * and recommended-action mapping.
+ */
+export type LetterGrade = "A" | "A-" | "B+" | "B" | "B-" | "C" | "D";
 
 /** Risk exposure level */
 export type RiskLevel = "High" | "Medium" | "Low";
@@ -176,6 +189,8 @@ export interface ScoringResult {
 
   // Classification
   tier: TierClassification;
+  /** Granular letter grade for display (spec 9.4): 77 → "A-". */
+  letterGrade: LetterGrade;
   warnings: ScoringWarning[];
 
   // Source evidence

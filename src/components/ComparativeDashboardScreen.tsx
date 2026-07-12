@@ -2,12 +2,15 @@ import React from "react";
 import {
   Market,
   MarketScoreInput,
-  EVIDENCE_BASIS_SCORE_MAP,
-  CONFIDENCE_SCORE_MAP,
   AppMode,
   CompanySnapshot,
   ProductStrategy,
 } from "../types";
+import {
+  computeMarketResult,
+  resolveSectorWeights,
+  MarketResult,
+} from "../lib/scoring";
 import { Trophy, ArrowRight, AlertTriangle } from "lucide-react";
 import StrategicDisclaimer from "./StrategicDisclaimer";
 
@@ -20,34 +23,8 @@ interface Props {
   productStrategy?: ProductStrategy;
 }
 
-export interface CalculatedResult {
-  marketId: string;
-  name: string;
-  opportunity: number;
-  fit: number;
-  feasibility: number;
-  potentialScore: number;
-  riskExposure: number;
-  riskLevel: "High" | "Medium" | "Low";
-  tier: "Tier A: Priority" | "Tier B: Promising" | "Tier C: Do not prioritize" | "Tier D: Exclude from current agenda";
-  confidence: "High" | "Medium" | "Low" | "Unknown";
-  evidenceBasis: string;
-  evidenceConfidenceScore: number;
-  mainStrength: string;
-  mainWeakness: string;
-  discrepancyAlert: boolean;
-}
-
-// Dimension category labels for strength/weakness identification
-const CATEGORY_LABELS: Record<string, string> = {
-  marketAttractiveness: "Market Attractiveness",
-  offeringFit: "Offering Fit",
-  channelAccess: "Channel Access",
-  operationalFeasibility: "Operational Feasibility",
-  strategicValue: "Strategic Value",
-  financialLogic: "Financial Logic",
-  brandTrustTransferability: "Brand Transferability",
-};
+/** Re-exported for existing consumers (App.tsx, ExportBriefModal, PDF payload). */
+export type CalculatedResult = MarketResult;
 
 export default function ComparativeDashboardScreen({
   selectedMarkets,
@@ -57,136 +34,12 @@ export default function ComparativeDashboardScreen({
   companySnapshot,
   productStrategy,
 }: Props) {
-  const results: CalculatedResult[] = selectedMarkets.map((market) => {
-    const input = marketScores[market.id] || {
-      scores: {
-        marketAttractiveness: 3,
-        offeringFit: 3,
-        channelAccess: 3,
-        operationalFeasibility: 3,
-        strategicValue: 3,
-        financialLogic: 3,
-        brandTrustTransferability: 3,
-        competitiveIntensity: 3,
-        regulatoryComplexity: 3,
-      },
-      dimensionEvidence: {},
-      evidenceBasis: "Expert Judgment",
-      evidenceConfidence: "Low" as const,
-    };
+  const sectorWeights = resolveSectorWeights(companySnapshot?.sector);
+  const results: MarketResult[] = selectedMarkets.map((market) =>
+    computeMarketResult(market.id, market.name, marketScores[market.id], sectorWeights)
+  );
 
-    const s = input.scores;
-
-    // Invert negative dimensions
-    const adjCompetitive = 6 - (s.competitiveIntensity ?? 3);
-    const adjRegulatory = 6 - (s.regulatoryComplexity ?? 3);
-
-    // Category Scores
-    const opportunity =
-      (s.marketAttractiveness ?? 3) * 0.7 + adjCompetitive * 0.3;
-    const fit =
-      (s.offeringFit ?? 3) * 0.65 +
-      (s.brandTrustTransferability ?? 3) * 0.35;
-    const feasibility =
-      (s.channelAccess ?? 3) * 0.35 +
-      adjRegulatory * 0.3 +
-      (s.operationalFeasibility ?? 3) * 0.35;
-
-    // Expansion Potential Score (0-100)
-    const weightedAverage =
-      opportunity * 0.25 +
-      fit * 0.2 +
-      feasibility * 0.25 +
-      (s.strategicValue ?? 3) * 0.1 +
-      (s.financialLogic ?? 3) * 0.2;
-    const potentialScore = Math.round(weightedAverage * 20);
-
-    // Risk Exposure
-    const riskExposure =
-      ((s.competitiveIntensity ?? 3) + (s.regulatoryComplexity ?? 3)) / 2;
-    let riskLevel: "High" | "Medium" | "Low" = "Medium";
-    if (riskExposure >= 3.8) riskLevel = "High";
-    else if (riskExposure <= 2.2) riskLevel = "Low";
-
-    // Evidence Confidence Score (0-100)
-    // Aggregate per-dimension evidence basis quality
-    let evidenceConfidenceScore = 0;
-    const dimEvidence = input.dimensionEvidence || {};
-    const dimKeys = Object.keys(s) as Array<keyof typeof s>;
-    const evidenceScores = dimKeys.map((k) => {
-      const basis = dimEvidence[k] || "Expert Judgment";
-      return EVIDENCE_BASIS_SCORE_MAP[basis] || 25;
-    });
-    const avgDimEvidence =
-      evidenceScores.reduce((a, b) => a + b, 0) / evidenceScores.length;
-    // Blend with overall confidence (60% dimension avg, 40% overall)
-    const overallConfScore =
-      CONFIDENCE_SCORE_MAP[input.evidenceConfidence] || 30;
-    evidenceConfidenceScore = Math.round(
-      avgDimEvidence * 0.6 + overallConfScore * 0.4
-    );
-
-    // Discrepancy Alert: if Potential > 70 AND Evidence Confidence < 50
-    const discrepancyAlert =
-      potentialScore > 70 && evidenceConfidenceScore < 50;
-
-    // Tier assignment (with discrepancy downgrade)
-    let tier: CalculatedResult["tier"] = "Tier C: Do not prioritize";
-    if (discrepancyAlert) {
-      tier = "Tier B: Promising"; // auto-downgrade
-    } else if (potentialScore >= 75) {
-      tier = "Tier A: Priority";
-    } else if (potentialScore >= 60) {
-      tier = "Tier B: Promising";
-    } else if (potentialScore < 40) {
-      tier = "Tier D: Exclude from current agenda";
-    }
-
-    // Main Strength / Weakness (from positive dimensions only)
-    const positiveDims: { key: string; score: number }[] = [
-      { key: "marketAttractiveness", score: s.marketAttractiveness ?? 3 },
-      { key: "offeringFit", score: s.offeringFit ?? 3 },
-      { key: "channelAccess", score: s.channelAccess ?? 3 },
-      {
-        key: "operationalFeasibility",
-        score: s.operationalFeasibility ?? 3,
-      },
-      { key: "strategicValue", score: s.strategicValue ?? 3 },
-      { key: "financialLogic", score: s.financialLogic ?? 3 },
-      {
-        key: "brandTrustTransferability",
-        score: s.brandTrustTransferability ?? 3,
-      },
-    ];
-    const sortedDims = [...positiveDims].sort(
-      (a, b) => b.score - a.score
-    );
-    const mainStrength =
-      CATEGORY_LABELS[sortedDims[0].key] || sortedDims[0].key;
-    const mainWeakness =
-      CATEGORY_LABELS[sortedDims[sortedDims.length - 1].key] ||
-      sortedDims[sortedDims.length - 1].key;
-
-    return {
-      marketId: market.id,
-      name: market.name,
-      opportunity,
-      fit,
-      feasibility,
-      potentialScore,
-      riskExposure,
-      riskLevel,
-      tier,
-      confidence: input.evidenceConfidence,
-      evidenceBasis: input.evidenceBasis,
-      evidenceConfidenceScore,
-      mainStrength,
-      mainWeakness,
-      discrepancyAlert,
-    };
-  });
-
-  const leadingCandidate = results.length > 0 ? results.reduce((prev, current) => 
+  const leadingCandidate = results.length > 0 ? results.reduce((prev, current) =>
     (prev.potentialScore > current.potentialScore) ? prev : current
   ) : null;
 
@@ -237,40 +90,28 @@ export default function ComparativeDashboardScreen({
     );
   };
 
-  const getTierBadge = (
-    tier: CalculatedResult["tier"],
-    discrepancy: boolean
-  ) => {
-    if (discrepancy) {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-900/40 text-amber-300 border border-amber-500/30">
-          Tier B: Hypothesis
-        </span>
-      );
-    }
-    if (tier === "Tier A: Priority") {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-900/40 text-emerald-300 border border-emerald-500/30">
-          Tier A: Priority
-        </span>
-      );
-    } else if (tier === "Tier B: Promising") {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-900/40 text-indigo-300 border border-indigo-500/30">
-          Tier B: Promising
-        </span>
-      );
-    } else if (tier === "Tier D: Exclude from current agenda") {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-950/40 text-red-400 border border-red-500/30">
-          Tier D: Exclude
-        </span>
-      );
-    }
+  // Letter-grade badge (spec 9.4): 77 → "A-". The grade is a validation-oriented
+  // display over the composite score; low-confidence markets show a caution note.
+  const getGradeBadge = (grade: MarketResult["letterGrade"], discrepancy: boolean) => {
+    let colors = "bg-slate-800 text-slate-400 border-slate-700";
+    if (grade === "A" || grade === "A-")
+      colors = "bg-emerald-900/40 text-emerald-300 border-emerald-500/30";
+    else if (grade === "B+" || grade === "B")
+      colors = "bg-indigo-900/40 text-indigo-300 border-indigo-500/30";
+    else if (grade === "B-")
+      colors = "bg-amber-900/30 text-amber-300 border-amber-500/30";
+    else if (grade === "D")
+      colors = "bg-red-950/40 text-red-400 border-red-500/30";
+
     return (
-      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">
-        Tier C: Postpone
-      </span>
+      <div className="flex flex-col items-center gap-1">
+        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${colors}`}>
+          {grade}
+        </span>
+        {discrepancy && (
+          <span className="text-[9px] text-amber-400 font-mono">requires validation</span>
+        )}
+      </div>
     );
   };
 
@@ -321,10 +162,13 @@ export default function ComparativeDashboardScreen({
 
           <div className="flex flex-col items-center justify-center text-center bg-slate-950 px-6 py-4 rounded-xl border border-slate-800/80 min-w-[140px]">
             <span className="text-[10px] uppercase font-semibold text-slate-500 tracking-wider">
-              Potential Score
+              Expansion Potential Score
             </span>
             <span className="text-3xl font-extrabold text-indigo-400 font-mono mt-1">
               {sortedResults[0].potentialScore}
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono mt-1">
+              Grade {sortedResults[0].letterGrade}
             </span>
           </div>
         </div>
@@ -355,25 +199,18 @@ export default function ComparativeDashboardScreen({
             <thead>
               <tr className="bg-slate-950/80 border-b border-slate-800 text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-400">
                 <th className="py-4 px-4 text-center w-14">Rank</th>
-                <th className="py-4 px-4">Market</th>
-                <th className="py-4 px-4 text-center">
-                  Opp (25%)
-                </th>
-                <th className="py-4 px-4 text-center">
-                  Fit (20%)
-                </th>
-                <th className="py-4 px-4 text-center">
-                  Feas (25%)
-                </th>
-                <th className="py-4 px-4 text-center">Score</th>
-                <th className="py-4 px-4 text-center">
-                  Evidence
-                </th>
-                <th className="py-4 px-4 text-center">Risk</th>
+                <th className="py-4 px-4">Option</th>
+                <th className="py-4 px-4 text-center">Opportunity</th>
+                <th className="py-4 px-4 text-center">Fit</th>
+                <th className="py-4 px-4 text-center">Feasibility</th>
+                <th className="py-4 px-4 text-center">Expansion&nbsp;Potential</th>
+                <th className="py-4 px-4 text-center">Evidence&nbsp;Confidence</th>
+                <th className="py-4 px-4 text-center">Risk&nbsp;Exposure</th>
                 <th className="py-4 px-4 text-center">Strength</th>
                 <th className="py-4 px-4 text-center">Weakness</th>
                 <th className="py-4 px-4 text-center">Tier</th>
-                <th className="py-4 px-4 text-center">Action</th>
+                <th className="py-4 px-4 text-center">Recommended&nbsp;Action</th>
+                <th className="py-4 px-4 text-center">Pathway</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -427,7 +264,10 @@ export default function ComparativeDashboardScreen({
                     {result.mainWeakness}
                   </td>
                   <td className="py-4 px-4 text-center whitespace-nowrap">
-                    {getTierBadge(result.tier, result.discrepancyAlert)}
+                    {getGradeBadge(result.letterGrade, result.discrepancyAlert)}
+                  </td>
+                  <td className="py-4 px-4 text-xs text-slate-300 leading-snug min-w-[220px] max-w-[280px]">
+                    {result.recommendedAction}
                   </td>
                   <td className="py-4 px-4 text-center whitespace-nowrap">
                     <button
@@ -451,48 +291,64 @@ export default function ComparativeDashboardScreen({
         </div>
       </div>
 
-      {/* Weight Model Description */}
-      <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-4">
-        <h4 className="text-sm uppercase font-semibold text-indigo-400 tracking-wider">
-          Diagnostic Weight Framework {companySnapshot?.sector ? `— ${companySnapshot.sector}` : ""} {leadingCandidate ? `— For Leading Candidate (${leadingCandidate.name})` : ""}
-        </h4>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-2">
-          {[
-            {
-              label: "Opportunity (25%)",
-              desc: `Market size adjusted by competitive concentration for ${productStrategy?.offeringName || "your offering"}.`,
-            },
-            {
-              label: "Fit (20%)",
-              desc: `Product alignment and brand transferability based on ${productStrategy?.selectedStrategy || "selected strategy"}.`,
-            },
-            {
-              label: "Feasibility (25%)",
-              desc: `Distributor path, operations, and ${companySnapshot?.sector ? `${companySnapshot.sector} regulations` : "regulations"}.`,
-            },
-            {
-              label: "Strategic Value (10%)",
-              desc: "Brand synergy and protective moats.",
-            },
-            {
-              label: "Financial Logic (20%)",
-              desc: "Acquisition costs and projected margins.",
-            },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="bg-slate-950 p-4 rounded-lg border border-slate-800/80"
-            >
-              <span className="text-xs text-slate-500 block">
-                {item.label}
-              </span>
-              <span className="text-xs text-slate-300 block mt-1">
-                {item.desc}
-              </span>
-            </div>
-          ))}
+      {/* Diagnostic Weight Framework (spec 9.2) — shown only for the Leading Validation Candidate */}
+      {leadingCandidate && (
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-3">
+          <h4 className="text-sm uppercase font-semibold text-indigo-400 tracking-wider">
+            Diagnostic Weight Framework
+            {companySnapshot?.sector ? ` - ${companySnapshot.sector} Model` : ""}
+          </h4>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            This framework shows how MEP-light weighted the main decision criteria for the
+            selected business type and market pathway. Higher weights indicate stronger
+            influence on the final score.
+          </p>
+          <p className="text-xs font-semibold text-slate-300">
+            Weighting applied to: {leadingCandidate.name}
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-2">
+            {[
+              {
+                label: "Opportunity",
+                weight: sectorWeights.opportunity,
+                desc: `Shows how attractive ${leadingCandidate.name} appears based on demand signals, customer relevance, and competitive pressure.`,
+              },
+              {
+                label: "Fit",
+                weight: sectorWeights.fit,
+                desc: `Shows how well ${productStrategy?.offeringName || "the selected offering"} aligns with customer needs, local expectations, and brand transferability.`,
+              },
+              {
+                label: "Feasibility",
+                weight: sectorWeights.feasibility,
+                desc: `Shows whether the business can realistically enter or expand through available channels, operations, and regulatory conditions.`,
+              },
+              {
+                label: "Strategic Value",
+                weight: sectorWeights.strategic,
+                desc: `Shows whether ${leadingCandidate.name} supports longer-term positioning, learning, or portfolio growth.`,
+              },
+              {
+                label: "Financial Logic",
+                weight: sectorWeights.financial,
+                desc: `Shows whether the pathway appears commercially viable after costs, pricing, and resource requirements.`,
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="bg-slate-950 p-4 rounded-lg border border-slate-800/80"
+              >
+                <span className="text-xs text-slate-500 block">
+                  {item.label} ({Math.round(item.weight * 100)}%)
+                </span>
+                <span className="text-xs text-slate-300 block mt-1">
+                  {item.desc}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Strategic Disclaimer */}
       <StrategicDisclaimer />

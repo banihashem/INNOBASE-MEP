@@ -1,6 +1,69 @@
-export type EvidenceState = "Confirmed" | "Estimated" | "Unknown";
+// Evidence quality states (spec 5.3). "To Validate" is the canonical third state;
+// "Unknown" is retained as a backward-compatible legacy alias for persisted v4.3.7
+// sessions and is normalized to "To Validate" on hydration + display.
+export type EvidenceState = "Confirmed" | "Estimated" | "To Validate" | "Unknown";
+
+/** Canonical display label for an evidence state (maps legacy "Unknown" → "To Validate"). */
+export function evidenceStateLabel(state: EvidenceState): "Confirmed" | "Estimated" | "To Validate" {
+  return state === "Confirmed" ? "Confirmed" : state === "Estimated" ? "Estimated" : "To Validate";
+}
 
 export type AppMode = "free-demo" | "facilitated" | "admin" | "demo" | "consultant";
+
+/**
+ * Single source of truth for the client-facing demo label (spec item #24).
+ * Centralized to avoid the prior 6-way duplication + casing drift.
+ * Retained as "MEP-light Beta Demo v1.6" until a separate release decision authorizes another label.
+ */
+export const CLIENT_FACING_LABEL = "MEP-light Beta Demo v1.6";
+export const CLIENT_FACING_LABEL_SHORT = "Beta Demo v1.6";
+
+// ─── Active demo sectors (spec §13) ──────────────────────────────────
+/** Sectors with defined scoring emphasis — selectable in the free demo. */
+export const ACTIVE_SECTORS = [
+  "Consumer Goods & Retail",
+  "Food & Beverage",
+  "Mobility & Logistics",
+  "SaaS & Digital Platforms",
+] as const;
+
+/** Sectors shown as disabled "Coming soon" — scoring prompts/risk logic not yet defined (spec §13.1). */
+export const COMING_SOON_SECTORS = [
+  "Financial Services & Fintech",
+  "Healthcare & Medtech",
+  "Media & Entertainment",
+  "Tourism & Hospitality",
+] as const;
+
+export type ActiveSector = (typeof ACTIVE_SECTORS)[number];
+
+// ─── Desired Output choices (spec 4.2) ───────────────────────────────
+export const DESIRED_OUTPUT_OPTIONS = [
+  "Ranking dashboard",
+  "Strategic recommendation",
+  "Validation roadmap",
+  "Executive brief",
+] as const;
+
+/**
+ * Config-driven contact destination for the Step 7 → full/Pro CTAs
+ * (Request Full Assessment / Book Market Expansion Sprint / Contact INNOBASE).
+ * Intentionally empty: no approved external delivery endpoint exists in this repo.
+ * When empty, the CTAs are presentational only and DO NOT claim any message is sent.
+ * A future governed change may set this to an approved INNOBASE address to enable a mailto.
+ */
+export const INNOBASE_CONTACT_EMAIL = "";
+
+/** Full/Pro modules previewed (locked) after Step 7 (spec §11). */
+export const FULL_PRO_MODULES: { name: string; purpose: string }[] = [
+  { name: "Entry Readiness Workspace", purpose: "Prepares the selected offering and market pathway for deeper validation or controlled entry." },
+  { name: "Regulatory & Compliance", purpose: "Assesses regulatory, certification, legal, and institutional readiness." },
+  { name: "Offering & Localization", purpose: "Defines adjustments to product, service, bundle, claims, messaging, or delivery model." },
+  { name: "Commercial & Pricing", purpose: "Tests pricing, margin, channel economics, cost-to-serve, and investment requirements." },
+  { name: "Packaging / Delivery / Operations", purpose: "Reviews packaging, logistics, delivery, service capacity, operational needs, and after-sales requirements." },
+  { name: "Channel & Partner Readiness", purpose: "Assesses partner qualification, route-to-market feasibility, channel roles, and commercial terms." },
+  { name: "Executive Report Preparation", purpose: "Generates exportable decision briefs and consultant-reviewed outputs." },
+];
 
 export interface CompanySnapshot {
   businessName: string;
@@ -25,6 +88,8 @@ export interface DecisionSetup {
   decisionMode: DecisionMode;
   expansionHorizon: string;
   strategicObjective: string;
+  /** Selected desired-output types (spec 4.2). Optional for backward compatibility. */
+  desiredOutput?: string[];
 }
 
 export interface ProductStrategy {
@@ -92,9 +157,11 @@ export interface AppState {
   decisionSetup: DecisionSetup;
   companySnapshot: CompanySnapshot;
   productStrategy: ProductStrategy;
-  shortlistedMarkets: string[]; // market IDs
+  selectedMarketIds: string[]; // market IDs (runtime name; legacy snapshots used shortlistedMarkets)
   customMarkets: Market[]; // user-added markets
   marketScores: Record<string, MarketScoreInput>; // keyed by market ID
+  /** Per-market context notes (spec 7.4), keyed by market ID. Covers default + custom markets. */
+  marketNotes: Record<string, string>;
   consultantNotes: string;
 }
 

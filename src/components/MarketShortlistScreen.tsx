@@ -1,54 +1,73 @@
 import React, { useState } from "react";
-import { Market, DEFAULT_MARKETS, AppMode } from "../types";
+import { Market, AppMode } from "../types";
 import { Plus, Trash2, Edit2, Check, CheckSquare, Square, Info } from "lucide-react";
 
 interface Props {
+  /** Visible comparison set: starter examples (minus removed) + custom markets. */
+  markets: Market[];
   selectedMarketIds: string[];
-  customMarkets: Market[];
+  /** Per-market context notes keyed by market id (spec 7.4). */
+  marketNotes: Record<string, string>;
   onToggleMarket: (marketId: string) => void;
   onAddCustomMarket: (name: string, description: string) => void;
-  onDeleteCustomMarket: (marketId: string) => void;
-  onUpdateMarketDescription: (marketId: string, newDesc: string) => void;
+  onDeleteMarket: (marketId: string) => void;
+  onUpdateMarketNote: (marketId: string, note: string) => void;
   appMode: AppMode;
 }
 
+const NOTE_PLACEHOLDER =
+  "e.g., demand signals, customer fit, partner interest, regulatory concerns, competitive pressure, channel access, pricing issues, or strategic reasons for considering this market.";
+
 export default function MarketShortlistScreen({
+  markets,
   selectedMarketIds,
-  customMarkets,
+  marketNotes,
   onToggleMarket,
   onAddCustomMarket,
-  onDeleteCustomMarket,
-  onUpdateMarketDescription,
+  onDeleteMarket,
+  onUpdateMarketNote,
   appMode,
 }: Props) {
   const [newMarketName, setNewMarketName] = useState("");
   const [newMarketDesc, setNewMarketDesc] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingDesc, setEditingDesc] = useState("");
-  const [activeDetailId, setActiveDetailId] = useState<string | null>("uae");
-
-  const allMarkets = [...DEFAULT_MARKETS, ...customMarkets];
+  const [editingNote, setEditingNote] = useState("");
+  const [activeDetailId, setActiveDetailId] = useState<string | null>(
+    markets[0]?.id ?? null
+  );
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMarketName.trim()) return;
-    onAddCustomMarket(
-      newMarketName.trim(),
-      newMarketDesc.trim() || "Custom market entered by user."
-    );
+    const name = newMarketName.trim();
+    if (!name) {
+      setAddError("Enter a market name.");
+      return;
+    }
+    // Duplicate detection (case-insensitive) against the current comparison set.
+    if (markets.some((m) => m.name.trim().toLowerCase() === name.toLowerCase())) {
+      setAddError(`"${name}" is already in your comparison set.`);
+      return;
+    }
+    if (selectedMarketIds.length >= 5) {
+      setAddError("You can compare at most 5 markets. Remove one before adding another.");
+      return;
+    }
+    onAddCustomMarket(name, newMarketDesc.trim() || "Custom market entered by user.");
     setNewMarketName("");
     setNewMarketDesc("");
+    setAddError(null);
     setIsAdding(false);
   };
 
   const startEditing = (m: Market) => {
     setEditingId(m.id);
-    setEditingDesc(m.description);
+    setEditingNote(marketNotes[m.id] ?? "");
   };
 
   const saveEditing = (id: string) => {
-    onUpdateMarketDescription(id, editingDesc);
+    onUpdateMarketNote(id, editingNote);
     setEditingId(null);
   };
 
@@ -56,18 +75,15 @@ export default function MarketShortlistScreen({
     selectedMarketIds.length < 3 || selectedMarketIds.length > 5;
 
   return (
-    <div
-      className="space-y-8 animate-fade-slide-in"
-      id="market-shortlist-container"
-    >
+    <div className="space-y-8 animate-fade-slide-in" id="market-shortlist-container">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold font-display text-white tracking-tight">
             Potential Markets
           </h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Select 3 to 5 markets to compare. Click any card to view
-            context notes.
+          <p className="text-sm text-slate-400 mt-1 max-w-2xl">
+            Select 3 to 5 markets to compare. These starter options are only examples.
+            You can edit, remove, or add markets based on your actual entry or expansion priorities.
           </p>
         </div>
 
@@ -84,7 +100,10 @@ export default function MarketShortlistScreen({
 
           {!isAdding && (
             <button
-              onClick={() => setIsAdding(true)}
+              onClick={() => {
+                setIsAdding(true);
+                setAddError(null);
+              }}
               className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
               id="add-custom-market-btn"
             >
@@ -102,26 +121,28 @@ export default function MarketShortlistScreen({
           className="bg-slate-900 border border-indigo-900/40 rounded-xl p-5 space-y-4 animate-fade-in"
         >
           <h3 className="text-sm font-semibold text-indigo-300 font-display">
-            Add Custom Target Market
+            Add Market, Region, Segment, or Pathway
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-400 block">
-                Market Name
+                Name
               </label>
               <input
                 type="text"
                 placeholder="e.g. Saudi Arabia"
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
                 value={newMarketName}
-                onChange={(e) => setNewMarketName(e.target.value)}
-                required
+                onChange={(e) => {
+                  setNewMarketName(e.target.value);
+                  if (addError) setAddError(null);
+                }}
                 id="new-market-name-input"
               />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-400 block">
-                Strategic Context
+                Short description (optional)
               </label>
               <input
                 type="text"
@@ -133,10 +154,18 @@ export default function MarketShortlistScreen({
               />
             </div>
           </div>
+          {addError && (
+            <p className="text-xs text-rose-400" id="add-market-error">
+              {addError}
+            </p>
+          )}
           <div className="flex justify-end space-x-3 text-xs">
             <button
               type="button"
-              onClick={() => setIsAdding(false)}
+              onClick={() => {
+                setIsAdding(false);
+                setAddError(null);
+              }}
               className="text-slate-400 hover:text-slate-200 px-3 py-2 cursor-pointer"
             >
               Cancel
@@ -153,7 +182,7 @@ export default function MarketShortlistScreen({
 
       {/* Markets Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {allMarkets.map((market) => {
+        {markets.map((market) => {
           const isSelected = selectedMarketIds.includes(market.id);
           const isActiveDetail = activeDetailId === market.id;
 
@@ -207,19 +236,20 @@ export default function MarketShortlistScreen({
                     >
                       <Info className="w-4 h-4" />
                     </button>
-                    {!market.isDefault && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteCustomMarket(market.id);
-                        }}
-                        className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    {/* Starter examples are removable too (spec 7.3 — not privileged). */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteMarket(market.id);
+                        if (activeDetailId === market.id) setActiveDetailId(null);
+                      }}
+                      className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer"
+                      title="Remove"
+                      id={`delete-${market.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
@@ -229,13 +259,9 @@ export default function MarketShortlistScreen({
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[10px] text-slate-500 font-mono">
-                <span>
-                  {market.isDefault ? "GLOBAL DATABASE" : "CUSTOM ENTRY"}
-                </span>
+                <span>{market.isDefault ? "STARTER EXAMPLE" : "CUSTOM ENTRY"}</span>
                 {isSelected && (
-                  <span className="text-indigo-400 font-bold">
-                    ACTIVE SCAN
-                  </span>
+                  <span className="text-indigo-400 font-bold">SELECTED</span>
                 )}
               </div>
             </div>
@@ -243,13 +269,14 @@ export default function MarketShortlistScreen({
         })}
       </div>
 
-      {/* Context Detail View */}
+      {/* Market Context Notes — per market (spec 7.4) */}
       {activeDetailId && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 animate-fade-in">
           {(() => {
-            const m = allMarkets.find((x) => x.id === activeDetailId);
+            const m = markets.find((x) => x.id === activeDetailId);
             if (!m) return null;
             const isEditing = editingId === m.id;
+            const note = marketNotes[m.id] ?? "";
 
             return (
               <div className="space-y-3">
@@ -257,22 +284,24 @@ export default function MarketShortlistScreen({
                   <div className="flex items-center space-x-2">
                     <span className="w-2 h-2 rounded-full bg-indigo-500" />
                     <h3 className="text-sm uppercase font-semibold text-indigo-400 tracking-wider">
-                      Strategic Context Notes — {m.name}
+                      Market Context Notes - {m.name}
                     </h3>
                   </div>
 
-                  {appMode === "free-demo" ? null : !isEditing ? (
+                  {!isEditing ? (
                     <button
                       onClick={() => startEditing(m)}
                       className="text-slate-400 hover:text-indigo-400 flex items-center space-x-1 text-xs cursor-pointer"
+                      id={`edit-note-${m.id}`}
                     >
                       <Edit2 className="w-3 h-3" />
-                      <span>Edit</span>
+                      <span>{note ? "Edit" : "Add note"}</span>
                     </button>
                   ) : (
                     <button
                       onClick={() => saveEditing(m.id)}
                       className="text-emerald-400 hover:text-emerald-300 flex items-center space-x-1 text-xs cursor-pointer"
+                      id={`save-note-${m.id}`}
                     >
                       <Check className="w-3.5 h-3.5" />
                       <span>Save</span>
@@ -280,19 +309,21 @@ export default function MarketShortlistScreen({
                   )}
                 </div>
 
-                {appMode === "free-demo" ? (
-                  <p className="text-sm text-slate-400 leading-relaxed bg-slate-950/40 p-4 rounded-lg border border-slate-800/40 italic">
-                    Custom market context requires the Consultant tier.
-                  </p>
-                ) : isEditing ? (
+                {isEditing ? (
                   <textarea
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 min-h-24"
-                    value={editingDesc}
-                    onChange={(e) => setEditingDesc(e.target.value)}
+                    placeholder={NOTE_PLACEHOLDER}
+                    value={editingNote}
+                    onChange={(e) => setEditingNote(e.target.value)}
+                    id={`note-textarea-${m.id}`}
                   />
-                ) : (
+                ) : note ? (
                   <p className="text-sm text-slate-300 leading-relaxed bg-slate-950/40 p-4 rounded-lg border border-slate-800/40">
-                    {m.description}
+                    {note}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-500 leading-relaxed bg-slate-950/40 p-4 rounded-lg border border-slate-800/40 italic">
+                    {NOTE_PLACEHOLDER}
                   </p>
                 )}
               </div>
@@ -305,9 +336,8 @@ export default function MarketShortlistScreen({
       {validationCountError && (
         <div className="bg-rose-950/15 border border-rose-900/50 rounded-lg p-4 flex items-center space-x-3 text-rose-300 text-sm">
           <span>
-            ⚠️ <strong>Configuration Alert:</strong> Select between{" "}
-            <strong>3 and 5</strong> markets to generate comparative
-            matrices.
+            ⚠️ <strong>Selection required:</strong> Choose between{" "}
+            <strong>3 and 5</strong> markets, regions, segments, or pathways to compare.
           </span>
         </div>
       )}

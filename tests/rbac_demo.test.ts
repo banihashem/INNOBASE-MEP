@@ -115,8 +115,8 @@ assert(step8Locked, 'Step 8 / Entry Readiness Workspace locked for free-demo (sh
 
 // 2.2 PDF Download locked for free-demo
 const pdfLocked = roadmapSrc.includes('disabled={isDownloadingPDF || appMode === "free-demo"}') &&
-  roadmapSrc.includes("Download Report — Full Version");
-assert(pdfLocked, 'PDF Download button disabled for free-demo (shows "Download Report — Full Version")');
+  roadmapSrc.includes("Download Report - Full Version"); // spec v0.2 §10.4: hyphen label
+assert(pdfLocked, 'PDF Download button disabled for free-demo (shows "Download Report - Full Version")');
 
 // 2.3 Consultant Notes hidden for free-demo
 const notesHidden = appSrc.includes('appMode !== "free-demo"') &&
@@ -210,9 +210,11 @@ console.log("\n  Section 4: Disclaimer Preservation\n");
 const disclaimerSrc = readFileSync(resolve(__dirname, "../src/components/StrategicDisclaimer.tsx"), "utf-8");
 const pdfGenSrc = readFileSync(resolve(__dirname, "../backend/src/pdf_generator.ts"), "utf-8");
 
+// Spec v0.2 disclaimer wording: "...does not predict or guarantee market success...
+// It is not regulatory, legal, or investment advice..."
 const uiDisclaimerPresent = disclaimerSrc.includes("does") &&
-  disclaimerSrc.includes("NOT") &&
-  disclaimerSrc.includes("predict success") &&
+  disclaimerSrc.includes("not") &&
+  disclaimerSrc.includes("predict") &&
   disclaimerSrc.includes("regulatory");
 assert(uiDisclaimerPresent, "UI Strategic Disclaimer contains no-prediction and no-regulatory-advice text");
 

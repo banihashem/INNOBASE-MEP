@@ -6,6 +6,9 @@ import {
   EVIDENCE_BASIS_SCORE_MAP,
   DimensionScores,
   AppMode,
+  CLIENT_FACING_LABEL,
+  FULL_PRO_MODULES,
+  INNOBASE_CONTACT_EMAIL,
 } from "../types";
 import {
   Calendar,
@@ -25,6 +28,7 @@ import {
   Pencil,
   Trash2,
   Plus,
+  Lock,
 } from "lucide-react";
 import StrategicDisclaimer from "./StrategicDisclaimer";
 import { apiClient } from "../lib/apiClient";
@@ -50,8 +54,10 @@ interface Props {
 
 interface Assumption {
   id: string;
-  category: "Demand" | "Channel Access" | "Financial Margins" | "Adaptation";
+  category: "Demand" | "Channel access" | "Financial logic" | "Adaptation" | "Internal capability";
   text: string;
+  /** Why this assumption matters (spec 10.3). */
+  whyItMatters: string;
   confidence: "High" | "Medium" | "Low";
   validationAction: string;
 }
@@ -147,7 +153,7 @@ export default function RoadmapScreen({
   // Human Review Gate state
   const [reviewNotes, setReviewNotes] = useState("");
   
-  const { toast } = useToast();
+  const toast = useToast();
 
   const handleReviewAction = async (status: string, notes?: string) => {
     if (sessionId) {
@@ -194,34 +200,50 @@ export default function RoadmapScreen({
     {
       id: "asm-1",
       category: "Demand",
-      text: `Target shoppers will purchase ${offeringName || "Offering X"} at a premium vs local options.`,
+      text: `Target customers will value and adopt ${offeringName || "the offering"} in this market.`,
+      whyItMatters: "If demand is weaker than expected, market attractiveness declines.",
       confidence: "Low",
       validationAction:
-        "Run 50 quantitative consumer surveys and digital concept testing ads.",
+        "Conduct 10-15 customer, buyer, distributor, or stakeholder interviews.",
     },
     {
       id: "asm-2",
-      category: "Channel Access",
-      text: "Distributors will accept 40% margin splits with prominent placement.",
+      category: "Channel access",
+      text: "A realistic route to customers exists through partners, distributors, or direct channels.",
+      whyItMatters:
+        "Even attractive markets cannot be served without a realistic route to customers.",
       confidence: "Medium",
       validationAction:
-        "Secure 3 exploratory LOIs from potential distribution partners.",
+        "Identify and qualify at least 5 potential channel partners or access routes.",
     },
     {
       id: "asm-3",
-      category: "Financial Margins",
-      text: "Tariffs and logistics will not compress net margins below 25%.",
+      category: "Financial logic",
+      text: "Entry economics remain viable after costs, pricing, and cost-to-serve.",
+      whyItMatters:
+        "A market can look attractive but become commercially weak if cost-to-serve is too high.",
       confidence: "Low",
-      validationAction:
-        "Perform landing cost exercise with customs broker for HS-code validation.",
+      validationAction: "Build a simple entry economics model.",
     },
     {
       id: "asm-4",
       category: "Adaptation",
-      text: "Standard labeling requires no major reformulation or packaging overhaul.",
+      text: "The offering requires no major reformulation, repositioning, or compliance overhaul.",
+      whyItMatters:
+        "If adaptation is more complex than expected, feasibility and profitability decline.",
       confidence: "High",
       validationAction:
-        "Submit packaging files to local regulatory consultants for audit.",
+        "Identify required changes to offer, positioning, delivery, compliance, or communication.",
+    },
+    {
+      id: "asm-5",
+      category: "Internal capability",
+      text: "The organization can deliver, support, monitor, and learn from the entry effort.",
+      whyItMatters:
+        "Expansion can fail if the company cannot deliver, support, monitor, and learn.",
+      confidence: "Medium",
+      validationAction:
+        "Confirm ownership, budget, capacity, timeline, and decision authority.",
     },
   ]);
 
@@ -249,11 +271,18 @@ export default function RoadmapScreen({
   };
 
   const addAssumption = () => {
-    const categories: Assumption["category"][] = ["Demand", "Channel Access", "Financial Margins", "Adaptation"];
+    const categories: Assumption["category"][] = [
+      "Demand",
+      "Channel access",
+      "Financial logic",
+      "Adaptation",
+      "Internal capability",
+    ];
     const newAsm: Assumption = {
       id: `asm-${Date.now()}`,
-      category: categories[assumptions.length % 4],
+      category: categories[assumptions.length % categories.length],
       text: "Enter your strategic assumption here...",
+      whyItMatters: "Explain why this assumption matters for the decision.",
       confidence: "Low",
       validationAction: "Define validation action...",
     };
@@ -379,7 +408,7 @@ export default function RoadmapScreen({
             ) : (
               <Download className="w-3.5 h-3.5" />
             )}
-            <span>{isDownloadingPDF ? 'Generating...' : appMode === 'free-demo' ? 'Download Report — Full Version' : 'Download Strategic Prioritisation Report (PDF)'}</span>
+            <span>{isDownloadingPDF ? 'Generating...' : appMode === 'free-demo' ? 'Download Report - Full Version' : 'Download Strategic Prioritisation Report (PDF)'}</span>
           </button>
         </div>
       </div>
@@ -421,7 +450,7 @@ export default function RoadmapScreen({
             Issued: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "short" })}
           </span>
           <span>•</span>
-          <span>Version: MEP-LIGHT Beta Demo v1.6</span>
+          <span>Version: {CLIENT_FACING_LABEL}</span>
         </div>
       </div>
 
@@ -599,7 +628,7 @@ export default function RoadmapScreen({
           Click confidence badges to cycle. Click the edit icon to modify text. Add or remove assumptions as needed.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {assumptions.map((asm) => (
             <div
               key={asm.id}
@@ -657,6 +686,14 @@ export default function RoadmapScreen({
                     {asm.text}
                   </p>
                 )}
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Why it matters:
+                  </span>
+                  <p className="text-xs text-slate-400 leading-normal">
+                    {asm.whyItMatters}
+                  </p>
+                </div>
               </div>
 
               <div className="pt-3 border-t border-slate-800/60 space-y-1.5">
@@ -766,7 +803,7 @@ export default function RoadmapScreen({
                   Days 1–30
                 </span>
                 <span className="text-[10px] font-mono text-indigo-400 bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-900/40">
-                  REGULATORY & MARGINS
+                  VALIDATE ASSUMPTIONS
                 </span>
               </div>
               <div className="space-y-3">
@@ -775,7 +812,7 @@ export default function RoadmapScreen({
                     Core Objective:
                   </span>
                   <p className="text-xs text-slate-200 font-semibold leading-relaxed">
-                    Verify compliance frameworks, HS code duties, landing cost feasibility.
+                    Validate core assumptions.
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -783,16 +820,18 @@ export default function RoadmapScreen({
                     Key Actions:
                   </span>
                   <ul className="text-xs text-slate-400 list-disc list-inside space-y-1">
-                    <li>Submit labels to compliance auditor.</li>
-                    <li>Verify duty rates with customs broker.</li>
-                    <li>Build landed cost model.</li>
+                    <li>Customer / partner interviews.</li>
+                    <li>Competitor review.</li>
+                    <li>Regulatory check.</li>
+                    <li>Pricing and cost estimate.</li>
+                    <li>Internal capacity review.</li>
                   </ul>
                 </div>
               </div>
             </div>
             <div className="bg-slate-950 p-4 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
               <span className="font-mono text-slate-500 font-bold">DECISION GATE:</span>
-              <span className="font-semibold text-slate-300">Landed Margin &gt; 45%</span>
+              <span className="font-semibold text-slate-300">Continue, revise, or pause.</span>
             </div>
           </div>
 
@@ -804,7 +843,7 @@ export default function RoadmapScreen({
                   Days 31–60
                 </span>
                 <span className="text-[10px] font-mono text-indigo-400 bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-900/40">
-                  CHANNEL EXPLORATION
+                  DESIGN PILOT
                 </span>
               </div>
               <div className="space-y-3">
@@ -813,7 +852,7 @@ export default function RoadmapScreen({
                     Core Objective:
                   </span>
                   <p className="text-xs text-slate-200 font-semibold leading-relaxed">
-                    Test product desirability with tier-1 distributors or retail buyers.
+                    Design controlled pilot.
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -821,16 +860,19 @@ export default function RoadmapScreen({
                     Key Actions:
                   </span>
                   <ul className="text-xs text-slate-400 list-disc list-inside space-y-1">
-                    <li>Draft digital sales deck.</li>
-                    <li>Conduct 3 exploratory partner meetings.</li>
-                    <li>Run localized test campaigns.</li>
+                    <li>Select target segment.</li>
+                    <li>Define pilot offer.</li>
+                    <li>Select pathway.</li>
+                    <li>Prepare sales materials.</li>
+                    <li>Confirm partner role.</li>
+                    <li>Define metrics.</li>
                   </ul>
                 </div>
               </div>
             </div>
             <div className="bg-slate-950 p-4 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
               <span className="font-mono text-slate-500 font-bold">DECISION GATE:</span>
-              <span className="font-semibold text-slate-300">Min 1 LOI / Partner</span>
+              <span className="font-semibold text-slate-300">Launch pilot or delay.</span>
             </div>
           </div>
 
@@ -842,7 +884,7 @@ export default function RoadmapScreen({
                   Days 61–90
                 </span>
                 <span className="text-[10px] font-mono text-indigo-400 bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-900/40">
-                  PILOT TEST LOOPS
+                  TEST & DECIDE
                 </span>
               </div>
               <div className="space-y-3">
@@ -851,7 +893,7 @@ export default function RoadmapScreen({
                     Core Objective:
                   </span>
                   <p className="text-xs text-slate-200 font-semibold leading-relaxed">
-                    Execute low-risk trial shipment or soft-launch campaign.
+                    Test and decide.
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -859,45 +901,108 @@ export default function RoadmapScreen({
                     Key Actions:
                   </span>
                   <ul className="text-xs text-slate-400 list-disc list-inside space-y-1">
-                    <li>Small air-freight test batch.</li>
-                    <li>Physical demo tastings or digital loops.</li>
-                    <li>Compile pricing response data.</li>
+                    <li>Run limited pilot.</li>
+                    <li>Track demand, leads, sales, and usage.</li>
+                    <li>Track feedback, margin, and operational feasibility.</li>
                   </ul>
                 </div>
               </div>
             </div>
             <div className="bg-slate-950 p-4 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
               <span className="font-mono text-slate-500 font-bold">DECISION GATE:</span>
-              <span className="font-semibold text-slate-300">Acceptance Rate &gt; 70%</span>
+              <span className="font-semibold text-slate-300">Scale, adapt, pause, or test another option.</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Proceed to Product Preparation */}
-      <div className="bg-gradient-to-r from-emerald-950/30 via-slate-900 to-slate-900 border border-emerald-500/20 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="space-y-2">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 font-mono">
-            {appMode === "free-demo" ? "Next Phase: Locked (Demo)" : "Next Phase"}
-          </span>
-          <h3 className="text-lg font-bold font-display text-white">
-            Ready to prepare {offeringName} for {activeMarket.name}?
-          </h3>
-          <p className="text-sm text-slate-400">
-            {appMode === "free-demo"
-              ? "The free demo ends here. Detailed entry readiness, compliance preparation, localization planning, channel readiness, and exportable reporting are available in the facilitated or Pro version."
-              : "Transition to the Entry Readiness Workspace to validate regulatory compliance, logistics feasibility, and commercial economics."}
-          </p>
+      {/* Next Phase — Entry Readiness Workspace (locked full/Pro preview after Step 7) */}
+      <div
+        className="bg-gradient-to-r from-emerald-950/20 via-slate-900 to-slate-900 border border-emerald-500/20 rounded-2xl p-8 space-y-6"
+        id="next-phase-preview"
+      >
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+          <div className="space-y-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 font-mono flex items-center gap-1.5">
+              {appMode === "free-demo" && <Lock className="w-3 h-3" />}
+              {appMode === "free-demo" ? "Next Phase — Locked (Full / Pro)" : "Next Phase"}
+            </span>
+            <h3 className="text-lg font-bold font-display text-white">
+              Next Phase - Entry Readiness Workspace
+            </h3>
+            <p className="text-sm text-slate-400 max-w-2xl">
+              The free demo ends here. Detailed entry readiness, compliance preparation,
+              localization planning, channel readiness, and exportable reporting are available
+              in the facilitated or Pro version.
+            </p>
+          </div>
+          <button
+            onClick={onProceedToPrep}
+            disabled={appMode === "free-demo"}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl flex items-center space-x-3 transition-all cursor-pointer shadow-md shadow-emerald-600/20 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            id="proceed-to-prep-btn"
+          >
+            <span>{appMode === "free-demo" ? "Workspace Locked" : "Proceed to Entry Readiness Workspace"}</span>
+            {appMode === "free-demo" ? <Lock className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
+          </button>
         </div>
-        <button
-          onClick={onProceedToPrep}
-          disabled={appMode === "free-demo"}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl flex items-center space-x-3 transition-all cursor-pointer shadow-md shadow-emerald-600/20 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          id="proceed-to-prep-btn"
-        >
-          <span>{appMode === "free-demo" ? "Workspace Locked" : "Proceed to Entry Readiness Workspace"}</span>
-          <ArrowRight className="w-5 h-5" />
-        </button>
+
+        {/* Locked full/Pro module preview */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {FULL_PRO_MODULES.map((mod) => (
+            <div
+              key={mod.name}
+              className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-4 space-y-1 relative"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-200">{mod.name}</span>
+                <Lock className="w-3.5 h-3.5 text-slate-500" aria-label="Locked (full / Pro)" />
+              </div>
+              <p className="text-[11px] text-slate-500 leading-snug">{mod.purpose}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Full/Pro CTAs (spec 10.5) */}
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-2 border-t border-slate-800/60">
+          {["Request Full Assessment", "Book Market Expansion Sprint", "Contact INNOBASE"].map(
+            (label) => {
+              const commonClass =
+                "flex-1 min-w-[200px] text-center text-sm font-semibold px-4 py-2.5 rounded-lg border border-emerald-700/40 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-900/40 transition-colors cursor-pointer";
+              // Config-driven: use a mailto only if an approved INNOBASE address is configured;
+              // otherwise the CTA is presentational and does not claim any message was sent.
+              if (INNOBASE_CONTACT_EMAIL) {
+                return (
+                  <a
+                    key={label}
+                    href={`mailto:${INNOBASE_CONTACT_EMAIL}?subject=${encodeURIComponent(
+                      `${label} — MEP-light Beta Demo`
+                    )}`}
+                    className={commonClass}
+                    id={`cta-${label.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    {label}
+                  </a>
+                );
+              }
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() =>
+                    toast.info(
+                      `${label}: available in the facilitated or Pro version. This demo build does not send messages.`
+                    )
+                  }
+                  className={commonClass}
+                  id={`cta-${label.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  {label}
+                </button>
+              );
+            }
+          )}
+        </div>
       </div>
 
       {/* Strategic Disclaimer */}

@@ -1,6 +1,6 @@
 import React from "react";
 import { ProductStrategy, STRATEGY_PROFILES, AppMode } from "../types";
-import { Check, ShieldAlert, Compass, Package } from "lucide-react";
+import { Check, Compass, Package } from "lucide-react";
 
 interface Props {
   data: ProductStrategy;
@@ -31,22 +31,20 @@ export default function ProductStrategyScreen({
           Offering Strategy Selection
         </h2>
         <p className="text-sm text-slate-400 mt-1">
-          Establish the specific product or offering strategy to test. Select
-          one model that best describes your entry approach.
+          Determine the product, service, or offering you want to test in the target
+          market. Choose the model that best describes your entry or expansion approach.
         </p>
       </div>
 
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 space-y-6">
-        {/* Offering Name Input */}
+        {/* Core Offering(s) Input */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-slate-300">
-            Export / Core Offering Name{" "}
-            <span className="text-red-500">*</span>
+            Core Offering(s) <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
-            placeholder="e.g. Selected Offering"
+          <textarea
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors h-24 resize-none"
+            placeholder="Describe the key product, service, solution, or offer you want to test in the target market. Focus on the offering that is most distinctive, commercially important, or strategically relevant to the entry or expansion decision."
             value={data.offeringName}
             onChange={(e) => onChange({ offeringName: e.target.value })}
             id="offering-name-input"
@@ -136,7 +134,7 @@ export default function ProductStrategyScreen({
           <div className="flex items-center space-x-2">
             <Compass className="w-4 h-4 text-indigo-400" />
             <h3 className="text-sm uppercase font-semibold text-indigo-400 tracking-wider">
-              Active Strategy Profile: {selectedProfile.name}
+              Active Strategy Profile
             </h3>
           </div>
 
@@ -173,11 +171,10 @@ export default function ProductStrategyScreen({
               </div>
 
               <div className="space-y-2 border-t md:border-t-0 md:border-l border-slate-800/80 md:pl-6 pt-4 md:pt-0">
-                <span className="text-xs text-indigo-400 font-semibold uppercase tracking-wider block flex items-center space-x-1">
-                  <ShieldAlert className="w-3.5 h-3.5 text-indigo-400 inline" />
-                  <span>Critical Validation Priorities</span>
+                <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider block">
+                  Critical Validation Priorities
                 </span>
-                <p className="text-sm text-slate-200 font-medium leading-relaxed bg-indigo-950/10 border border-indigo-950 rounded-lg p-3">
+                <p className="text-sm text-slate-300 leading-relaxed">
                   {selectedProfile.validationPriorities}
                 </p>
               </div>

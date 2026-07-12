@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { decodeGoogleJwt, GOOGLE_CLIENT_ID, isGoogleAuthConfigured, isGoogleAuthReady } from "../lib/auth";
+import { CLIENT_FACING_LABEL, CLIENT_FACING_LABEL_SHORT } from "../types";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -373,7 +374,7 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
             <div className="landing-logo-icon">
               <Globe2 className="w-5 h-5" />
             </div>
-            <span className="landing-logo-text">MEP-light Beta Demo v1.6</span>
+            <span className="landing-logo-text">{CLIENT_FACING_LABEL}</span>
             <span className="landing-logo-tag">by INNOBASE</span>
           </div>
           {renderGoogleButtonContainer(navButtonRef, "nav-google-signin", "Sign in")}
@@ -393,11 +394,18 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
           <p className="landing-hero-subtitle">
             Compare possible pathways, assess readiness, and define the next validation step.
           </p>
+          <p className="landing-hero-desc">
+            MEP-light is a structured demo that helps businesses compare potential markets,
+            segments, channels, or entry pathways before committing major resources.
+          </p>
           <div className="landing-hero-ctas">
+            <span className="landing-cta-label">Start Demo Assessment</span>
             {renderGoogleButtonContainer(heroButtonRef, "hero-google-signin", "Start Demo Assessment")}
           </div>
           <p className="mt-6 text-sm text-slate-400 max-w-2xl mx-auto italic">
-            Positioning Note: MEP-light is a decision-support demo. It does not predict or guarantee market success. It helps structure expansion thinking and clarify what should be validated next.
+            MEP-light is a decision-support demo. It does not predict or guarantee market success.
+            Its purpose is to structure entry and expansion thinking, clarify assumptions, and
+            identify what should be validated next.
           </p>
 
           {/* Auth error banner */}
@@ -471,10 +479,10 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
         <div className="landing-trust-inner">
           <Lock className="w-8 h-8 text-teal-400" />
           <div>
-            <h3 className="landing-trust-title">Enterprise Security Built-In</h3>
+            <h3 className="landing-trust-title">Security & Privacy Built-In</h3>
             <p className="landing-trust-desc">
-              Google OIDC authentication • Role-Based Access Control (Viewer, Consultant, Administrator) • 
-              Audit logging • PostgreSQL persistence • Prometheus observability
+              Google OIDC authentication • Role-based access control •
+              Audit logging • PostgreSQL persistence • Observability
             </p>
           </div>
         </div>
@@ -484,11 +492,11 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
       <section className="landing-final-cta">
         <div className="landing-final-cta-content">
           <h2 className="landing-final-title">
-            Ready to prioritize your markets?
+            Start Demo Assessment
           </h2>
           <p className="landing-final-desc">
-            Start your first strategic assessment in under 3 minutes.
-            No credit card required.
+            Compare 3–5 pathways, review AI-assisted draft scores, and generate a
+            practical 30-60-90 day validation roadmap. Free demo — no credit card required.
           </p>
           {renderGoogleButtonContainer(ctaButtonRef, "cta-google-signin", "Start Demo Assessment")}
         </div>
@@ -502,11 +510,7 @@ export default function LandingPage({ onSignIn, isAuthenticated }: LandingPagePr
             <span>INNOBASE</span>
           </div>
           <p className="landing-footer-copy">
-            © 2026 INNOBASE Consulting • Market Entry Prioritizer •
-            Proprietary Enterprise Strategy Tool • Beta Demo v1.6
-          </p>
-          <p className="landing-footer-charter">
-            Charter: "Clarify Preparedness, Do Not Predict Success"
+            © 2026 INNOBASE • Market Entry &amp; Expansion Decision Support • {CLIENT_FACING_LABEL_SHORT}
           </p>
         </div>
       </footer>

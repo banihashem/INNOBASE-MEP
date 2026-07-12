@@ -1,11 +1,16 @@
 import React from "react";
-import { DecisionSetup, DecisionMode, AppMode } from "../types";
+import { DecisionSetup, DecisionMode, AppMode, DESIRED_OUTPUT_OPTIONS } from "../types";
+import { buildDecisionStatement } from "../lib/narrative";
 import { Crosshair } from "lucide-react";
 
 interface Props {
   data: DecisionSetup;
   onChange: (newData: Partial<DecisionSetup>) => void;
   businessName: string;
+  /** Company Snapshot context used to enrich the statement after Step 2 (spec 4.4). */
+  capabilities?: string;
+  constraints?: string;
+  sector?: string;
   appMode: AppMode;
 }
 
@@ -20,34 +25,38 @@ export default function DecisionSetupScreen({
   data,
   onChange,
   businessName,
+  capabilities,
+  constraints,
+  sector,
   appMode,
 }: Props) {
-  const getDecisionStatement = () => {
-    const modeText: Record<string, string> = {
-      "New Market Entry Readiness": "evaluate new market entry readiness",
-      "Existing Market Expansion Readiness": "evaluate existing market expansion readiness",
-    };
+  const getDecisionStatement = () =>
+    buildDecisionStatement({
+      businessName,
+      decisionMode: data.decisionMode,
+      expansionHorizon: data.expansionHorizon,
+      strategicObjective: data.strategicObjective,
+      capabilities,
+      constraints,
+      sector,
+    });
 
-    const horizon = data.expansionHorizon || "";
-    const objective = data.strategicObjective || "";
-    const mode = data.decisionMode || "New Market Entry Readiness";
-
-    // Show placeholder until all required fields are filled
-    if (!horizon.trim() || !objective.trim()) {
-      return "Your decision statement will appear here after the required fields are completed.";
-    }
-
-    return `The business wants to ${modeText[mode] || "evaluate new market entry readiness"} within a ${horizon} expansion horizon. The stated strategic objective is: "${objective}".`;
+  const desiredOutput = data.desiredOutput || [];
+  const toggleOutput = (opt: string) => {
+    const next = desiredOutput.includes(opt)
+      ? desiredOutput.filter((o) => o !== opt)
+      : [...desiredOutput, opt];
+    onChange({ desiredOutput: next });
   };
 
   return (
     <div className="space-y-8 animate-fade-slide-in" id="decision-setup-container">
       <div>
         <h2 className="text-2xl font-semibold font-display text-white tracking-tight">
-          Decision Statement
+          Decision Setup
         </h2>
         <p className="text-sm text-slate-400 mt-0.5">
-          This statement defines the scope of the MEP-light™ assessment.
+          Frame whether you are assessing new market entry or expansion within an existing market.
         </p>
       </div>
 
@@ -61,7 +70,12 @@ export default function DecisionSetupScreen({
             </label>
             <select
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
-              value={data.decisionMode}
+              value={
+                data.decisionMode === "New Market Entry Readiness" ||
+                data.decisionMode === "Existing Market Expansion Readiness"
+                  ? data.decisionMode
+                  : "New Market Entry Readiness"
+              }
               onChange={(e) =>
                 onChange({ decisionMode: e.target.value as DecisionMode })
               }
@@ -73,9 +87,14 @@ export default function DecisionSetupScreen({
                 </option>
               ))}
             </select>
+            <p className="text-xs text-slate-500">
+              {data.decisionMode === "Existing Market Expansion Readiness"
+                ? "Assess readiness to expand within an existing market and identify the most suitable expansion pathway."
+                : "Assess readiness to enter a new market and identify the most suitable entry pathway."}
+            </p>
           </div>
 
-          {/* Expansion Horizon Dropdown */}
+          {/* Entry / Expansion Horizon Dropdown */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-300">
               Entry / Expansion Horizon <span className="text-red-500">*</span>
@@ -102,7 +121,7 @@ export default function DecisionSetupScreen({
               Strategic Objective <span className="text-red-500">*</span>
             </label>
             <textarea
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none transition-colors h-32 resize-none focus:border-indigo-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 focus:outline-none transition-colors h-28 resize-none focus:border-indigo-500"
               placeholder="State the main strategic objective behind this market entry or expansion decision."
               value={data.strategicObjective}
               onChange={(e) =>
@@ -110,6 +129,33 @@ export default function DecisionSetupScreen({
               }
               id="strategic-objective-input"
             />
+          </div>
+
+          {/* Desired Output */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-300">
+              Desired Output
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" id="desired-output-group">
+              {DESIRED_OUTPUT_OPTIONS.map((opt) => {
+                const active = desiredOutput.includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => toggleOutput(opt)}
+                    aria-pressed={active}
+                    className={`text-left text-xs px-3 py-2 rounded-lg border transition-colors ${
+                      active
+                        ? "bg-indigo-950/40 border-indigo-500/50 text-indigo-200"
+                        : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600"
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -124,7 +170,10 @@ export default function DecisionSetupScreen({
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
             </div>
 
-            <p className="text-lg text-slate-100 font-display font-light leading-relaxed italic">
+            <p
+              className="text-lg text-slate-100 font-display font-light leading-relaxed italic"
+              id="dynamic-decision-statement"
+            >
               "{getDecisionStatement()}"
             </p>
           </div>

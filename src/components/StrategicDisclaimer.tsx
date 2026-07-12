@@ -12,14 +12,15 @@ export default function StrategicDisclaimer() {
       </div>
       <div className="space-y-1">
         <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">
-          Strategic Safeguard Disclaimer
+          Demo Disclaimer
         </h4>
         <p className="text-xs text-slate-400 leading-relaxed">
-          MEP-light™ is a readiness and prioritization intelligence. It clarifies
-          preparedness; it does <strong className="text-slate-300">NOT</strong>{" "}
-          predict success, or provide formal regulatory or investment guidance.
-          All results must be validated by human experts prior
-          to commercial commitment.
+          MEP-light is a decision-support demo. It does{" "}
+          <strong className="text-slate-300">not</strong> predict or guarantee market
+          success. Its purpose is to structure entry and expansion thinking, clarify
+          assumptions, and identify what should be validated next. It is not regulatory,
+          legal, or investment advice; validate results with qualified experts before
+          committing resources.
         </p>
       </div>
     </div>

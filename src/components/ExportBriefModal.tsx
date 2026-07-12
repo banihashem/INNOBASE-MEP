@@ -1,6 +1,6 @@
 import React from "react";
 import { X, Printer, FileText } from "lucide-react";
-import { DecisionSetup, CompanySnapshot, ProductStrategy, Market, MarketScoreInput, STRATEGY_PROFILES } from "../types";
+import { DecisionSetup, CompanySnapshot, ProductStrategy, Market, MarketScoreInput, STRATEGY_PROFILES, CLIENT_FACING_LABEL } from "../types";
 
 interface CalculatedResult {
   marketId: string;
@@ -133,7 +133,7 @@ export default function ExportBriefModal({
                 Market Entry Prioritizer • Confidential Strategy Document
               </p>
               <p className="text-xs text-slate-500 font-mono mt-2">
-                Generated: {new Date().toISOString().split("T")[0]} • MEP-light Beta Demo v1.6
+                Generated: {new Date().toISOString().split("T")[0]} • {CLIENT_FACING_LABEL}
               </p>
             </div>
 
@@ -266,20 +266,20 @@ export default function ExportBriefModal({
                     <tr>
                       <td className="py-3 px-5 text-indigo-400 font-semibold">Phase 1</td>
                       <td className="py-3 px-5 text-slate-300">Days 1–30</td>
-                      <td className="py-3 px-5 text-slate-200">Regulatory & Margins — Verify compliance, HS codes, landing cost</td>
-                      <td className="py-3 px-5 text-slate-300">Landed Margin &gt; 45%</td>
+                      <td className="py-3 px-5 text-slate-200">Validate core assumptions — interviews, competitor review, regulatory check, pricing/cost estimate, capacity review</td>
+                      <td className="py-3 px-5 text-slate-300">Continue, revise, or pause.</td>
                     </tr>
                     <tr>
                       <td className="py-3 px-5 text-indigo-400 font-semibold">Phase 2</td>
                       <td className="py-3 px-5 text-slate-300">Days 31–60</td>
-                      <td className="py-3 px-5 text-slate-200">Channel Exploration — Test desirability with distributors/buyers</td>
-                      <td className="py-3 px-5 text-slate-300">Min 1 LOI / Partner</td>
+                      <td className="py-3 px-5 text-slate-200">Design controlled pilot — target segment, pilot offer, pathway, sales materials, partner role, metrics</td>
+                      <td className="py-3 px-5 text-slate-300">Launch pilot or delay.</td>
                     </tr>
                     <tr>
                       <td className="py-3 px-5 text-indigo-400 font-semibold">Phase 3</td>
                       <td className="py-3 px-5 text-slate-300">Days 61–90</td>
-                      <td className="py-3 px-5 text-slate-200">Pilot Test Loops — Trial shipment, demo tastings, feedback</td>
-                      <td className="py-3 px-5 text-slate-300">Acceptance Rate &gt; 70%</td>
+                      <td className="py-3 px-5 text-slate-200">Test and decide — run limited pilot; track demand, leads, sales, usage, feedback, margin, feasibility</td>
+                      <td className="py-3 px-5 text-slate-300">Scale, adapt, pause, or test another option.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -309,7 +309,7 @@ export default function ExportBriefModal({
                 validated by human experts prior to commercial commitment.
               </p>
               <p className="text-[10px] text-slate-600 font-mono">
-                © 2026 MEP-light™ • Proprietary Enterprise Strategy Tool
+                © 2026 INNOBASE • MEP-light™ Market Entry &amp; Expansion Decision Support
               </p>
             </div>
           </div>

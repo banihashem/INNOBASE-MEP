@@ -11,7 +11,11 @@ import {
   DEFAULT_MARKETS,
   DEFAULT_DIMENSION_EVIDENCE,
   DEMO_MARKET_SCORES,
+  CLIENT_FACING_LABEL,
+  CLIENT_FACING_LABEL_SHORT,
 } from "./types";
+import { computeMarketResult, resolveSectorWeights } from "./lib/scoring";
+import { generateDraftScores, DraftScoreError } from "./lib/draftScoring";
 import { AuthProvider, useAuth } from "./lib/auth";
 import type { AuthUser } from "./lib/auth";
 import { ToastProvider, useToast } from "./components/Toast";
@@ -48,10 +52,6 @@ import {
   FolderOpen,
   Save,
 } from "lucide-react";
-import {
-  EVIDENCE_BASIS_SCORE_MAP,
-  CONFIDENCE_SCORE_MAP,
-} from "./types";
 
 // ─── Demo Scenario Defaults ──────────────────────────────
 const DEMO_DECISION_SETUP: DecisionSetup = {
@@ -59,11 +59,12 @@ const DEMO_DECISION_SETUP: DecisionSetup = {
   expansionHorizon: "12 months",
   strategicObjective:
     "Identify the most practical growth opportunity that can be validated quickly and scaled if early signals are positive",
+  desiredOutput: ["Ranking dashboard", "Validation roadmap"],
 };
 
 const DEMO_COMPANY_SNAPSHOT: CompanySnapshot = {
   businessName: "",
-  sector: "Food & Beverage Manufacturing",
+  sector: "Food & Beverage",
   domesticMarketSize: "$15M annual revenue, 8% market share",
   exportExperience: "Limited/Indirect Exporting",
   internalCapabilities:
@@ -88,18 +89,18 @@ const DEMO_PRODUCT_STRATEGY: ProductStrategy = {
 
 const BLANK_COMPANY_SNAPSHOT: CompanySnapshot = {
   businessName: "",
-  sector: "Food & Beverage Manufacturing",
+  sector: "Food & Beverage",
   domesticMarketSize: "",
   exportExperience: "No Experience",
   internalCapabilities: "",
   knownConstraints: "",
   evidenceStates: {
-    businessName: "Unknown",
+    businessName: "To Validate",
     sector: "Estimated",
-    domesticMarketSize: "Unknown",
-    exportExperience: "Unknown",
-    internalCapabilities: "Unknown",
-    knownConstraints: "Unknown",
+    domesticMarketSize: "To Validate",
+    exportExperience: "To Validate",
+    internalCapabilities: "To Validate",
+    knownConstraints: "To Validate",
   },
 };
 
@@ -190,6 +191,10 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
 
   const [customMarkets, setCustomMarkets] = useState<Market[]>([]);
 
+  // Per-market context notes (spec 7.4) + removed starter examples (spec 7.3 de-privilege).
+  const [marketNotes, setMarketNotes] = useState<Record<string, string>>({});
+  const [removedDefaultIds, setRemovedDefaultIds] = useState<string[]>([]);
+
   const [marketScores, setMarketScores] =
     useState<Record<string, MarketScoreInput>>(DEMO_MARKET_SCORES);
 
@@ -201,10 +206,13 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   );
 
 
-  // Computed
+  // Computed — starter examples (minus any removed) + custom markets.
   const allMarkets = useMemo(
-    () => [...DEFAULT_MARKETS, ...customMarkets],
-    [customMarkets]
+    () => [
+      ...DEFAULT_MARKETS.filter((m) => !removedDefaultIds.includes(m.id)),
+      ...customMarkets,
+    ],
+    [customMarkets, removedDefaultIds]
   );
 
   const activeSelectedMarkets = useMemo(
@@ -279,11 +287,15 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   };
 
   const handleToggleMarketSelection = (marketId: string) => {
-    setSelectedMarketIds((prev) =>
-      prev.includes(marketId)
-        ? prev.filter((id) => id !== marketId)
-        : [...prev, marketId]
-    );
+    setSelectedMarketIds((prev) => {
+      if (prev.includes(marketId)) return prev.filter((id) => id !== marketId);
+      // Hard-cap the comparison set at 5 (spec 3–5 rule).
+      if (prev.length >= 5) {
+        toast.error("You can compare at most 5 markets. Remove one before adding another.");
+        return prev;
+      }
+      return [...prev, marketId];
+    });
   };
 
   const handleAddCustomMarket = (
@@ -321,29 +333,32 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
     }));
   };
 
-  const handleDeleteCustomMarket = (marketId: string) => {
-    setCustomMarkets((prev) =>
-      prev.filter((m) => m.id !== marketId)
-    );
-    setSelectedMarketIds((prev) =>
-      prev.filter((id) => id !== marketId)
-    );
+  // Remove any market — starter examples are de-privileged (spec 7.3): a removed
+  // default is tracked so it stays hidden; a custom market is dropped outright.
+  const handleDeleteMarket = (marketId: string) => {
+    const isDefault = DEFAULT_MARKETS.some((m) => m.id === marketId);
+    if (isDefault) {
+      setRemovedDefaultIds((prev) =>
+        prev.includes(marketId) ? prev : [...prev, marketId]
+      );
+    } else {
+      setCustomMarkets((prev) => prev.filter((m) => m.id !== marketId));
+    }
+    setSelectedMarketIds((prev) => prev.filter((id) => id !== marketId));
     setMarketScores((prev) => {
+      const updated = { ...prev };
+      delete updated[marketId];
+      return updated;
+    });
+    setMarketNotes((prev) => {
       const updated = { ...prev };
       delete updated[marketId];
       return updated;
     });
   };
 
-  const handleUpdateMarketDescription = (
-    marketId: string,
-    newDesc: string
-  ) => {
-    setCustomMarkets((prev) =>
-      prev.map((m) =>
-        m.id === marketId ? { ...m, description: newDesc } : m
-      )
-    );
+  const handleUpdateMarketNote = (marketId: string, note: string) => {
+    setMarketNotes((prev) => ({ ...prev, [marketId]: note }));
   };
 
   const handleUpdateScores = (
@@ -431,37 +446,66 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
     });
   };
 
-  // ─── Draft Score Generation (Demo Participant) ──────────────
+  // ─── Draft Score Generation (input-derived, spec §8.2) ──────────────
+  // Generates 1–5 draft scores per market×dimension FROM the entered inputs
+  // (company snapshot, offering strategy, market notes, sector, evidence states),
+  // validated against a strict schema. Fails safe on error (keeps prior scores,
+  // no fabrication) and confirms before overwriting user-adjusted values.
   const handleGenerateDraftScores = useCallback(() => {
-    let wasRegeneration = false;
-    setMarketScores((prev) => {
-      const updated = { ...prev };
-      for (const marketId of selectedMarketIds) {
-        const draft = DEMO_MARKET_SCORES[marketId];
-        if (updated[marketId]?.draftGenerated) wasRegeneration = true;
-        if (draft) {
-          updated[marketId] = {
-            ...draft,
-            draftGenerated: true,
-            userAdjusted: {},
-          };
-        } else {
-          // For custom markets without pre-defined drafts, mark as draft with default scores
-          updated[marketId] = {
-            ...updated[marketId],
-            draftGenerated: true,
-            userAdjusted: {},
-          };
-        }
-      }
-      return updated;
+    const anyAdjusted = selectedMarketIds.some((id) => {
+      const s = marketScores[id];
+      return s?.draftGenerated && s.userAdjusted && Object.keys(s.userAdjusted).length > 0;
     });
-    toast.success(
-      wasRegeneration
-        ? "Draft scores regenerated. Previous adjustments have been reset."
-        : "Draft scores generated. Review and adjust as needed."
-    );
-  }, [selectedMarketIds, toast]);
+    if (anyAdjusted) {
+      const ok = window.confirm(
+        "Regenerating will reset your manual score adjustments to fresh draft values. Continue?"
+      );
+      if (!ok) return;
+    }
+
+    try {
+      const generated: Record<string, MarketScoreInput> = {};
+      for (const marketId of selectedMarketIds) {
+        const market = allMarkets.find((m) => m.id === marketId);
+        if (!market) continue;
+        const draft = generateDraftScores({
+          marketId,
+          marketName: market.name,
+          marketDescription: market.description,
+          marketNote: marketNotes[marketId],
+          sector: companySnapshot.sector,
+          offeringStrategy: productStrategy.selectedStrategy,
+          capabilities: companySnapshot.internalCapabilities,
+          constraints: companySnapshot.knownConstraints,
+          domesticMarketSize: companySnapshot.domesticMarketSize,
+          evidenceStates: companySnapshot.evidenceStates,
+        });
+        generated[marketId] = {
+          marketId,
+          scores: draft.scores,
+          dimensionEvidence: draft.dimensionEvidence,
+          evidenceBasis: draft.dimensionEvidence.marketAttractiveness,
+          evidenceConfidence: draft.evidenceConfidence,
+          userAdjusted: {},
+          draftGenerated: true,
+        };
+      }
+
+      const wasRegeneration = selectedMarketIds.some((id) => marketScores[id]?.draftGenerated);
+      setMarketScores((prev) => ({ ...prev, ...generated }));
+      toast.success(
+        wasRegeneration
+          ? "Draft scores regenerated from your inputs. Review and adjust as needed."
+          : "Draft scores generated from your inputs. Review and adjust as needed."
+      );
+    } catch (err) {
+      // Fail-safe: keep existing scores, surface a retryable message, no fabrication.
+      const detail =
+        err instanceof DraftScoreError ? err.message : "An unexpected error occurred.";
+      console.error("[MEP] Draft score generation failed:", detail);
+      toast.error("Draft score generation failed. Your existing scores are unchanged — please try again.");
+    }
+  }, [selectedMarketIds, marketScores, allMarkets, marketNotes, companySnapshot, productStrategy, toast]);
 
   const handleMarkUserAdjusted = useCallback((
     marketId: string,
@@ -543,11 +587,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       } else if (err.message) {
         errorMsg = `PDF generation failed: ${err.message}`;
       }
-      toast({
-        title: "Export Failed",
-        description: errorMsg,
-        variant: "destructive"
-      });
+      toast.error(errorMsg);
     } finally {
       setIsDownloadingPDF(false);
     }
@@ -565,14 +605,16 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       productStrategy,
       selectedMarketIds,
       customMarkets,
+      marketNotes,
+      removedDefaultIds,
       marketScores,
       selectedRoadmapMarketId,
       consultantNotes,
     };
   }, [
     appMode, currentStep, maxUnlockedStep, decisionSetup, companySnapshot,
-    productStrategy, selectedMarketIds, customMarkets, marketScores,
-    selectedRoadmapMarketId, consultantNotes
+    productStrategy, selectedMarketIds, customMarkets, marketNotes, removedDefaultIds,
+    marketScores, selectedRoadmapMarketId, consultantNotes
   ]);
 
   useEffect(() => {
@@ -626,8 +668,8 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
     return () => clearTimeout(timer);
   }, [
     sessionId, appMode, isInitializing, currentStep, decisionSetup, companySnapshot,
-    productStrategy, selectedMarketIds, customMarkets, marketScores,
-    selectedRoadmapMarketId, consultantNotes
+    productStrategy, selectedMarketIds, customMarkets, marketNotes, removedDefaultIds,
+    marketScores, selectedRoadmapMarketId, consultantNotes
   ]);
 
   // ─── Load session from server ──────────────────────────────
@@ -636,14 +678,22 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       const data = await apiClient.sessions.get(id);
       if (data && data.stateSnapshot) {
         const snap = typeof data.stateSnapshot === 'string' ? JSON.parse(data.stateSnapshot) : data.stateSnapshot;
-        setAppMode(authUser?.role === "demo_participant" ? "free-demo" : (snap.appMode || "consultant"));
+        // Backward-compat: normalize legacy appMode values ('demo'→'free-demo', 'consultant'→'facilitated').
+        const legacyMode =
+          snap.appMode === "demo" ? "free-demo" :
+          snap.appMode === "consultant" ? "facilitated" :
+          snap.appMode;
+        setAppMode(authUser?.role === "demo_participant" ? "free-demo" : (legacyMode || "facilitated"));
         setCurrentStep(snap.currentStep || 1);
         setMaxUnlockedStep(snap.maxUnlockedStep || 1);
         setDecisionSetup(snap.decisionSetup || DEMO_DECISION_SETUP);
         setCompanySnapshot(snap.companySnapshot || BLANK_COMPANY_SNAPSHOT);
         setProductStrategy(snap.productStrategy || DEMO_PRODUCT_STRATEGY);
-        setSelectedMarketIds(snap.selectedMarketIds || []);
+        // Backward-compat: legacy snapshots stored markets under `shortlistedMarkets`.
+        setSelectedMarketIds(snap.selectedMarketIds || snap.shortlistedMarkets || []);
         setCustomMarkets(snap.customMarkets || []);
+        setMarketNotes(snap.marketNotes || {});
+        setRemovedDefaultIds(snap.removedDefaultIds || []);
         setMarketScores(snap.marketScores || {});
         setSelectedRoadmapMarketId(snap.selectedRoadmapMarketId || "uae");
         setConsultantNotes(snap.consultantNotes || "");
@@ -674,94 +724,16 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
     };
     init();
   }, [loadSession]);
-  // ─── Calculate results for Export Brief ──────────────────
+  // ─── Calculate results for Export Brief / PDF (shared scoring lib) ──────────
   const calculatedResults: CalculatedResult[] = useMemo(() => {
+    const weights = resolveSectorWeights(companySnapshot.sector);
     return activeSelectedMarkets
-      .map((market) => {
-        const input = marketScores[market.id];
-        if (!input) return null;
-        const s = input.scores;
-
-        const adjComp = 6 - (s.competitiveIntensity ?? 3);
-        const adjReg = 6 - (s.regulatoryComplexity ?? 3);
-        const opportunity =
-          (s.marketAttractiveness ?? 3) * 0.7 + adjComp * 0.3;
-        const fit =
-          (s.offeringFit ?? 3) * 0.65 +
-          (s.brandTrustTransferability ?? 3) * 0.35;
-        const feasibility =
-          (s.channelAccess ?? 3) * 0.35 +
-          adjReg * 0.3 +
-          (s.operationalFeasibility ?? 3) * 0.35;
-        const weightedAvg =
-          opportunity * 0.25 +
-          fit * 0.2 +
-          feasibility * 0.25 +
-          (s.strategicValue ?? 3) * 0.1 +
-          (s.financialLogic ?? 3) * 0.2;
-        const potentialScore = Math.round(weightedAvg * 20);
-        const riskExposure =
-          ((s.competitiveIntensity ?? 3) +
-            (s.regulatoryComplexity ?? 3)) /
-          2;
-        let riskLevel: "High" | "Medium" | "Low" = "Medium";
-        if (riskExposure >= 3.8) riskLevel = "High";
-        else if (riskExposure <= 2.2) riskLevel = "Low";
-
-        // Evidence confidence score
-        const dimEvidence = input.dimensionEvidence || {};
-        const dimKeys = Object.keys(s) as Array<keyof typeof s>;
-        const eScores = dimKeys.map(
-          (k) =>
-            EVIDENCE_BASIS_SCORE_MAP[
-              dimEvidence[k] || "Expert Judgment"
-            ] || 55
-        );
-        const avgDim =
-          eScores.reduce((a, b) => a + b, 0) / eScores.length;
-        const overallConf =
-          CONFIDENCE_SCORE_MAP[input.evidenceConfidence] || 30;
-        const evidenceConfidenceScore = Math.round(
-          avgDim * 0.6 + overallConf * 0.4
-        );
-        const discrepancyAlert =
-          potentialScore > 70 && evidenceConfidenceScore < 50;
-
-        let tier: CalculatedResult["tier"] =
-          "Tier C: Do not prioritize";
-        if (discrepancyAlert) {
-          tier = "Tier B: Promising";
-        } else if (potentialScore >= 75) {
-          tier = "Tier A: Priority";
-        } else if (potentialScore >= 60) {
-          tier = "Tier B: Promising";
-        } else if (potentialScore < 40) {
-          tier = "Tier D: Exclude from current agenda";
-        }
-
-        return {
-          marketId: market.id,
-          name: market.name,
-          opportunity,
-          fit,
-          feasibility,
-          potentialScore,
-          riskExposure,
-          riskLevel,
-          tier,
-          confidence: input.evidenceConfidence,
-          evidenceBasis: input.evidenceBasis,
-          evidenceConfidenceScore,
-          mainStrength: "",
-          mainWeakness: "",
-          discrepancyAlert,
-        } as CalculatedResult;
-      })
-      .filter(Boolean)
-      .sort(
-        (a, b) => (b as CalculatedResult).potentialScore - (a as CalculatedResult).potentialScore
-      ) as CalculatedResult[];
-  }, [activeSelectedMarkets, marketScores]);
+      .filter((market) => !!marketScores[market.id])
+      .map((market) =>
+        computeMarketResult(market.id, market.name, marketScores[market.id], weights)
+      )
+      .sort((a, b) => b.potentialScore - a.potentialScore);
+  }, [activeSelectedMarkets, marketScores, companySnapshot.sector]);
 
   return (
     <>
@@ -791,7 +763,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
                   MEP-light™
                 </h1>
                 <span className="text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-900/60 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                  {appMode === "free-demo" ? "Beta Demo v1.6" : `v${__APP_VERSION__}`}
+                  {appMode === "free-demo" ? CLIENT_FACING_LABEL_SHORT : `v${__APP_VERSION__}`}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-mono leading-none">
@@ -863,6 +835,9 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
                 data={decisionSetup}
                 onChange={handleUpdateDecisionSetup}
                 businessName={companySnapshot.businessName}
+                capabilities={companySnapshot.internalCapabilities}
+                constraints={companySnapshot.knownConstraints}
+                sector={companySnapshot.sector}
                 appMode={appMode}
               />
             )}
@@ -885,14 +860,13 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
 
             {currentStep === 4 && (
               <MarketShortlistScreen
+                markets={allMarkets}
                 selectedMarketIds={selectedMarketIds}
-                customMarkets={customMarkets}
+                marketNotes={marketNotes}
                 onToggleMarket={handleToggleMarketSelection}
                 onAddCustomMarket={handleAddCustomMarket}
-                onDeleteCustomMarket={handleDeleteCustomMarket}
-                onUpdateMarketDescription={
-                  handleUpdateMarketDescription
-                }
+                onDeleteMarket={handleDeleteMarket}
+                onUpdateMarketNote={handleUpdateMarketNote}
                 appMode={appMode}
               />
             )}
@@ -1002,7 +976,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
                 }`}
                 id="global-next-btn"
               >
-                <span>{currentStep === 5 ? "Generate Draft Scores" : "Continue"}</span>
+                <span>Continue</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             ) : currentStep === 8 ? (
@@ -1024,8 +998,8 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       <footer className="border-t border-slate-900 bg-slate-950 py-6 mt-16 text-center text-xs text-slate-500 font-mono">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between flex-wrap gap-2">
           <p>
-            © 2026 Market Entry Prioritizer • MEP-light™ Diagnostic
-            System • Proprietary Enterprise Strategy Tool • {appMode === "free-demo" ? "MEP-light Beta Demo v1.6" : `v${__APP_VERSION__}`}
+            © 2026 INNOBASE • MEP-light™ Market Entry &amp; Expansion Decision Support
+            • {appMode === "free-demo" ? CLIENT_FACING_LABEL : `v${__APP_VERSION__}`}
           </p>
           {authUser && (
             <div className="flex items-center gap-3">
@@ -1082,6 +1056,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
             decisionMode: "New Market Entry Readiness",
             expansionHorizon: "12 months",
             strategicObjective: "",
+            desiredOutput: [],
           });
           setCompanySnapshot(BLANK_COMPANY_SNAPSHOT);
           setProductStrategy({
@@ -1091,6 +1066,8 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
           });
           setSelectedMarketIds([]);
           setCustomMarkets([]);
+          setMarketNotes({});
+          setRemovedDefaultIds([]);
           setMarketScores({});
           setConsultantNotes("");
           setCurrentStep(1);

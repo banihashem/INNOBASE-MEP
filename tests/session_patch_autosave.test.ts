@@ -157,9 +157,9 @@ assert(
   'Step 8 / Entry Readiness Workspace shows "Workspace Locked" for demo'
 );
 
-// 5.2 PDF locked for demo
+// 5.2 PDF locked for demo (spec v0.2 §10.4: hyphen label)
 assert(
-  roadmapSrc.includes("Download Report — Full Version"),
+  roadmapSrc.includes("Download Report - Full Version"),
   "PDF export button shows locked text for demo"
 );
 

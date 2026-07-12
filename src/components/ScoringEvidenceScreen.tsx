@@ -5,11 +5,11 @@ import {
   DimensionScores,
   EvidenceBasis,
   EVIDENCE_BASIS_OPTIONS,
-  DEMO_MARKET_SCORES,
   EVIDENCE_BASIS_SCORE_MAP,
   AppMode,
 } from "../types";
-import { AlertTriangle, ChevronRight, Sparkles, PenLine } from "lucide-react";
+import { DRAFT_SCORE_DISCLAIMER } from "../lib/draftScoring";
+import { AlertTriangle, ChevronRight, Sparkles, PenLine, Info } from "lucide-react";
 
 interface Props {
   selectedMarkets: Market[];
@@ -36,6 +36,7 @@ interface Props {
   appMode: AppMode;
 }
 
+// Dimensions in spec §8.4 order, with the canonical DOCX definitions as tooltips.
 const DIMENSIONS: {
   key: keyof DimensionScores;
   label: string;
@@ -45,49 +46,49 @@ const DIMENSIONS: {
   {
     key: "marketAttractiveness",
     label: "Market Attractiveness",
-    desc: "Total addressable size, absolute growth rates, purchasing power.",
+    desc: "Demand potential, market relevance, customer need, growth, purchasing power, or unmet need.",
   },
   {
     key: "offeringFit",
     label: "Offering Fit",
-    desc: "Product feature overlap with local expectations or needs.",
+    desc: "How well the selected offering fits customer needs, local expectations, use cases, and adaptation requirements.",
   },
   {
     key: "channelAccess",
     label: "Channel Access",
-    desc: "Feasibility of reaching buyers via distributors, retail or digital.",
-  },
-  {
-    key: "operationalFeasibility",
-    label: "Operational Feasibility",
-    desc: "Supply chain viability, team presence, language or support setups.",
-  },
-  {
-    key: "strategicValue",
-    label: "Strategic Value",
-    desc: "Synergy with brand objectives, regional footprint, defensive moat.",
-  },
-  {
-    key: "financialLogic",
-    label: "Financial Logic",
-    desc: "Projected CLV vs CAC, price elasticity, tax efficiency.",
-  },
-  {
-    key: "brandTrustTransferability",
-    label: "Brand & Trust Transferability",
-    desc: "Reputational credibility of domestic success in new geography.",
+    desc: "Whether the business can realistically reach customers through partners, distributors, direct sales, digital channels, or institutions.",
   },
   {
     key: "competitiveIntensity",
     label: "Competitive Intensity",
-    desc: "Volume of incumbents, price-cutting, protective cartels. (HIGHER = HARDER)",
+    desc: "The degree of competition, substitutes, price pressure, incumbency, and differentiation difficulty. (HIGHER = HARDER)",
     isNegative: true,
   },
   {
     key: "regulatoryComplexity",
-    label: "Regulatory Complexity",
-    desc: "Import tariffs, customs, bilingual compliance. (HIGHER = HARDER)",
+    label: "Regulatory / Institutional Complexity",
+    desc: "Certification, licensing, compliance, import rules, institutional barriers, or policy restrictions. (HIGHER = HARDER)",
     isNegative: true,
+  },
+  {
+    key: "operationalFeasibility",
+    label: "Operational Feasibility",
+    desc: "Production, delivery, logistics, service capacity, after-sales support, supply reliability, and cost-to-serve.",
+  },
+  {
+    key: "brandTrustTransferability",
+    label: "Brand & Trust Transferability",
+    desc: "Whether brand credibility, reputation, origin, trust, and legitimacy can transfer into the target market.",
+  },
+  {
+    key: "strategicValue",
+    label: "Strategic Value",
+    desc: "Long-term positioning, gateway potential, learning value, portfolio fit, partnerships, or scalability.",
+  },
+  {
+    key: "financialLogic",
+    label: "Financial Logic",
+    desc: "Pricing, margins, entry cost, customer acquisition cost, working capital, payback, and commercial viability.",
   },
 ];
 
@@ -224,6 +225,24 @@ export default function ScoringEvidenceScreen({
             <span>{anyDraftGenerated ? "Regenerate Draft Scores" : "Generate Draft Scores"}</span>
           </button>
         )}
+      </div>
+
+      {/* Draft-score disclaimer (spec §8.2) + evidence-source instruction (spec §8.1) */}
+      <div
+        className="bg-amber-950/15 border border-amber-900/40 rounded-xl p-4 flex items-start space-x-3"
+        id="draft-score-disclaimer"
+      >
+        <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          {isDemo && (
+            <p className="text-xs text-amber-200/90 leading-relaxed">
+              {DRAFT_SCORE_DISCLAIMER}
+            </p>
+          )}
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Select the source of evidence for each dimension from the drop-down menu below it.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

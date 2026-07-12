@@ -20,6 +20,7 @@ import type {
   DimensionScores,
   CategoryScores,
   TierClassification,
+  LetterGrade,
   RiskLevel,
   ScoringResult,
   ScoringWarning,
@@ -145,6 +146,29 @@ export function classifyTier(score: number): TierClassification {
   return "Tier D: Exclude from current agenda";
 }
 
+/**
+ * Granular letter grade for the dashboard "Tier" column (spec 9.4).
+ *
+ * Per the spec example table (§9.4): 77 → "A-", 68/65/61 → "B", 54 → "B-".
+ * The note is explicit: "A score of 77 should be displayed as A- under the
+ * current tier logic, not Tier A. The label should reinforce validation, not
+ * certainty." Bands:
+ *   >= 80 → A      75-79 → A-     70-74 → B+
+ *   60-69 → B      50-59 → B-     40-49 → C      < 40 → D
+ *
+ * This is a display layer only; it does not replace the coarse TierClassification
+ * used for confidence decoupling and recommended-action mapping.
+ */
+export function letterGrade(score: number): LetterGrade {
+  if (score >= 80) return "A";
+  if (score >= 75) return "A-";
+  if (score >= 70) return "B+";
+  if (score >= 60) return "B";
+  if (score >= 50) return "B-";
+  if (score >= 40) return "C";
+  return "D";
+}
+
 // ─── Step 5: Risk Assessment ─────────────────────────────────────────
 
 /**
@@ -223,6 +247,7 @@ export function scoreMarket(
     evidenceConfidenceLevel: confidenceLevel,
     evidenceConfidenceLabel: confidenceLabel,
     tier: adjustedTier,
+    letterGrade: letterGrade(expansionPotentialScore),
     warnings,
     evidenceBasis: input.evidenceBasis,
   };
