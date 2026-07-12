@@ -1,5 +1,4 @@
 import * as assert from "node:assert";
-import { spawn } from "node:child_process";
 
 const TEST_ISSUER = "accounts.google.com";
 const TEST_AUDIENCE = process.env.GOOGLE_CLIENT_ID || "test_audience";
@@ -29,9 +28,6 @@ function validPayload(email: string = DEMO_EMAIL) {
 }
 
 async function runTests() {
-  console.log("Starting API server for tests...");
-  const serverProcess = spawn("node", ["--import", "tsx", "backend/src/api_server.ts"], { stdio: 'inherit' });
-  
   await new Promise((resolve) => setTimeout(resolve, 2000));
   
   const port = 3001;
@@ -178,11 +174,9 @@ async function runTests() {
 
   if (failed > 0) {
     console.error(`\nFAILED: ${failed} tests failed. Passed: ${passed}`);
-    serverProcess.kill();
     process.exit(1);
   } else {
     console.log(`\nSUCCESS: All ${passed} tests passed.`);
-    serverProcess.kill();
     process.exit(0);
   }
 }

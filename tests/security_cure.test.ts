@@ -1,5 +1,4 @@
 import * as assert from "node:assert";
-import { spawn } from "node:child_process";
 const TEST_ISSUER = "accounts.google.com";
 const TEST_AUDIENCE = process.env.GOOGLE_CLIENT_ID || "test_audience";
 const DEMO_EMAIL = "innobaseae@gmail.com";
@@ -21,9 +20,6 @@ function createExpiredToken() {
 }
 
 async function runTests() {
-  console.log("Starting API server for tests...");
-  const serverProcess = spawn("node", ["--import", "tsx", "backend/src/api_server.ts"], { stdio: 'inherit' });
-  
   await new Promise((resolve) => setTimeout(resolve, 2000));
   
   const port = 3001;
@@ -46,11 +42,11 @@ async function runTests() {
   }
 
   // --- SEC-01 Tests ---
-  await test("SEC-01: GET /api/v2/db/run-migration/:name returns 403", async () => {
+  await test("SEC-01: GET /api/v2/db/run-migration/:name returns 410", async () => {
     const res = await fetch(`${baseUrl}/api/v2/db/run-migration/test.sql`);
-    assert.strictEqual(res.status, 403);
+    assert.strictEqual(res.status, 410);
     const body = await res.json();
-    assert.strictEqual(body.error, "Migration execution via public web route is disabled. Use the deployment pipeline.");
+    assert.strictEqual(body.error, "Migration execution via public web route is permanently disabled. Use the deployment pipeline.");
   });
 
   await test("SEC-01: POST /api/v2/db/run-migration/:name fails closed", async () => {
@@ -124,11 +120,9 @@ async function runTests() {
 
   if (failed > 0) {
     console.error(`\nFAILED: ${failed} tests failed. Passed: ${passed}`);
-    serverProcess.kill();
     process.exit(1);
   } else {
     console.log(`\nSUCCESS: All ${passed} tests passed.`);
-    serverProcess.kill();
     process.exit(0);
   }
 }
