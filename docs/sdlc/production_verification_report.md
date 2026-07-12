@@ -1,6 +1,6 @@
 # MEP-light™ — Production Verification Report (v4.3.7)
 
-**Date**: 2026-07-11  
+**Date**: 2026-07-12  
 **Version**: 4.3.7  
 **Tag**: v4.3.7-demo-refinement  
 **Status**: PRODUCTION-VERIFIED-PASS / PRODUCTION-SMOKE-PASS
@@ -15,56 +15,52 @@
 | **Region** | europe-west2 |
 | **Previous Revision** | market-entry-prioritizer-00040-x7z |
 | **New Revision** | market-entry-prioritizer-00041-dqw |
-| **Previous Digest** | `sha256:c9ce8cb2...cdc7a0e` |
-| **New Digest** | `sha256:581d4fc7...be4016f` |
+| **Production Image Digest** | `sha256:581d4fc7f9bb5a7d0b9b1b9b37104b314393b03c7b4100ff2d871f5a9be4016f` |
 | **Production URL** | https://mep.innobase.app |
-| **Build Duration** | 4m28s |
-| **Build Status** | SUCCESS |
 
 ---
 
-## Health Checks (Post-Deploy)
+## Production Verification Matrix
 
-| Endpoint | Status | Key Details |
-|----------|--------|-------------|
-| `/api/health` | 200 ✓ | version=4.3.7, status=healthy |
-| `/api/v2/db/health` | 200 ✓ | dbType=postgresql, 6 users, 17 sessions, productionReady=true |
-| `/api/v2/auth/config-status` | 200 ✓ | googleClientId=configured, productionGuard=OK, seedAdmin=configured |
-| `/api/v2/adk/health` | 200 ✓ | version=4.3.7, mode=controlled-deterministic |
+This matrix distinguishes clearly between previously completed independent production smoke evidence and read-only audit reconciliation performed during closure. Actions were not rerun during closure.
 
----
-
-## RBAC Verification (43/43 PASS)
-
-### Demo Participant (innobaseae@gmail.com)
-- [x] POST /api/score → 200
-- [x] Session CRUD: create(201), list(200), get(200), patch(200), resume(200)
-- [x] Blocked from user list (403)
-- [x] Blocked from user stats (403)
-- [x] Blocked from user creation (403)
-- [x] Blocked from self-role-change (403)
-- [x] Blocked from PDF export (401/403)
-- [x] Blocked from session review (403)
-- [x] Blocked from other user's sessions (403)
-
-### Administrator (ehsan.banihashem@gmail.com)
-- [x] Role = Administrator (NOT demoted)
-- [x] Can list users (200)
-- [x] Can get user stats (200)
-- [x] Can create session (201)
-- [x] Self-demotion blocked (403)
-- [x] Last-admin guard active (403)
-
-### Consultant
-- [x] Can create session (201)
-- [x] Role change blocked for non-admin (403)
-
-### Security
-- [x] Malformed requests don't 5xx
-- [x] No-auth returns 401 (not 5xx)
-- [x] No GOOGLE_CLIENT_SECRET leaked
-- [x] No DATABASE_URL leaked
-- [x] No GEMINI_API_KEY leaked
+| Verification Item | Expected Result | Observed Result | Evidence Source | Verdict |
+|---|---|---|---|---|
+| **Health and Runtime** | | | | |
+| Production URL availability | Loads successfully | Loads successfully | Independent Smoke | PASS |
+| Application version | `v4.3.7` | `v4.3.7` | Independent Smoke | PASS |
+| Client-facing label | `MEP-light Beta Demo v1.6` | `MEP-light Beta Demo v1.6` | Independent Smoke | PASS |
+| Product mode | `free-demo` | `free-demo` | Independent Smoke | PASS |
+| Cloud Run service identity | `market-entry-prioritizer` | `market-entry-prioritizer` | Read-only Audit | PASS |
+| Current revision | `market-entry-prioritizer-00041-dqw` | `market-entry-prioritizer-00041-dqw` | Read-only Audit | PASS |
+| Full image digest | `sha256:581d4fc7f9bb5a7d0b9b1b9b37104b314393b03c7b4100ff2d871f5a9be4016f` | Match | Read-only Audit | PASS |
+| No rollback required | True | True | Independent Smoke | PASS |
+| **Authentication and Authorization** | | | | |
+| Google authentication | Operational | Operational | Independent Smoke | PASS |
+| Demo user identity | `innobaseae@gmail.com` | Resolves to Demo Participant | Independent Smoke | PASS |
+| Demo user role | `demo_participant` | `demo_participant` | Independent Smoke | PASS |
+| Admin user identity | `ehsan.banihashem@gmail.com` | Remains Administrator | Independent Smoke | PASS |
+| Consultant Workspace | Unavailable to Demo | Unavailable | Independent Smoke | PASS |
+| Administrator UI | Unavailable to Demo | Unavailable | Independent Smoke | PASS |
+| Human Review | Controls unavailable to Demo | Unavailable | Independent Smoke | PASS |
+| No role changes during closure | True | True | Read-only Audit | PASS |
+| **Database and Persistence** | | | | |
+| Database health | Healthy | Healthy | Production Evidence | PASS |
+| PostgreSQL persistence | Operational | Operational | Independent Smoke | PASS |
+| Session creation | `POST /api/v2/sessions` HTTP 201 | HTTP 201 | Independent Smoke | PASS |
+| Session update | `PATCH /api/v2/sessions/:id` HTTP 200 | HTTP 200 | Independent Smoke | PASS |
+| Refresh persistence | State retained | Passed | Independent Smoke | PASS |
+| PATCH HTTP 503 regression | Absent | Absent | Independent Smoke | PASS |
+| Migration 005 status | Applied successfully | Applied via Cloud Run Job | Production Evidence | PASS |
+| **ADK and Workflow** | | | | |
+| ADK workflow status | Controlled/deterministic | Status OK | Production Evidence | PASS |
+| Workflow implementation | Unchanged during closure | Unchanged | Read-only Audit | PASS |
+| **Demo Restrictions and Client-Facing Behavior** | | | | |
+| Step 5 heading | `Strategic Metric Scoring` | `Strategic Metric Scoring` | Independent Smoke | PASS |
+| Export Brief label | `MEP-light Beta Demo v1.6` | `MEP-light Beta Demo v1.6` | Independent Smoke | PASS |
+| Obsolete label `Version 1.4.0` | Absent | Absent | Independent Smoke | PASS |
+| Step 8 / Entry Readiness | Locked for Demo | Locked | Independent Smoke | PASS |
+| Full Report download | Locked for Demo | Locked | Independent Smoke | PASS |
 
 ---
 
@@ -72,21 +68,7 @@
 
 | Migration | Status |
 |-----------|--------|
-| 005_add_demo_participant_role | Applied via Cloud Run Job during production deploy |
-| demo_participant role constraint | Active (users.role CHECK includes demo_participant) |
-| Existing users preserved | ✓ 6 users, 17 sessions intact |
-| Ehsan = Administrator | ✓ Confirmed |
-
----
-
-## Browser Smoke (Production Landing Page)
-
-- [x] Landing page loads correctly
-- [x] Version label: "MEP-light Beta Demo v1.6" visible
-- [x] No "CONSULTANT MODE" visible
-- [x] No "Version 1.4.0" visible
-- [x] No "Product Strategy" visible
-- [x] Google Sign-In button present and functional
+| 005_add_demo_participant_role | Applied successfully via Cloud Run Job during production deploy. Verification was through the governed deployment pipeline. No migration was executed during this closure activity. Migration execution must remain pipeline/Job-controlled rather than exposed through a public API. |
 
 ---
 
@@ -95,29 +77,5 @@
 | Item | Value |
 |------|-------|
 | **Rollback Revision** | market-entry-prioritizer-00040-x7z |
-| **Rollback Digest** | `sha256:c9ce8cb27bd6d9dc37696701eb819ec089be3bf3cf5a0316d099551c8cdc7a0e` |
 | **Rollback Command** | `gcloud run services update-traffic market-entry-prioritizer --to-revisions=market-entry-prioritizer-00040-x7z=100 --region=europe-west2` |
-| **DB Rollback** | See migration 005 rollback plan in SQL file |
-
----
-
-## Independent Production Smoke (2026-07-11)
-
-**Result**: PRODUCTION-SMOKE-PASS  
-**Verified by**: Independent UAT  
-
-- [x] Production URL loads: https://mep.innobase.app
-- [x] Demo Participant login (innobaseae@gmail.com) works
-- [x] role = demo_participant
-- [x] productMode = free-demo
-- [x] label = MEP-light Beta Demo v1.6
-- [x] POST /api/v2/sessions → 201
-- [x] PATCH /api/v2/sessions/:id → 200
-- [x] Refresh persistence passes
-- [x] Step 5 heading = Strategic Metric Scoring
-- [x] Export Brief shows MEP-light Beta Demo v1.6
-- [x] Step 8 locked
-- [x] Download Report — Full Version locked
-- [x] Human Review approve/flag unavailable
-- [x] Consultant/Admin UI unavailable
-- [x] No rollback recommended
+| **Action** | No rollback is recommended or required based on the accepted production smoke result. |

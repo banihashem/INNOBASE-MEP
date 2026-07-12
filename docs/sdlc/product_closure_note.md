@@ -1,6 +1,6 @@
 # MEP-light™ — Product Closure Note (v4.3.7)
 
-**Date**: 2026-07-11  
+**Date**: 2026-07-12
 **Version**: 4.3.7  
 **Status**: DEMO-REFINEMENT-PRODUCTION-DEPLOYED-PASS  
 **Independent Smoke**: PRODUCTION-SMOKE-PASS (2026-07-11)  
@@ -11,6 +11,17 @@
 ## Release Summary
 
 MEP-light™ v4.3.7 is the Demo Refinement Sprint production release. It introduces the Demo Participant role and free-demo product mode, enabling external users to experience a 7-step market entry assessment workflow without access to consultant-grade features.
+
+## Final Release Identity
+
+- **Final Production Release Commit**: `320fcc1e3a6f8ff3aecafa69d8207b04feb85d53`
+- **Exact Tag Target SHA**: `320fcc1e3a6f8ff3aecafa69d8207b04feb85d53`
+- **Full Production Image Digest**: `sha256:581d4fc7f9bb5a7d0b9b1b9b37104b314393b03c7b4100ff2d871f5a9be4016f`
+- **Cloud Run Service**: `market-entry-prioritizer`
+- **Region**: `europe-west2`
+- **Current Revision**: `market-entry-prioritizer-00041-dqw`
+- **Rollback Revision**: `market-entry-prioritizer-00040-x7z`
+- **Production URL**: `https://mep.innobase.app`
 
 ## What's New
 
@@ -43,27 +54,25 @@ MEP-light™ v4.3.7 is the Demo Refinement Sprint production release. It introdu
 - Session resume from SessionManager modal
 - Loading state prevents "No previous sessions" flicker
 
-### Infrastructure
-- Migration 005: idempotent demo_participant role addition
-- Production Cloud Build includes migration step
-- apply_migrations.js uses DB_NAME env var (supports staging + production)
+### Infrastructure & Migration
+- Migration 005 (`005_add_demo_participant_role`): Applied successfully via Cloud Run Job during production deploy. Verification was through the governed deployment pipeline evidence.
+- *Note: No migration was executed during this closure activity. Migration execution must remain pipeline/Job-controlled rather than exposed through a public API.*
 
-## What's Preserved
-- Administrator capabilities: full access, Admin Panel, PDF export, Human Review
-- Consultant capabilities: full access, PDF export, Step 8, Annotation Pad
-- Scoring engine: mathematical accuracy (117/117 tests)
-- OAuth: Google Sign-In, real JWT validation
-- ADK: controlled-deterministic mode, role-gated
-
-## Test Evidence
-- 117 unit tests (scoring engine)
-- 37 RBAC code-path tests
-- 43 full-stack HTTP RBAC tests (run against production)
-- 5 bundle identity tests
-- 21 session persistence tests
-- **Total: 223 tests, 0 failures**
+## Production Smoke Summary
+Independent production smoke verification (PRODUCTION-SMOKE-PASS) confirmed:
+- Application loads successfully at `https://mep.innobase.app`.
+- `innobaseae@gmail.com` correctly operates as Demo Participant (`demo_participant`) in `free-demo` mode.
+- Administrator account (`ehsan.banihashem@gmail.com`) remains protected and was not demoted.
+- Session POST/PATCH operations are stable, and the prior PATCH HTTP 503 defect has not returned.
+- Demo restrictions are fully active (Step 8 locked, Full Report locked, Human Review unavailable, Consultant/Admin UI unavailable).
+- Client-facing labels are correct (Step 5 heading is "Strategic Metric Scoring", Export Brief label is "MEP-light Beta Demo v1.6", missing the obsolete Version 1.4.0).
+- No rollback is required.
+- This final closure activity was strictly docs-only.
 
 ## Known Non-Blocking Follow-ups
-- `v4.3.7` and `CONSULTANT MODE` strings exist in compiled JS but are behind `appMode !== "free-demo"` ternary gates — never rendered for Demo Participant
-- Consider merging `feature/demo-refinement-sprint` into `main` after stabilization period
-- **Step 5→6 progression**: Document intended behavior for demo accounts when evidence confidence caps keep the "Continue" button disabled. If Overall Confidence remains "Low" (e.g., no per-dimension evidence sources selected), the step-progression gate may block advancement to Step 6. Determine whether demo accounts should auto-unlock Step 6 after Generate Draft Scores, or whether the confidence-based gate should apply equally to all modes.
+
+1. **Demo Step 5 to Step 6 behavior**: Document the observed behavior for demo accounts when the confidence cap prevents or limits "Continue" from Step 5 to Step 6. Clarify whether this limitation is intentional, required UX or product documentation, and whether an explanatory message should be added in a future change.
+2. **Migration endpoint security review**: Review and either secure, disable, remove, or formally close the potential public endpoint: `/api/v2/db/run-migration/:name`. Database migrations should be performed only through the governed deployment pipeline or an authorized Cloud Run Job. Migration execution should not be exposed as an unrestricted public API. This requires a separate security/code activity and separate authorization.
+
+## Formal Closure Statement
+MEP-light™ v4.3.7 Demo Refinement is formally closed as DEMO-REFINEMENT-PRODUCTION-DEPLOYED-PASS with independent production verification status PRODUCTION-SMOKE-PASS. No rollback is required. Remaining items are non-blocking follow-ups and do not affect production acceptance.

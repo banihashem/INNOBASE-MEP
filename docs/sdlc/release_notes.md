@@ -10,7 +10,7 @@
 ## v4.3.7 — Demo Refinement Sprint (PRODUCTION)
 
 **Branch**: `feature/demo-refinement-sprint`  
-**Date**: 2026-07-11  
+**Date**: 2026-07-12  
 **Status**: DEMO-REFINEMENT-PRODUCTION-DEPLOYED-PASS  
 **Independent Smoke**: PRODUCTION-SMOKE-PASS (2026-07-11)  
 **Tag**: `v4.3.7-demo-refinement`
@@ -20,38 +20,29 @@ Demo Participant role RBAC implementation with AI-assisted scoring, user adjustm
 
 ### Changes
 - **New RBAC role**: `demo_participant` — auto-provisioned on first login
+- **Product Mode**: `free-demo` mode ensures strict client-facing limits for external users
+- **Client-Facing Label**: `MEP-light Beta Demo v1.6` (Obsolete Version 1.4.0 string correctly removed from Export Brief)
 - **AI-assisted scoring**: "Generate Draft Scores" button populates scores from prior inputs
 - **User adjustment markers**: "User Adjusted" badges on manually modified dimensions
-- **Server-side persistence**: Auto-save enabled for free-demo sessions (was incorrectly bypassed)
-- **Migration 005**: Idempotent `demo_participant` role addition with dynamic constraint discovery and rollback plan
+- **Server-side persistence & Persistence/PATCH 503 Correction**: Auto-save enabled for free-demo sessions, the previous PATCH HTTP 503 regression was corrected and has not returned.
+- **Migration 005**: Idempotent `demo_participant` role addition with dynamic constraint discovery. It was applied successfully via Cloud Run Job during deployment and is fully operational.
 - **Admin governance (SECURITY)**:
-  - Administrator cannot change own role (self-demotion prevention)
+  - Administrator account (`ehsan.banihashem@gmail.com`) protection verified; Administrator cannot change own role (self-demotion prevention)
   - Last remaining Administrator cannot be demoted or deleted (last-admin preservation)
   - Audit events logged for blocked self-role-change and last-admin-change attempts
-  - `countAdministrators()` DB method added for guard checks
-- **RBAC enforcement**: 43 real HTTP tests + 37 code-path assertions verifying access controls
+- **Deployment Identity**: Cloud Run Service `market-entry-prioritizer` on revision `market-entry-prioritizer-00041-dqw` (Region: `europe-west2`)
 
-### Locked for Demo Participant
-- PDF export (403)
+### Demo Access Restrictions
+- Step 5 heading successfully corrected to `Strategic Metric Scoring`
 - Step 8 / Entry Readiness Workspace (UI locked)
+- PDF export (403) and Full Report download (locked)
 - Consultant Notes / Annotation Pad (UI hidden)
+- Human Review (controls unavailable)
 - Admin endpoints: user management, stats, role changes (403)
-- Other user's sessions (403)
 
-### Preserved
-- Administrator capabilities: user management, PDF export, session review
-- Consultant capabilities: PDF export, full scoring, annotation workspace
-
-### Verification
-- Scoring engine: 117/117 pass
-- Code-path RBAC: 37/37 pass
-- HTTP RBAC: 43/43 pass (includes 8 admin governance tests)
-- PostgreSQL migration: 23/23 pass (Docker-based, PostgreSQL 15)
-- Copy scan: 5/5 pass
-- Build: clean (1703 modules)
-- Browser UAT: Steps 1–7 completed with full-stack
-- Custom market UAT: Iraq + Germany added, scored, dashboarded
-- Migration: idempotent, no existing user data affected
+### Known Non-Blocking Follow-ups
+1. **Demo Step 5 to Step 6 behavior**: Document the observed behavior for demo accounts when the confidence cap prevents or limits "Continue" from Step 5 to Step 6. Clarify whether this limitation is intentional, what UX or product documentation is required, and whether an explanatory message should be added in a future change. Do not change workflow behavior.
+2. **Migration endpoint security review**: Review and either secure, disable, remove, or formally close the potential public endpoint: `/api/v2/db/run-migration/:name`. Database migrations should be performed only through the governed deployment pipeline or an authorized Cloud Run Job. Migration execution should not be exposed as an unrestricted public API. This requires a separate security/code activity.
 
 ---
 

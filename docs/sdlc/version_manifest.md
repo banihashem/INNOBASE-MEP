@@ -11,26 +11,26 @@
 
 | Artifact | Value |
 |----------|-------|
-| **Semantic Version** | 4.3.7 |
-| **Git Branch** | feature/demo-refinement-sprint |
-| **Git Tag** | v4.3.7-demo-refinement |
-| **Git Commit SHA** | `320fcc1` (release commit) |
-| **Container Image** | `gcr.io/innobase-mep-light/market-entry-prioritizer:v4.3.7` |
-| **Image Digest** | `sha256:581d4fc7f9bb5a7d0b9b1b9b37104b314393b03c7b4100ff2d871f5a9be4016f` |
+| **Product Version** | 4.3.7 |
+| **Client-Facing Label** | MEP-light Beta Demo v1.6 |
+| **Product Mode** | free-demo |
+| **Role Name and Value** | Demo Participant (`demo_participant`) |
+| **Final Production Release Commit SHA** | `320fcc1e3a6f8ff3aecafa69d8207b04feb85d53` |
+| **Tag Name** | v4.3.7-demo-refinement |
+| **Exact Tag Target SHA** | `320fcc1e3a6f8ff3aecafa69d8207b04feb85d53` |
+| **Docs-Only Closure Commit SHA** | *Will be recorded in Git history after this update* |
+| **Full Image Reference** | `gcr.io/innobase-mep-light/market-entry-prioritizer@sha256:581d4fc7f9bb5a7d0b9b1b9b37104b314393b03c7b4100ff2d871f5a9be4016f` |
+| **Full Image Digest** | `sha256:581d4fc7f9bb5a7d0b9b1b9b37104b314393b03c7b4100ff2d871f5a9be4016f` |
 | **Cloud Run Service** | market-entry-prioritizer |
 | **Cloud Run Region** | europe-west2 |
-| **Cloud Run Revision** | `market-entry-prioritizer-00041-dqw` |
-| **Primary Production URL** | `https://mep.innobase.app` |
-| **Cloud Run Service URL** | `https://market-entry-prioritizer-52156375400.europe-west2.run.app` |
-| **Cloud SQL Instance** | mep-light-db |
-| **Database** | mep_production |
-| **Migration Version** | 005 (005_add_demo_participant_role) |
+| **Current Production Revision** | `market-entry-prioritizer-00041-dqw` |
+| **Rollback Revision** | `market-entry-prioritizer-00040-x7z` |
+| **Production URL** | `https://mep.innobase.app` |
+| **Final Release Verdict** | DEMO-REFINEMENT-PRODUCTION-DEPLOYED-PASS |
+| **Final Smoke Verdict** | PRODUCTION-SMOKE-PASS |
+| **Migration 005 State** | Applied successfully via Cloud Run Job during deploy (No execution during closure) |
 | **ADK Version** | 4.3.7 (controlled-deterministic) |
 | **ADK Mode** | controlled — feature-flagged, role-gated |
-| **Rollback Target** | v4.3.6 / revision market-entry-prioritizer-00040-x7z |
-| **Rollback Digest** | `sha256:c9ce8cb27bd6d9dc37696701eb819ec089be3bf3cf5a0316d099551c8cdc7a0e` |
-| **Previous Version** | 4.3.6 |
-| **Secret Manager** | mep-db-password (version 4, active; v1-3 disabled) |
 
 ---
 

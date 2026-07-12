@@ -79,7 +79,7 @@
 Total requirements mapped: 42
 All automated test evidence verified against: `tests/rbac_demo.test.ts` (37/37 pass), `tests/scoring_engine.test.ts` (117/117 pass), `tests/bundle_no_demo_identity.test.ts` (5/5 pass)
 
-## Full-Stack Verification (Added 2026-07-10)
+## Full-Stack Verification (Final Production Audit)
 
 ### HTTP RBAC Tests (30/30 pass)
 Full-stack HTTP RBAC verification: `tests/http_rbac_fullstack.test.ts`
@@ -94,11 +94,9 @@ Full-stack HTTP RBAC verification: `tests/http_rbac_fullstack.test.ts`
 - Idempotent re-insert (no duplicates): ✅
 - `tests/verify_migration.ts` — direct SQLite verification
 
-### Browser UAT (Kashkam Scenario)
-- Steps 1–7 completed with API server running
-- Generate Draft Scores: functional
-- User Adjusted badges: visible
-- Download Report: locked
-- Step 8: locked
-- Consultant Workspace: hidden
-- See: `docs/sdlc/demo_refinement_uat.md` for full details
+### Independent Production Smoke Result
+- Independent production smoke completed against deployed production environment.
+- Status: PRODUCTION-SMOKE-PASS
+- Production URL: `https://mep.innobase.app`
+- Revision: `market-entry-prioritizer-00041-dqw`
+- See `docs/sdlc/production_verification_report.md` for exact production verification breakdown.
