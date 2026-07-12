@@ -15,6 +15,7 @@ import {
   CLIENT_FACING_LABEL_SHORT,
   ACTIVE_SECTORS,
   COMING_SOON_SECTORS,
+  isCompleteScoreSet,
 } from "./types";
 import { computeMarketResult, resolveSectorWeights, computeEvidenceConfidence } from "./lib/scoring";
 import { generateDraftScores, DraftScoreError } from "./lib/draftScoring";
@@ -261,9 +262,10 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
           selectedMarketIds.length <= 5
         );
       case 5:
-        return activeSelectedMarkets.every(
-          (m) => !!marketScores[m.id]
-        );
+        return activeSelectedMarkets.length >= 3 &&
+          activeSelectedMarkets.every(
+            (m) => isCompleteScoreSet(marketScores[m.id])
+          );
       case 6:
       case 7:
       default:
@@ -805,7 +807,13 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   }, [toast, authUser]);
 
   // ─── Initialize App State ──────────────────────────────
+  // Guard: init must run exactly once. Without this, if `loadSession`
+  // reference changes (e.g., because a context value is recreated),
+  // this effect re-fires, reloading stale server state and overwriting
+  // locally generated scores.
+  const initCompletedRef = useRef(false);
   useEffect(() => {
+    if (initCompletedRef.current) return;
     const init = async () => {
       const lastSessionId = localStorage.getItem("mep_last_session_id");
       if (lastSessionId && lastSessionId !== "undefined") {
@@ -818,6 +826,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         }
       }
       setIsInitializing(false);
+      initCompletedRef.current = true;
     };
     init();
   }, [loadSession]);

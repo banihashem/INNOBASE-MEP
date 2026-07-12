@@ -118,6 +118,19 @@ export interface DimensionScores {
   regulatoryComplexity: number; // negative dimension (higher is worse)
 }
 
+/** Canonical list of all 9 scoring dimensions. */
+export const DIMENSION_KEYS: (keyof DimensionScores)[] = [
+  "marketAttractiveness",
+  "offeringFit",
+  "channelAccess",
+  "operationalFeasibility",
+  "strategicValue",
+  "financialLogic",
+  "brandTrustTransferability",
+  "competitiveIntensity",
+  "regulatoryComplexity",
+];
+
 export type EvidenceBasis =
   | "Direct Evidence"
   | "Market Reports"
@@ -149,6 +162,15 @@ export interface MarketScoreInput {
   userAdjusted?: Partial<Record<keyof DimensionScores, boolean>>;
   /** Whether draft scores have been generated for this market */
   draftGenerated?: boolean;
+}
+
+/** Returns true iff the MarketScoreInput contains valid scores for all 9 dimensions. */
+export function isCompleteScoreSet(msi: MarketScoreInput | undefined): boolean {
+  if (!msi || !msi.scores) return false;
+  return DIMENSION_KEYS.every((k) => {
+    const v = msi.scores[k];
+    return typeof v === "number" && v >= 1 && v <= 5;
+  });
 }
 
 export interface AppState {

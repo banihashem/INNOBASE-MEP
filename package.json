@@ -27,6 +27,7 @@
     "test:phase4": "npm run test && npm run test:prep && npm run test:auth && npm run test:governance",
     "test:unit": "npx vitest run",
     "test:final-ui-cure": "npx tsx tests/final_ui_cure.test.ts",
+    "test:step5-generated-state": "npx tsx tests/step5_generated_state.test.ts",
     "api": "node --import tsx backend/src/api_server.ts",
     "pdf-service": "python backend/pdf_service/app.py"
   },
