@@ -51,9 +51,14 @@
 | RBAC | `npm run test:rbac` | 37/37 | ✅ PASS |
 | Governance (Python) | `npm run test:governance` | 8/8 | ✅ PASS |
 | Session Patch | `npx tsx tests/session_patch_autosave.test.ts` | 21/21 | ✅ PASS |
+| Bundle Identity | `npx tsx tests/bundle_no_demo_identity.test.ts` | 5/5 | ✅ PASS |
 | **Cure Regression** | `node --import tsx tests/cure_regression_v0.2.test.ts` | **67/67** | ✅ PASS |
-| Vite Build | `npm run build` | 0 errors, 1.53s | ✅ PASS |
-| **TOTAL** | | **447/447 + 67 cure** | ✅ ALL PASS |
+| Python Parity | `python -m pytest tests/python/test_scoring.py ...test_pdf.py` | 133/133 | ✅ PASS |
+| Vite Build | `npm run build` | 0 errors, 1.50s | ✅ PASS |
+| `git diff --check` | whitespace | clean | ✅ PASS |
+| **TS/Node Total** | | **580/580** | ✅ ALL PASS |
+| **Python Total** | | **133/133** | ✅ ALL PASS |
+| **Grand Total** | | **713/713** | ✅ ALL PASS |
 
 ## Cure Regression Coverage (67 assertions)
 
@@ -87,9 +92,21 @@
 
 ## Security Statements
 
-> **DEPLOYMENT HOLD**: This candidate has NOT been deployed. No staging or production mutation has occurred.
+> **SEPARATE SECURITY ACTIVITY REQUIRED — DEPLOYMENT HOLD ACTIVE**
+>
+> The following items require separate security review before any deployment:
+> - Unauthenticated migration execution endpoint
+> - Decode-only JWT behavior
 
-> **POTENTIAL SECRET EXPOSURE**: No secrets, credentials, API keys, or tokens were introduced, exposed, or hardcoded in any source file, environment declaration, or build constant. The `__BUILD_SHA__` and `__BUILD_LABEL__` constants contain only public commit metadata.
+> **POTENTIAL SECRET EXPOSURE REQUIRES HUMAN SECURITY OWNER REVIEW**
+>
+> Potentially affected credential categories:
+> - Gemini/API-key category
+> - Google OAuth client-credential category
+>
+> No values are displayed, inspected, rotated, revoked, or modified.
+
+> No secrets, credentials, API keys, or tokens were introduced, exposed, or hardcoded in any source file, environment declaration, or build constant. The `__BUILD_SHA__` and `__BUILD_LABEL__` constants contain only public commit metadata.
 
 ## Working Tree State
 

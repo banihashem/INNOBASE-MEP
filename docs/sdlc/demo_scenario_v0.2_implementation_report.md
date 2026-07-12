@@ -1,6 +1,6 @@
 # MEP-light™ Demo Scenario v0.2 — Implementation Report
 
-> **Status: Unreleased / Demo Scenario v0.2 candidate.** Held locally for independent QA.
+> **Status: Unreleased / Demo Scenario v0.2 candidate + Cure-01.** Held locally for staging authorization.
 > This does **not** change the accepted v4.3.7 production release. Production remains on
 > Cloud Run revision `market-entry-prioritizer-00041-dqw` (`https://mep.innobase.app`).
 
@@ -8,7 +8,8 @@
 |---|---|
 | Specification | `MEP-light_Demo_Scenario_v0.2.docx` (SHA-256 `8f33266cb1d607cf60fe6d584b1e00eeba0d186134955266d83d4987377c097b`) |
 | Baseline commit | `c25a037a9745c505b6608a6b7f993bcce5272663` (v4.3.7 closure) |
-| Feature branch | `feature/demo-scenario-v0.2` (local, unpushed) |
+| Feature branch | `feature/demo-scenario-v0.2` (v0.2 implementation) |
+| Cure branch | `feature/demo-scenario-v0.2-cure-01` (cure + evidence; current HEAD) |
 | Client-facing label | `MEP-light Beta Demo v1.6` (retained; now centralized) |
 
 ## 1. Architecture & UX changes

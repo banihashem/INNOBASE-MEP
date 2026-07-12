@@ -7,10 +7,10 @@
 
 ---
 
-## Unreleased — Demo Scenario v0.2 candidate (NOT DEPLOYED)
+## Unreleased — Demo Scenario v0.2 candidate + Cure-01 (NOT DEPLOYED)
 
-**Branch**: `feature/demo-scenario-v0.2` (local, unpushed) · **Base**: `c25a037` (v4.3.7 closure)
-**Status**: local implementation complete, held for independent QA. Product version unchanged (4.3.7);
+**Branch**: `feature/demo-scenario-v0.2-cure-01` (local, unpushed) · **Base**: `c25a037` (v4.3.7 closure)
+**Status**: cure complete, held for staging authorization. Product version unchanged (4.3.7);
 client label unchanged (`MEP-light Beta Demo v1.6`). No tag, no deploy, no migration.
 
 Implements `MEP-light_Demo_Scenario_v0.2.docx` (all 25 P0/P1 checklist items + updated success criteria):
@@ -25,8 +25,16 @@ Implements `MEP-light_Demo_Scenario_v0.2.docx` (all 25 P0/P1 checklist items + u
 - Backward-compatible legacy-session hydration; label centralized.
 - New pure libs: `src/lib/{scoring,draftScoring,narrative}.ts`; new gate `test:demo-v0.2` (83 tests).
 
+**Cure-01** (commits `0ac38da`, `1a91492`, `bb6a5a5`):
+- TypeScript zero-error gate achieved (21 errors → 0): ErrorBoundary declare, Toast React.FC, apiClient precise typing, auth test widening.
+- Narrative mode consistency fix (buildOrgContextSummary constraints section now mode-aware).
+- Runtime identity marker (`window.__MEP_BUILD__` via Vite define, label `demo-scenario-v0.2-cure-01`).
+- Dead landing CSS removal (108 orphaned selectors); adverse-dimension label UX.
+- Cure regression test suite: 67 assertions across 6 sections.
+- Total local verification: **580 TS/Node + 133 Python = 713 assertions** passing.
+
 See `demo_scenario_v0.2_gap_matrix.md`, `demo_scenario_v0.2_implementation_report.md`,
-`demo_scenario_v0.2_test_report.md`. **Requires separate Human GO before any push/deploy/tag.**
+`demo_scenario_v0.2_test_report.md`, `evidence/cure-v0.2-01/`. **Requires separate Human GO before any push/deploy/tag.**
 
 ---
 

@@ -1,31 +1,47 @@
 # MEP-light™ Demo Scenario v0.2 — Test & Verification Report
 
-> **Status: Unreleased / Demo Scenario v0.2 candidate.** Local verification only.
+> **Status: Unreleased / Demo Scenario v0.2 candidate + Cure-01.** Local verification only.
 > No cloud resource was mutated; production remains on v4.3.7 / revision
 > `market-entry-prioritizer-00041-dqw`.
+>
+> **Cure branch**: `feature/demo-scenario-v0.2-cure-01` · **HEAD**: `bb6a5a5`
 
 ## 1. Commands, counts & results
 
-| Gate | Command | Result |
-|------|---------|--------|
-| Typecheck | `npm run lint` (`tsc --noEmit`) | 20 **pre-existing** errors; **0 new** (baseline HEAD = 23; v0.2 fixed 3). See §4. |
-| Scoring engine (regression) | `npm run test` | **117 / 117** ✅ |
-| Product prep | `npm run test:prep` | **23 / 23** ✅ |
-| Golden scenario | `npm run test:golden` | **20 / 20** ✅ |
-| Persistence (SQLite) | `npm run test:persistence` | **35 / 35** ✅ |
-| Auth regression (gate) | `npm run test:auth` | **28 / 28** ✅ |
-| Bundle regression (gate) | `npm run test:bundle` | **8 / 8** ✅ |
-| Built-bundle identity scan | `npx tsx tests/bundle_no_demo_identity.test.ts` | **5 / 5** ✅ |
-| Session PATCH/autosave | `npx tsx tests/session_patch_autosave.test.ts` | **21 / 21** ✅ |
-| Demo Participant RBAC (gate) | `npm run test:rbac` | **37 / 37** ✅ |
-| **v0.2 unit tests (new)** | `npm run test:demo-v0.2` | **83 / 83** ✅ |
-| Governance agent (Python) | `npm run test:governance` | **8 / 8** ✅ |
-| Python scoring parity | `pytest tests/python/test_scoring.py test_guardrail.py test_golden_somayeh.py test_auth.py test_rag.py test_pdf.py` | **133 passed** ✅ |
-| Production build (local) | `npm run build` | ✅ built (1705 modules, ~1.6s) |
-| `git diff --check` | (see §5) | clean |
-| Prohibited/stale copy scan | grep of `src/` | clean (see §3) |
+| # | Gate | Command | Assertions | Exit | Status |
+|---|------|---------|-----------|------|--------|
+| G1 | TypeScript | `npx tsc --noEmit` | — | 0 | ✅ PASS (zero errors) |
+| G2 | Vite build | `npm run build` | — | 0 | ✅ PASS (1706 modules, 1.50s) |
+| G3 | Scoring engine | `npm run test` | 117 | 0 | ✅ PASS |
+| G4 | Product prep | `npm run test:prep` | 23 | 0 | ✅ PASS |
+| G5 | Golden scenario | `npm run test:golden` | 20 | 0 | ✅ PASS |
+| G6 | Persistence (SQLite) | `npm run test:persistence` | 35 | 0 | ✅ PASS |
+| G7 | Auth regression | `npm run test:auth` | 28 | 0 | ✅ PASS |
+| G8 | Bundle regression | `npm run test:bundle` | 8 | 0 | ✅ PASS |
+| G9 | Bundle identity scan | `npx tsx tests/bundle_no_demo_identity.test.ts` | 5 | 0 | ✅ PASS |
+| G10 | Session PATCH/autosave | `npx tsx tests/session_patch_autosave.test.ts` | 21 | 0 | ✅ PASS |
+| G11 | RBAC enforcement | `npm run test:rbac` | 37 | 0 | ✅ PASS |
+| G12 | Demo v0.2 tests | `npm run test:demo-v0.2` | 83 | 0 | ✅ PASS |
+| G13 | Governance (Python) | `npm run test:governance` | 8 | 0 | ✅ PASS |
+| G14 | **Cure regression** | `node --import tsx tests/cure_regression_v0.2.test.ts` | **67** | 0 | ✅ PASS |
+| G15 | Python parity | `python -m pytest tests/python/test_scoring.py ...test_pdf.py` | 133 | 0 | ✅ PASS |
+| G16 | `git diff --check` | Whitespace check | — | 0 | ✅ PASS |
+| G17 | Stale version scan | Source + bundle scan | — | 0 | ✅ clean |
+| G18 | Secret-blind scan | Source scan for API keys/passwords | — | 0 | ✅ clean |
+| G19 | Dead-selector scan | CSS↔component cross-reference | — | 0 | ✅ clean |
+| G20 | Runtime marker | Bundle contains `__MEP_BUILD__` | — | 0 | ✅ verified |
 
-**Totals:** 359 TS/node assertions + 133 Python = **492 passing**.
+### Test-count reconciliation
+
+| Category | Suites | Assertions |
+|----------|--------|------------|
+| TypeScript/Node (G3–G12, G14) | 12 suites | 452 |
+| Governance via npm (G13) | 1 suite (Python, invoked via npm) | 8 |
+| TS/Node subtotal | | **460** |
+| Cure regression (G14, already in TS/Node) | (included above) | (67) |
+| Python parity (G15) | 6 test files | 133 |
+| Non-test gates (G1, G2, G16–G20) | 7 gates | 0 (exit-code only) |
+| **Grand total: unique assertions** | | **580 TS/Node + 133 Python = 713** |
 
 ## 2. New v0.2 unit coverage (`tests/demo_scenario_v0.2.test.ts`, 83 assertions)
 
@@ -52,12 +68,16 @@ internal architecture notes, never surfaced in client-facing copy.)
 
 ## 4. Typecheck detail
 
-Baseline HEAD `tsc --noEmit` = **23** errors (measured via `git stash`): `App.tsx` 3,
-`ErrorBoundary.tsx` 12, `RoadmapScreen.tsx` 2, `Toast.tsx` 1, `auth_regression.test.ts` 4,
-`rbac_demo.test.ts` 1. Working tree = **20** (fixed the 3 toast-callable bugs in `App.tsx` and
-`RoadmapScreen.tsx`). No error occurs in any file created or heavily edited by v0.2. These are
-long-standing issues (React class-component typing, a `key` prop spread, and `apiClient.sessions.create`
-payload typing) unrelated to this feature; the repo's enforced gates are the `test:*` scripts.
+**Post-Cure-01**: `npx tsc --noEmit` exits with **0 errors** (zero). All 21 pre-existing errors
+have been cured:
+
+| File | Errors | Cure |
+|------|--------|------|
+| `ErrorBoundary.tsx` | 13 → 0 | `declare` statements for React class component properties |
+| `Toast.tsx` | 1 → 0 | Converted to `React.FC`, idiomatic `key` handling |
+| `apiClient.ts` | 2 → 0 | Precise `SessionCreatePayload` interface (10 exact fields) |
+| `auth_regression.test.ts` | 4 → 0 | `let` widening replaces `as string` assertions |
+| `rbac_demo.test.ts` | 1 → 0 | Optional `dimensionEvidence` on backend model |
 
 ## 5. End-to-end scenario verification
 

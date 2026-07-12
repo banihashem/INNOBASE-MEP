@@ -1,7 +1,7 @@
 # MEP-light™ Demo Scenario v0.2 — Requirement Traceability & Gap Matrix
 
-> **Status:** Unreleased / Demo Scenario v0.2 candidate — local development activity.
-> This work is held locally for independent QA. It does **not** change the accepted
+> **Status:** Unreleased / Demo Scenario v0.2 candidate + Cure-01 — local development activity.
+> This work is held locally for staging authorization. It does **not** change the accepted
 > v4.3.7 production release (production remains on revision `market-entry-prioritizer-00041-dqw`).
 
 ## Source of truth
@@ -12,6 +12,7 @@
 | DOCX SHA-256 | `8f33266cb1d607cf60fe6d584b1e00eeba0d186134955266d83d4987377c097b` |
 | Baseline commit | `c25a037a9745c505b6608a6b7f993bcce5272663` (v4.3.7 closure) |
 | Feature branch | `feature/demo-scenario-v0.2` |
+| Cure branch | `feature/demo-scenario-v0.2-cure-01` (current HEAD: `bb6a5a5`) |
 | Client-facing label (retained) | `MEP-light Beta Demo v1.6` |
 
 **Baseline status legend:** `SATISFIED` (v4.3.7 already meets spec), `PARTIAL`, `MISSING`, `CONFLICT`.

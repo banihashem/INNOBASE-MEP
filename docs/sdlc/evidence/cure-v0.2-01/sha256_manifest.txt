@@ -2,8 +2,12 @@
 # DEVELOPER-CURE-EVIDENCE — NOT INDEPENDENT QA
 # Generated: 2026-07-12
 # Branch: feature/demo-scenario-v0.2-cure-01
-# HEAD: 1a9149209b0e71d1f6dc022d1f15a40c270aea29
+# HEAD at manifest gen: bb6a5a5ada7fbe88233dcd05092768a7a7b854de
+# Previous cure HEAD: 1a9149209b0e71d1f6dc022d1f15a40c270aea29
+# NOTE: This manifest was regenerated after SDLC docs reconciliation.
+#       Source files below remain unchanged from commit 1a91492.
 
+# Cure-changed source files (unchanged since 1a91492)
 B428F68FD79CC3F3C45C481112E294D16A30EB73FB69AB2F80B13E055F123CF4  src/lib/apiClient.ts
 9DDDE425BBFCF4CA6B88BD22B15BA463FCB414E6F2F7A36C8CF4A5AED38E8BBD  src/components/Toast.tsx
 4315A464C6803C4B4DFF36391CFA8E782F469328B15865B333A3F00DAE3E4686  src/lib/narrative.ts

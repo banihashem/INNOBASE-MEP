@@ -7,22 +7,29 @@
 
 ---
 
-## Unreleased — Demo Scenario v0.2 candidate
+## Unreleased — Demo Scenario v0.2 candidate (+ Cure-01)
 
 > **Not released, not deployed, not tagged.** Local development activity on branch
-> `feature/demo-scenario-v0.2`, held for independent QA. The accepted v4.3.7 production
-> release below is **unchanged** (revision `market-entry-prioritizer-00041-dqw`).
+> `feature/demo-scenario-v0.2-cure-01`, held for staging authorization. The accepted v4.3.7
+> production release below is **unchanged** (revision `market-entry-prioritizer-00041-dqw`).
 
 | Field | Value |
 |-------|-------|
 | Work item | MEP-light Demo Scenario v0.2 (spec SHA-256 `8f33266cb1d607cf60fe6d584b1e00eeba0d186134955266d83d4987377c097b`) |
 | Base commit | `c25a037a9745c505b6608a6b7f993bcce5272663` (v4.3.7 closure) |
+| v0.2 feature commit | `702df58` feat(demo): implement MEP-light Demo Scenario v0.2 |
+| v0.2 docs commit | `cf7233c` docs(sdlc): Demo Scenario v0.2 traceability, reports, and local evidence |
+| Cure-01 initial commit | `0ac38da` fix(demo): cure v0.2 scoring UX, TS gate, narrative, identity marker |
+| Cure-01 precision commit | `1a91492` fix(cure): TS precision + narrative consistency + cure regression tests |
+| Cure-01 evidence commit | `bb6a5a5` docs(sdlc): cure-v0.2-01 evidence report + SHA-256 manifest |
 | Product version | **unchanged (4.3.7)** — no version bump; no new tag selected |
 | Client-facing label | **unchanged** (`MEP-light Beta Demo v1.6`), now centralized in `CLIENT_FACING_LABEL` |
-| Development identifier | `demo-scenario-v0.2` (branch name; non-release convention) |
+| Development identifier | `demo-scenario-v0.2-cure-01` (branch name; non-release convention) |
+| Runtime marker | `label: demo-scenario-v0.2-cure-01` (via `window.__MEP_BUILD__`) |
 | Migration | none created / none required |
-| Local verification | 492 tests pass; production build OK; see `demo_scenario_v0.2_test_report.md` |
+| Local verification | 580 TS/Node + 133 Python = **713 total assertions** pass; TypeScript zero errors; production build OK |
 | Requires before any deploy | separate **Human GO** for push / staging / migration / production / tag |
+
 
 ---
 
