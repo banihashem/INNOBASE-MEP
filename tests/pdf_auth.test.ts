@@ -8,7 +8,7 @@
  *  4. Approved session export with Authorization header → 200 PDF
  */
 
-const API_SERVER_URL = "http://localhost:8080";
+const API_SERVER_URL = "http://localhost:3001";
 
 let passed = 0;
 let failed = 0;

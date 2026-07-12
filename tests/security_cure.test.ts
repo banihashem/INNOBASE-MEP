@@ -1,5 +1,4 @@
 import * as assert from "node:assert";
-import "../backend/src/api_server.js";
 const TEST_ISSUER = "accounts.google.com";
 const TEST_AUDIENCE = process.env.GOOGLE_CLIENT_ID || "test_audience";
 const DEMO_EMAIL = "innobaseae@gmail.com";
