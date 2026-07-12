@@ -192,23 +192,8 @@ app.use((req: Request, res: Response, next: Function) => {
 });
 
 app.get("/api/v2/db/run-migration/:name", async (req, res) => {
-  try {
-    const fs = await import("fs");
-    const path = await import("path");
-    const filename = req.params.name;
-    if (!/^[a-zA-Z0-9_-]+\.sql$/.test(filename)) {
-      throw new Error("Invalid migration filename");
-    }
-    const sql = fs.readFileSync(path.resolve(`backend/migrations/${filename}`), "utf8");
-    if ((db as any).pgPool) {
-      await (db as any).pgPool.query(sql);
-      res.json({ success: true, message: `Migration ${filename} applied to pgPool` });
-    } else {
-      res.json({ success: false, message: "pgPool not active" });
-    }
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
+  // SEC-01: Public migration endpoint removed. Migrations must be run via deployment pipeline or Cloud Run Job.
+  res.status(403).json({ error: "Migration execution via public web route is disabled. Use the deployment pipeline." });
 });
 
 // ─── Health Checks ────────────────────────────────────────────────────────
@@ -625,35 +610,29 @@ async function verifyGoogleJwt(token: string): Promise<Record<string, any> | nul
 
     // Attempt JWKS signature verification
     if (header.kid && header.alg === "RS256") {
-      try {
-        const jwks = await getGoogleJwks();
-        const jwk = jwks.find(k => k.kid === header.kid);
-        if (jwk) {
-          const publicKey = crypto.createPublicKey({
-            key: { kty: jwk.kty, n: jwk.n, e: jwk.e },
-            format: "jwk",
-          });
-          const signatureValid = crypto.verify(
-            "RSA-SHA256",
-            Buffer.from(parts[0] + "." + parts[1]),
-            publicKey,
-            Buffer.from(parts[2].replace(/-/g, "+").replace(/_/g, "/"), "base64")
-          );
-          if (!signatureValid) {
-            logEvent({ level: "warn", component: "auth", event_type: "invalid_signature", message: "JWT signature verification failed" });
-            return null;
-          }
-        }
-      } catch (verifyErr) {
-        // Graceful degradation: if crypto verification fails, still accept token
-        // (Cloud Run environment may have different crypto support)
-        logEvent({
-          level: "warn",
-          component: "auth",
-          event_type: "jwks_verify_fallback",
-          message: `JWKS verification fell back to decode-only: ${verifyErr}`,
+      const jwks = await getGoogleJwks();
+      const jwk = jwks.find(k => k.kid === header.kid);
+      if (jwk) {
+        const publicKey = crypto.createPublicKey({
+          key: { kty: jwk.kty, n: jwk.n, e: jwk.e },
+          format: "jwk",
         });
+        const signatureValid = crypto.verify(
+          "RSA-SHA256",
+          Buffer.from(parts[0] + "." + parts[1]),
+          publicKey,
+          Buffer.from(parts[2].replace(/-/g, "+").replace(/_/g, "/"), "base64")
+        );
+        if (!signatureValid) {
+          logEvent({ level: "warn", component: "auth", event_type: "invalid_signature", message: "JWT signature verification failed" });
+          return null;
+        }
+      } else {
+         logEvent({ level: "warn", component: "auth", event_type: "unknown_kid", message: "JWT kid not found in JWKS" });
+         return null;
       }
+    } else {
+      return null;
     }
 
     return payload;
@@ -670,36 +649,6 @@ interface JwtUser {
   picture: string;
   sub: string;
   exp?: number;
-}
-
-function extractJwtUser(req: Request): JwtUser | null {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) return null;
-
-  const token = authHeader.slice(7);
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-
-    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = JSON.parse(Buffer.from(payload, "base64").toString());
-
-    // Check token expiry server-side
-    if (decoded.exp && Date.now() / 1000 > decoded.exp) {
-      logEvent({ level: "warn", component: "auth", event_type: "token_expired_sync", message: "Expired token rejected" });
-      return null;
-    }
-
-    return {
-      email: decoded.email || "",
-      name: decoded.name || decoded.email || "",
-      picture: decoded.picture || "",
-      sub: decoded.sub || "",
-      exp: decoded.exp,
-    };
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -930,7 +879,7 @@ app.get("/api/v2/users/me", async (req: Request, res: Response) => {
 // ─── GET /api/v2/users/stats — User Statistics (Admin) ──────────────
 
 app.get("/api/v2/users/stats", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
@@ -956,7 +905,7 @@ app.get("/api/v2/users/stats", async (req: Request, res: Response) => {
 // ─── GET /api/v2/users — List Users (Admin) ─────────────────────────
 
 app.get("/api/v2/users", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
@@ -1002,7 +951,7 @@ app.get("/api/v2/users", async (req: Request, res: Response) => {
 // ─── POST /api/v2/users — Create User (Admin) ──────────────────────
 
 app.post("/api/v2/users", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
@@ -1038,7 +987,7 @@ app.post("/api/v2/users", async (req: Request, res: Response) => {
 // ─── GET /api/v2/users/:id — Get User by ID (Admin) ─────────────────
 
 app.get("/api/v2/users/:id", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
@@ -1057,7 +1006,7 @@ app.get("/api/v2/users/:id", async (req: Request, res: Response) => {
 // ─── PATCH /api/v2/users/:id — Update User (Admin) ──────────────────
 
 app.patch("/api/v2/users/:id", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
@@ -1153,7 +1102,7 @@ app.patch("/api/v2/users/:id", async (req: Request, res: Response) => {
 // ─── DELETE /api/v2/users/:id — Deactivate User (Admin) ─────────────
 
 app.delete("/api/v2/users/:id", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   const caller = jwt?.email ? await findUserByEmail(jwt.email) : null;
   if (!caller || !isAdmin(caller)) {
     res.status(403).json({ error: "Administrator access required" });
@@ -1205,7 +1154,7 @@ app.delete("/api/v2/users/:id", async (req: Request, res: Response) => {
 // ─── GET /api/v2/sessions — List user's sessions ────────
 
 app.get("/api/v2/sessions", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   if (!jwt?.email) {
     res.status(401).json({ error: "Authentication required" });
     return;
@@ -1239,7 +1188,7 @@ app.get("/api/v2/sessions", async (req: Request, res: Response) => {
 // ─── POST /api/v2/sessions — Create a new session ───────
 
 app.post("/api/v2/sessions", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   if (!jwt?.email) {
     res.status(401).json({ error: "Authentication required" });
     return;
@@ -1317,7 +1266,7 @@ app.post("/api/v2/sessions", async (req: Request, res: Response) => {
 // ─── GET /api/v2/sessions/:id — Get session details ─────
 
 app.get("/api/v2/sessions/:id", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   if (!jwt?.email) {
     res.status(401).json({ error: "Authentication required" });
     return;
@@ -1361,7 +1310,7 @@ app.get("/api/v2/sessions/:id", async (req: Request, res: Response) => {
 
 app.patch("/api/v2/sessions/:id", async (req: Request, res: Response) => {
   try {
-    const jwt = extractJwtUser(req);
+    const jwt = await extractAndVerifyJwtUser(req);
     if (!jwt?.email) {
       res.status(401).json({ error: "Authentication required" });
       return;
@@ -1467,7 +1416,7 @@ app.patch("/api/v2/sessions/:id", async (req: Request, res: Response) => {
 
 // ─── POST /api/v2/sessions/:id/review — Set review status ──
 app.post("/api/v2/sessions/:id/review", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   if (!jwt?.email) {
     res.status(401).json({ error: "Authentication required" });
     return;
@@ -1520,7 +1469,7 @@ app.post("/api/v2/sessions/:id/review", async (req: Request, res: Response) => {
 // ─── DELETE /api/v2/sessions/:id — Delete session ────────
 
 app.delete("/api/v2/sessions/:id", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   if (!jwt?.email) {
     res.status(401).json({ error: "Authentication required" });
     return;
@@ -1878,7 +1827,7 @@ app.post("/api/v2/adk/assess", async (req: Request, res: Response) => {
 // ─── GET /api/v2/adk/runs — List agent runs ─────────────────────────
 
 app.get("/api/v2/adk/runs", async (req: Request, res: Response) => {
-  const jwt = extractJwtUser(req);
+  const jwt = await extractAndVerifyJwtUser(req);
   if (!jwt?.email) {
     res.status(401).json({ error: "Authentication required" });
     return;

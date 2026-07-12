@@ -14,6 +14,7 @@
     "test:golden": "node --import tsx tests/golden_scenario_somayeh.ts",
     "test:pdf": "node --import tsx tests/pdf_export.test.ts",
     "test:pdf-api": "node --import tsx tests/pdf_auth.test.ts",
+    "test:security-cure": "node --import tsx tests/security_cure.test.ts",
     "test:all": "npm run test && npm run test:prep && npm run test:golden && npm run test:persistence && npm run test:auth && npm run test:pdf-api && npm run test:governance && npm run test:bundle && npm run test:demo-v0.2 && npm run test:rbac",
     "test:demo-v0.2": "node --import tsx tests/demo_scenario_v0.2.test.ts",
     "test:rbac": "npx tsx tests/rbac_demo.test.ts",
