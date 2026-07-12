@@ -429,7 +429,7 @@ export const DEMO_MARKET_SCORES: Record<string, MarketScoreInput> = {
       regulatoryComplexity: "Expert Judgment",
     },
     evidenceBasis: "Expert Judgment",
-    evidenceConfidence: "Low",
+    evidenceConfidence: "Medium",
   },
 };
 

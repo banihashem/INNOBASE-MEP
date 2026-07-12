@@ -13,6 +13,8 @@ import {
   DEMO_MARKET_SCORES,
   CLIENT_FACING_LABEL,
   CLIENT_FACING_LABEL_SHORT,
+  ACTIVE_SECTORS,
+  COMING_SOON_SECTORS,
 } from "./types";
 import { computeMarketResult, resolveSectorWeights, computeEvidenceConfidence } from "./lib/scoring";
 import { generateDraftScores, DraftScoreError } from "./lib/draftScoring";
@@ -207,6 +209,9 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   const [marketNotes, setMarketNotes] = useState<Record<string, string>>({});
   const [removedDefaultIds, setRemovedDefaultIds] = useState<string[]>([]);
 
+  // Edits applied to default/starter markets (name, description, type) — keyed by market id.
+  const [editedDefaults, setEditedDefaults] = useState<Record<string, Partial<Market>>>({});
+
   const [marketScores, setMarketScores] =
     useState<Record<string, MarketScoreInput>>(DEMO_MARKET_SCORES);
 
@@ -218,13 +223,15 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   );
 
 
-  // Computed — starter examples (minus any removed) + custom markets.
+  // Computed — starter examples (minus any removed, with edits applied) + custom markets.
   const allMarkets = useMemo(
     () => [
-      ...DEFAULT_MARKETS.filter((m) => !removedDefaultIds.includes(m.id)),
+      ...DEFAULT_MARKETS
+        .filter((m) => !removedDefaultIds.includes(m.id))
+        .map((m) => editedDefaults[m.id] ? { ...m, ...editedDefaults[m.id], id: m.id } as Market : m),
       ...customMarkets,
     ],
-    [customMarkets, removedDefaultIds]
+    [customMarkets, removedDefaultIds, editedDefaults]
   );
 
   const activeSelectedMarkets = useMemo(
@@ -241,7 +248,8 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
           !!decisionSetup.strategicObjective.trim()
         );
       case 2:
-        return !!companySnapshot.businessName.trim();
+        return !!companySnapshot.businessName.trim() &&
+          (ACTIVE_SECTORS as readonly string[]).includes(companySnapshot.sector);
       case 3:
         return (
           !!productStrategy.offeringName.trim() &&
@@ -289,6 +297,11 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   const handleUpdateCompanySnapshot = (
     newData: Partial<CompanySnapshot>
   ) => {
+    // Guard: reject Coming Soon sectors (Defect 2)
+    if (newData.sector && (COMING_SOON_SECTORS as readonly string[]).includes(newData.sector)) {
+      toast.error("This sector is coming soon and cannot be selected in this demo.");
+      return;
+    }
     setCompanySnapshot((prev) => ({ ...prev, ...newData }));
   };
 
@@ -372,6 +385,60 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   const handleUpdateMarketNote = (marketId: string, note: string) => {
     setMarketNotes((prev) => ({ ...prev, [marketId]: note }));
   };
+
+  // ─── Edit / Rename Market (Defect 3) ───────────────────────────
+  const handleEditMarket = useCallback((
+    marketId: string,
+    updates: { name?: string; description?: string; type?: Market["type"] }
+  ) => {
+    const trimmedName = updates.name?.trim();
+    if (trimmedName !== undefined && !trimmedName) {
+      toast.error("Market name cannot be empty.");
+      return;
+    }
+    // Duplicate name check (case-insensitive) across all markets.
+    if (trimmedName) {
+      const allCurrentMarkets = [
+        ...DEFAULT_MARKETS
+          .filter((m) => !removedDefaultIds.includes(m.id))
+          .map((m) => editedDefaults[m.id] ? { ...m, ...editedDefaults[m.id] } : m),
+        ...customMarkets,
+      ];
+      const duplicate = allCurrentMarkets.some(
+        (m) => m.id !== marketId && m.name.trim().toLowerCase() === trimmedName.toLowerCase()
+      );
+      if (duplicate) {
+        toast.error(`A market named "${trimmedName}" already exists.`);
+        return;
+      }
+    }
+
+    const isDefault = DEFAULT_MARKETS.some((m) => m.id === marketId);
+    if (isDefault) {
+      setEditedDefaults((prev) => ({
+        ...prev,
+        [marketId]: {
+          ...prev[marketId],
+          ...(trimmedName !== undefined ? { name: trimmedName } : {}),
+          ...(updates.description !== undefined ? { description: updates.description } : {}),
+          ...(updates.type !== undefined ? { type: updates.type } : {}),
+        },
+      }));
+    } else {
+      setCustomMarkets((prev) =>
+        prev.map((m) =>
+          m.id === marketId
+            ? {
+                ...m,
+                ...(trimmedName !== undefined ? { name: trimmedName } : {}),
+                ...(updates.description !== undefined ? { description: updates.description } : {}),
+                ...(updates.type !== undefined ? { type: updates.type } : {}),
+              }
+            : m
+        )
+      );
+    }
+  }, [removedDefaultIds, editedDefaults, customMarkets, toast]);
 
   const handleUpdateScores = (
     marketId: string,
@@ -623,6 +690,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
       customMarkets,
       marketNotes,
       removedDefaultIds,
+      editedDefaults,
       marketScores,
       selectedRoadmapMarketId,
       consultantNotes,
@@ -630,7 +698,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   }, [
     appMode, currentStep, maxUnlockedStep, decisionSetup, companySnapshot,
     productStrategy, selectedMarketIds, customMarkets, marketNotes, removedDefaultIds,
-    marketScores, selectedRoadmapMarketId, consultantNotes
+    editedDefaults, marketScores, selectedRoadmapMarketId, consultantNotes
   ]);
 
   useEffect(() => {
@@ -685,7 +753,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
   }, [
     sessionId, appMode, isInitializing, currentStep, decisionSetup, companySnapshot,
     productStrategy, selectedMarketIds, customMarkets, marketNotes, removedDefaultIds,
-    marketScores, selectedRoadmapMarketId, consultantNotes
+    editedDefaults, marketScores, selectedRoadmapMarketId, consultantNotes
   ]);
 
   // ─── Load session from server ──────────────────────────────
@@ -710,7 +778,20 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
         setCustomMarkets(snap.customMarkets || []);
         setMarketNotes(snap.marketNotes || {});
         setRemovedDefaultIds(snap.removedDefaultIds || []);
-        setMarketScores(snap.marketScores || {});
+        setEditedDefaults(snap.editedDefaults || {});
+        // Normalize evidenceConfidence from dimensionEvidence on session load (Defect 1)
+        const loadedScores = snap.marketScores || {};
+        const normalizedScores: Record<string, MarketScoreInput> = {};
+        for (const [mid, ms] of Object.entries(loadedScores)) {
+          const msi = ms as MarketScoreInput;
+          normalizedScores[mid] = {
+            ...msi,
+            evidenceConfidence: msi.dimensionEvidence
+              ? computeEvidenceConfidence(msi.dimensionEvidence as Record<keyof DimensionScores, EvidenceBasis>)
+              : msi.evidenceConfidence,
+          };
+        }
+        setMarketScores(normalizedScores);
         setSelectedRoadmapMarketId(snap.selectedRoadmapMarketId || "uae");
         setConsultantNotes(snap.consultantNotes || "");
         setReviewStatus(data.reviewStatus || "pending");
@@ -884,6 +965,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
                 onAddCustomMarket={handleAddCustomMarket}
                 onDeleteMarket={handleDeleteMarket}
                 onUpdateMarketNote={handleUpdateMarketNote}
+                onEditMarket={handleEditMarket}
                 appMode={appMode}
               />
             )}

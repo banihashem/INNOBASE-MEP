@@ -246,10 +246,10 @@ export default function ScoringEvidenceScreen({
           <div className="space-y-2">
             {selectedMarkets.map((market) => {
               const isActive = market.id === currentId;
-              const scoresData = marketScores[market.id] || {
-                evidenceConfidence: "Low",
-              };
-              const conf = scoresData.evidenceConfidence;
+              const scoresData = marketScores[market.id];
+              const conf = computeEvidenceConfidence(
+                scoresData?.dimensionEvidence as Record<keyof DimensionScores, EvidenceBasis> | undefined
+              );
 
               return (
                 <button

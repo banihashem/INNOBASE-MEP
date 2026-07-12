@@ -242,7 +242,7 @@ export function computeMarketResult(
     tier,
     letterGrade: letterGrade(potentialScore),
     recommendedAction: recommendedAction(potentialScore, evidenceConfidenceScore, discrepancyAlert),
-    confidence: input?.evidenceConfidence || "Low",
+    confidence: computeEvidenceConfidence(input?.dimensionEvidence as Record<keyof DimensionScores, EvidenceBasis> | undefined),
     evidenceBasis: input?.evidenceBasis || "Expert Judgment",
     evidenceConfidenceScore,
     mainStrength,

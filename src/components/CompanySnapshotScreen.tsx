@@ -28,6 +28,10 @@ export default function CompanySnapshotScreen({ data, onChange, appMode, decisio
     field: keyof Omit<CompanySnapshot, "evidenceStates">,
     value: string
   ) => {
+    // Guard: prevent Coming Soon sector selection at the component level (Defect 2)
+    if (field === "sector" && (COMING_SOON_SECTORS as readonly string[]).includes(value)) {
+      return;
+    }
     onChange({ [field]: value });
   };
 

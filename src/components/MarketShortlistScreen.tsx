@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Market, AppMode } from "../types";
-import { Plus, Trash2, Edit2, Check, CheckSquare, Square, Info } from "lucide-react";
+import { Plus, Trash2, Edit2, Check, CheckSquare, Square, Info, X, PenLine } from "lucide-react";
 
 interface Props {
   /** Visible comparison set: starter examples (minus removed) + custom markets. */
@@ -12,6 +12,7 @@ interface Props {
   onAddCustomMarket: (name: string, description: string) => void;
   onDeleteMarket: (marketId: string) => void;
   onUpdateMarketNote: (marketId: string, note: string) => void;
+  onEditMarket: (marketId: string, updates: { name?: string; description?: string; type?: Market["type"] }) => void;
   appMode: AppMode;
 }
 
@@ -26,6 +27,7 @@ export default function MarketShortlistScreen({
   onAddCustomMarket,
   onDeleteMarket,
   onUpdateMarketNote,
+  onEditMarket,
   appMode,
 }: Props) {
   const [newMarketName, setNewMarketName] = useState("");
@@ -34,6 +36,12 @@ export default function MarketShortlistScreen({
   const [addError, setAddError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState("");
+  // Market editing state (Defect 3)
+  const [editingMarketId, setEditingMarketId] = useState<string | null>(null);
+  const [editMarketName, setEditMarketName] = useState("");
+  const [editMarketDesc, setEditMarketDesc] = useState("");
+  const [editMarketType, setEditMarketType] = useState<Market["type"]>("Country");
+  const [editMarketError, setEditMarketError] = useState<string | null>(null);
   const [activeDetailId, setActiveDetailId] = useState<string | null>(
     markets[0]?.id ?? null
   );
@@ -229,6 +237,22 @@ export default function MarketShortlistScreen({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        setEditingMarketId(market.id);
+                        setEditMarketName(market.name);
+                        setEditMarketDesc(market.description);
+                        setEditMarketType(market.type || "Country");
+                        setEditMarketError(null);
+                      }}
+                      className="text-slate-500 hover:text-indigo-400 p-1 cursor-pointer"
+                      title="Edit Market"
+                      id={`edit-market-${market.id}`}
+                    >
+                      <PenLine className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setActiveDetailId(market.id);
                       }}
                       className="text-slate-500 hover:text-slate-300 p-1 cursor-pointer"
@@ -268,6 +292,87 @@ export default function MarketShortlistScreen({
           );
         })}
       </div>
+
+      {/* Inline Market Edit Form (Defect 3) */}
+      {editingMarketId && (() => {
+        const em = markets.find((x) => x.id === editingMarketId);
+        if (!em) return null;
+        const handleSaveEdit = () => {
+          const trimmed = editMarketName.trim();
+          if (!trimmed) {
+            setEditMarketError("Market name cannot be empty.");
+            return;
+          }
+          if (markets.some((m) => m.id !== editingMarketId && m.name.trim().toLowerCase() === trimmed.toLowerCase())) {
+            setEditMarketError(`"${trimmed}" is already in your comparison set.`);
+            return;
+          }
+          onEditMarket(editingMarketId, { name: trimmed, description: editMarketDesc.trim() || em.description, type: editMarketType });
+          setEditingMarketId(null);
+          setEditMarketError(null);
+        };
+        return (
+          <div className="bg-slate-900 border border-indigo-900/40 rounded-xl p-5 space-y-4 animate-fade-in" id="edit-market-form">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-indigo-300 font-display flex items-center space-x-2">
+                <PenLine className="w-4 h-4" />
+                <span>Edit Market: {em.name}</span>
+              </h3>
+              <button type="button" onClick={() => { setEditingMarketId(null); setEditMarketError(null); }}
+                className="text-slate-400 hover:text-slate-200 cursor-pointer" id="cancel-edit-market-btn">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-400 block">Name</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  value={editMarketName}
+                  onChange={(e) => { setEditMarketName(e.target.value); if (editMarketError) setEditMarketError(null); }}
+                  id="edit-market-name-input"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-400 block">Description</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  value={editMarketDesc}
+                  onChange={(e) => setEditMarketDesc(e.target.value)}
+                  id="edit-market-desc-input"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-400 block">Type</label>
+                <select
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  value={editMarketType}
+                  onChange={(e) => setEditMarketType(e.target.value as Market["type"])}
+                  id="edit-market-type-select"
+                >
+                  <option value="Country">Country</option>
+                  <option value="Market Bloc">Market Bloc</option>
+                  <option value="Region">Region</option>
+                </select>
+              </div>
+            </div>
+            {editMarketError && (
+              <p className="text-xs text-rose-400" id="edit-market-error">{editMarketError}</p>
+            )}
+            <div className="flex justify-end space-x-3 text-xs">
+              <button type="button" onClick={() => { setEditingMarketId(null); setEditMarketError(null); }}
+                className="text-slate-400 hover:text-slate-200 px-3 py-2 cursor-pointer">Cancel</button>
+              <button type="button" onClick={handleSaveEdit}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-lg cursor-pointer"
+                id="save-edit-market-btn">
+                Save Changes
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Market Context Notes — per market (spec 7.4) */}
       {activeDetailId && (
