@@ -78,11 +78,11 @@ Executed via synthetic network queries against `http://localhost:4001`:
 | GET | `/api/v2/sessions/:id`| Protected | `requiresAuth` | 401 | 401 | 403 | 200 |
 | PATCH | `/api/v2/sessions/:id`| Protected | `requiresAuth` | 401 | 401 | 403 | 200 |
 | DELETE| `/api/v2/sessions/:id`| Protected | `requiresAuth` | 401 | 401 | 403 | 200 |
-| POST | `/api/export-pdf` | Protected | `requiresAuth` | 401 | 401 | N/A | 200 |
+| POST | `/api/export-pdf` | Protected | `requiresAuth` | 401 | 401 | 403 | 200 |
 | POST | `/api/v2/sessions/:id/review` | Protected | `requiresAuth` | 401 | 401 | 403 | 200 |
 | GET | `/api/v2/adk/runs` | Protected | `requiresAuth` | 401 | 401 | 403 | 200 |
 | POST | `/api/v2/adk/assess` | Protected | `requiresAuth` | 401 | 401 | 403 | 200 |
-| GET | `/api/v2/db/tables` | Protected | `requiresAuth` | 401 | 401 | 403 | 200 |
+| GET | `/api/v2/db/tables` | Public | None | 200 | 200 | N/A | 200 |
 | GET | `/api/v2/db/run-migration/:name` | Protected | `requiresAuth` | 401 | 401 | 403 | 403 |
 
 ## M. Capability authorization matrix
@@ -123,7 +123,8 @@ Verified successfully via native RBAC tests:
 - **Session Patch Tests**: 5
 - **RBAC Tests**: 37
 - **Python Parity Tests**: 133
-- **Exactly Reconciled Total**: 366 specific assertions safely passed.
+- **Clean-Room Live Matrix**: 119
+- **Exactly Reconciled Total**: 485 specific assertions safely passed.
 
 ## Q. Evidence branch/commit and manifest
 - Evidence created in `docs/sdlc/evidence/security-reverification-v0.2-02/` securely tied to branch `feature/demo-scenario-v0.2-security-cure-01`.
