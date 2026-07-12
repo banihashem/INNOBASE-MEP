@@ -8,6 +8,7 @@ import {
   EVIDENCE_BASIS_SCORE_MAP,
   AppMode,
 } from "../types";
+import { computeEvidenceConfidence } from "../lib/scoring";
 import { DRAFT_SCORE_DISCLAIMER } from "../lib/draftScoring";
 import { AlertTriangle, ChevronRight, Sparkles, PenLine, Info } from "lucide-react";
 
@@ -170,18 +171,9 @@ export default function ScoringEvidenceScreen({
   };
 
   // Deterministic overall confidence from per-dimension evidence sources
-  const computedConfidence: MarketScoreInput["evidenceConfidence"] = (() => {
-    const dimEv = currentScoreInput.dimensionEvidence;
-    if (!dimEv) return currentScoreInput.evidenceConfidence || "Low";
-    const scores = Object.values(dimEv).map(
-      (basis) => EVIDENCE_BASIS_SCORE_MAP[basis as string] ?? 30
-    );
-    if (scores.length === 0) return currentScoreInput.evidenceConfidence || "Low";
-    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-    if (avg >= 85) return "High";
-    if (avg >= 55) return "Medium";
-    return "Low";
-  })();
+  const computedConfidence: MarketScoreInput["evidenceConfidence"] = computeEvidenceConfidence(
+    currentScoreInput.dimensionEvidence
+  );
 
   const getConfidenceColor = (
     conf: MarketScoreInput["evidenceConfidence"]

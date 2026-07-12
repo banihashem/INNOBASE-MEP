@@ -14,7 +14,7 @@ import {
   CLIENT_FACING_LABEL,
   CLIENT_FACING_LABEL_SHORT,
 } from "./types";
-import { computeMarketResult, resolveSectorWeights } from "./lib/scoring";
+import { computeMarketResult, resolveSectorWeights, computeEvidenceConfidence } from "./lib/scoring";
 import { generateDraftScores, DraftScoreError } from "./lib/draftScoring";
 import { AuthProvider, useAuth } from "./lib/auth";
 import type { AuthUser } from "./lib/auth";
@@ -445,14 +445,18 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
     setMarketScores((prev) => {
       const current = prev[marketId];
       if (!current) return prev;
+      
+      const newDimEv = {
+        ...current.dimensionEvidence,
+        [dimension]: basis,
+      };
+
       return {
         ...prev,
         [marketId]: {
           ...current,
-          dimensionEvidence: {
-            ...current.dimensionEvidence,
-            [dimension]: basis,
-          },
+          dimensionEvidence: newDimEv,
+          evidenceConfidence: computeEvidenceConfidence(newDimEv),
         },
       };
     });

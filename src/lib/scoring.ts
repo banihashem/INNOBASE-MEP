@@ -23,6 +23,7 @@ import {
   MarketScoreInput,
   EVIDENCE_BASIS_SCORE_MAP,
   CONFIDENCE_SCORE_MAP,
+  EvidenceBasis,
 } from "../types";
 
 // ─── Category weights ────────────────────────────────────────────────
@@ -249,3 +250,22 @@ export function computeMarketResult(
     discrepancyAlert,
   };
 }
+
+/**
+ * Canonically derives the overall categorical confidence (High/Medium/Low)
+ * from the underlying per-dimension evidence sources.
+ */
+export function computeEvidenceConfidence(
+  dimEvidence?: Record<keyof DimensionScores, string | EvidenceBasis>
+): "High" | "Medium" | "Low" {
+  if (!dimEvidence) return "Low";
+  const scores = Object.values(dimEvidence).map(
+    (basis) => EVIDENCE_BASIS_SCORE_MAP[basis as string] ?? 30
+  );
+  if (scores.length === 0) return "Low";
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  if (avg >= 85) return "High";
+  if (avg >= 55) return "Medium";
+  return "Low";
+}
+
