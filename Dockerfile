@@ -20,6 +20,8 @@
 FROM node:22-slim AS frontend-builder
 
 ARG GOOGLE_CLIENT_ID=""
+ARG VITE_BUILD_SHA=""
+ENV VITE_BUILD_SHA=${VITE_BUILD_SHA}
 
 WORKDIR /app
 COPY package.json package-lock.json* ./

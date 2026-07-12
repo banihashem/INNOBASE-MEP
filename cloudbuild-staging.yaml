@@ -25,6 +25,8 @@ steps:
       - 'build'
       - '--build-arg'
       - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
+      - '--build-arg'
+      - 'VITE_BUILD_SHA=${_BUILD_SHA}'
       - '-t'
       - 'gcr.io/$PROJECT_ID/mep-staging:latest'
       - '.'
@@ -99,6 +101,7 @@ substitutions:
   _CLOUD_SQL_CONN: 'innobase-mep-light:europe-west2:mep-light-db'
   _REGION: 'europe-west2'
   _ADK_ENABLED: 'controlled'
+  _BUILD_SHA: 'unknown'
 
 timeout: '900s'
 

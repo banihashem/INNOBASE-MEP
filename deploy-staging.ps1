@@ -22,7 +22,13 @@ if ($googleClientId -match "\s") {
     exit 1
 }
 
-$substitutions = "_GOOGLE_CLIENT_ID=$googleClientId,_CLOUD_SQL_CONN=innobase-mep-light:europe-west2:mep-light-db,_ADK_ENABLED=controlled"
+$buildSha = git rev-parse --short HEAD
+if (-not $buildSha) {
+    Write-Error "Could not resolve git SHA"
+    exit 1
+}
+
+$substitutions = "_GOOGLE_CLIENT_ID=$googleClientId,_CLOUD_SQL_CONN=innobase-mep-light:europe-west2:mep-light-db,_ADK_ENABLED=controlled,_BUILD_SHA=$buildSha"
 
 Write-Host "Running gcloud builds submit..."
 # Using --substitutions with a single fully-quoted string is safe from PS array unrolling
