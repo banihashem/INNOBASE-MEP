@@ -167,12 +167,12 @@ export function buildOrgContextSummary(data: CompanySnapshot, decisionMode?: str
     const conItems = constraints.split(/[,;\n]+/).map((s) => lc(s.trim())).filter(Boolean);
     if (conItems.length === 1) {
       sentences.push(
-        `However, the expansion decision is tempered by a notable constraint: ${conItems[0]}${evidenceTag(ev.knownConstraints)}. This factor should be stress-tested against each candidate market's conditions.`
+        `However, the ${entryOrExpansion} decision is tempered by a notable constraint: ${conItems[0]}${evidenceTag(ev.knownConstraints)}. This factor should be stress-tested against each candidate market's conditions.`
       );
     } else if (conItems.length > 1) {
       const lastCon = conItems.pop();
       sentences.push(
-        `The expansion decision is shaped by several identified constraints, including ${conItems.join(", ")}, and ${lastCon}${evidenceTag(ev.knownConstraints)}. These factors will need to be weighed against each market's accessibility and risk profile.`
+        `The ${entryOrExpansion} decision is shaped by several identified constraints, including ${conItems.join(", ")}, and ${lastCon}${evidenceTag(ev.knownConstraints)}. These factors will need to be weighed against each market's accessibility and risk profile.`
       );
     }
   }

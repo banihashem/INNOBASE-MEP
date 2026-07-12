@@ -322,7 +322,19 @@ export const apiClient = {
       const res = await fetchWithRetry("/v2/sessions");
       return res.json();
     },
-    async create(data: { title?: string; companyName?: string; offeringName?: string; inputData?: any } & Record<string, unknown>): Promise<any> {
+    /** Exact fields accepted by POST /api/v2/sessions (backend api_server.ts:1254). */
+    async create(data: {
+      id?: string;
+      title?: string;
+      companyName?: string;
+      offeringName?: string;
+      inputData?: Record<string, unknown>;
+      stateSnapshot?: Record<string, unknown>;
+      currentStep?: number;
+      completionPercent?: number;
+      reviewStatus?: string;
+      status?: string;
+    }): Promise<any> {
       const res = await fetchWithRetry("/v2/sessions", {
         method: "POST",
         body: data,

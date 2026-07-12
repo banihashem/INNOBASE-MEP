@@ -87,15 +87,14 @@ const VARIANT_CONFIG: Record<
 };
 
 interface ToastItemViewProps {
-  key?: React.Key;
   item: ToastItem;
   onDismiss: (id: string) => void;
 }
 
-function ToastItemView({
+const ToastItemView: React.FC<ToastItemViewProps> = ({
   item,
   onDismiss,
-}: ToastItemViewProps) {
+}) => {
   const [isExiting, setIsExiting] = useState(false);
   const config = VARIANT_CONFIG[item.variant];
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -137,7 +136,7 @@ function ToastItemView({
       </button>
     </div>
   );
-}
+};
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
