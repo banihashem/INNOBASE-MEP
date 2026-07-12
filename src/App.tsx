@@ -112,6 +112,17 @@ export default function App() {
     initTelemetry();
   }, []);
 
+  // Runtime identity marker (cure §6.8) — QA can verify via console: window.__MEP_BUILD__
+  useEffect(() => {
+    window.__MEP_BUILD__ = {
+      version: __APP_VERSION__,
+      sha: __BUILD_SHA__,
+      timestamp: __BUILD_TIMESTAMP__,
+      label: __BUILD_LABEL__,
+    };
+    console.info("[MEP-light™ Build]", window.__MEP_BUILD__);
+  }, []);
+
   return (
     <AuthProvider>
       <ToastProvider>
@@ -847,6 +858,7 @@ function AuthenticatedApp({ authUser, onSignOut }: { authUser: AuthUser | null; 
                 data={companySnapshot}
                 onChange={handleUpdateCompanySnapshot}
                 appMode={appMode}
+                decisionMode={decisionSetup.decisionMode}
               />
             )}
 

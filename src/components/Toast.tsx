@@ -86,13 +86,16 @@ const VARIANT_CONFIG: Record<
   },
 };
 
+interface ToastItemViewProps {
+  key?: React.Key;
+  item: ToastItem;
+  onDismiss: (id: string) => void;
+}
+
 function ToastItemView({
   item,
   onDismiss,
-}: {
-  item: ToastItem;
-  onDismiss: (id: string) => void;
-}) {
+}: ToastItemViewProps) {
   const [isExiting, setIsExiting] = useState(false);
   const config = VARIANT_CONFIG[item.variant];
   const timerRef = useRef<ReturnType<typeof setTimeout>>();

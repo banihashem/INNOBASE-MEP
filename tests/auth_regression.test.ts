@@ -163,9 +163,9 @@ console.log("─".repeat(60) + "\n");
 
 // AUTH-REG-011: Audience validation logic
 {
-  const expectedClientId = "52156375400-4glmj1ngbpth2f16hocbi37oo4nro83p.apps.googleusercontent.com";
-  const tokenAud = "52156375400-4glmj1ngbpth2f16hocbi37oo4nro83p.apps.googleusercontent.com";
-  const wrongAud = "other-client-id.apps.googleusercontent.com";
+  const expectedClientId = "52156375400-4glmj1ngbpth2f16hocbi37oo4nro83p.apps.googleusercontent.com" as string;
+  const tokenAud = "52156375400-4glmj1ngbpth2f16hocbi37oo4nro83p.apps.googleusercontent.com" as string;
+  const wrongAud = "other-client-id.apps.googleusercontent.com" as string;
   
   // Matching audience passes
   const matchPass = !expectedClientId || !tokenAud || tokenAud === expectedClientId;
@@ -189,12 +189,12 @@ console.log("─".repeat(60) + "\n");
   assert(shouldBlock === true, "AUTH-REG-012: No JWT → PDF export should be blocked (401)");
   
   // Simulate: valid JWT with Viewer role → should be rejected (403)
-  const viewerRole = "Viewer";
+  const viewerRole = "Viewer" as string;
   const isAuthorized = viewerRole === "Administrator" || viewerRole === "Consultant";
   assert(isAuthorized === false, "AUTH-REG-012: Viewer role → PDF export unauthorized (403)");
   
   // Simulate: valid JWT with Consultant role → should be allowed
-  const consultantRole = "Consultant";
+  const consultantRole = "Consultant" as string;
   const isConsultantAuth = consultantRole === "Administrator" || consultantRole === "Consultant";
   assert(isConsultantAuth === true, "AUTH-REG-012: Consultant role → PDF export authorized (200)");
 }

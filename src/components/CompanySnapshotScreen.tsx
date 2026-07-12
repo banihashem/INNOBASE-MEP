@@ -14,6 +14,7 @@ interface Props {
   data: CompanySnapshot;
   onChange: (newData: Partial<CompanySnapshot>) => void;
   appMode: AppMode;
+  decisionMode?: string;
 }
 
 const EXPORT_EXPERIENCE_OPTIONS = [
@@ -22,7 +23,7 @@ const EXPORT_EXPERIENCE_OPTIONS = [
   "Active International Exporter",
 ];
 
-export default function CompanySnapshotScreen({ data, onChange, appMode }: Props) {
+export default function CompanySnapshotScreen({ data, onChange, appMode, decisionMode }: Props) {
   const handleFieldChange = (
     field: keyof Omit<CompanySnapshot, "evidenceStates">,
     value: string
@@ -109,7 +110,7 @@ export default function CompanySnapshotScreen({ data, onChange, appMode }: Props
   };
 
   // Organizational context summary — synthesized, not concatenated (see src/lib/narrative.ts).
-  const getContextSummary = (): string => buildOrgContextSummary(data);
+  const getContextSummary = (): string => buildOrgContextSummary(data, decisionMode);
 
   return (
     <div

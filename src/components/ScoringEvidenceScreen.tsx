@@ -307,13 +307,9 @@ export default function ScoringEvidenceScreen({
               💡 Scoring Guidance:
             </span>
             <ul className="space-y-1 list-disc list-inside">
-              <li>1 = Highly unfavorable</li>
-              <li>3 = Neutral / moderate</li>
-              <li>5 = Ideal / highly advantageous</li>
-              <li>
-                Competitive & Regulatory are inverse (higher = more
-                difficult)
-              </li>
+              <li><strong>Positive dimensions:</strong> 1 = Unfavorable → 5 = Favorable</li>
+              <li><strong>Adverse dimensions</strong> (Competitive Intensity, Regulatory Complexity): 1 = Low difficulty → 5 = High difficulty</li>
+              <li>Adverse scores are automatically inverted in the ranking — higher difficulty lowers the market's potential score</li>
             </ul>
           </div>
         </div>
@@ -435,9 +431,19 @@ export default function ScoringEvidenceScreen({
                       id={`slider-${dim.key}`}
                     />
                     <div className="flex justify-between text-[9px] text-slate-500 font-mono">
-                      <span>1 (Unsuitable)</span>
-                      <span>3 (Neutral)</span>
-                      <span>5 (Favorable)</span>
+                      {dim.isNegative ? (
+                        <>
+                          <span>1 (Low difficulty)</span>
+                          <span>3 (Moderate)</span>
+                          <span>5 (High difficulty)</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>1 (Unfavorable)</span>
+                          <span>3 (Neutral)</span>
+                          <span>5 (Favorable)</span>
+                        </>
+                      )}
                     </div>
                   </div>
 

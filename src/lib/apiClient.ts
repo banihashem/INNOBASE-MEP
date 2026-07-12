@@ -322,7 +322,7 @@ export const apiClient = {
       const res = await fetchWithRetry("/v2/sessions");
       return res.json();
     },
-    async create(data: { title?: string; companyName?: string; offeringName?: string; inputData?: any }): Promise<any> {
+    async create(data: { title?: string; companyName?: string; offeringName?: string; inputData?: any } & Record<string, unknown>): Promise<any> {
       const res = await fetchWithRetry("/v2/sessions", {
         method: "POST",
         body: data,

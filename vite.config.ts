@@ -14,6 +14,11 @@ export default defineConfig(({ mode }) => {
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
       __GOOGLE_CLIENT_ID__: JSON.stringify(env.GOOGLE_CLIENT_ID || ''),
+      __BUILD_SHA__: JSON.stringify(
+        (() => { try { return require('child_process').execSync('git rev-parse --short HEAD').toString().trim(); } catch { return 'unknown'; } })()
+      ),
+      __BUILD_TIMESTAMP__: JSON.stringify(new Date().toISOString()),
+      __BUILD_LABEL__: JSON.stringify('demo-scenario-v0.2-cure-01'),
     },
     resolve: {
       alias: {

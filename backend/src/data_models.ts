@@ -124,6 +124,8 @@ export interface MarketScoreInput {
   scores: DimensionScores;
   evidenceBasis: EvidenceBasis | string;
   evidenceConfidence: EvidenceConfidenceLevel;
+  /** Per-dimension evidence source (frontend concern; not used by scoring engine) */
+  dimensionEvidence?: Record<string, EvidenceBasis | string>;
 }
 
 // ─── Calculated Output Models ────────────────────────────────────────

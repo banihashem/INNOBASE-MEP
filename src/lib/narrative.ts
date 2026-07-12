@@ -79,8 +79,11 @@ export const DEFAULT_ORG_SUMMARY =
 /**
  * Synthesizes the company snapshot into an advisory paragraph. It rephrases and
  * interprets inputs rather than concatenating field values (spec §5.4).
+ *
+ * @param decisionMode — optional; used to produce mode-consistent language
+ *   ("entry" vs "expansion") rather than the generic "market entry or expansion".
  */
-export function buildOrgContextSummary(data: CompanySnapshot): string {
+export function buildOrgContextSummary(data: CompanySnapshot, decisionMode?: string): string {
   const name = data.businessName?.trim() || "";
   const sector = data.sector?.trim() || "";
   const marketSize = data.domesticMarketSize?.trim() || "";
@@ -95,6 +98,9 @@ export function buildOrgContextSummary(data: CompanySnapshot): string {
   if (filledCount < 2) {
     return `${name} has been identified as the subject of this assessment. Complete additional fields — capabilities, constraints, and market context — to synthesize a meaningful organizational context summary.`;
   }
+
+  const entryOrExpansion =
+    decisionMode === "Existing Market Expansion Readiness" ? "expansion" : "entry";
 
   const isToValidate = (state: EvidenceState) => state === "To Validate" || state === "Unknown";
   const evidenceTag = (state: EvidenceState): string => {
@@ -111,10 +117,10 @@ export function buildOrgContextSummary(data: CompanySnapshot): string {
 
   if (sector) {
     sentences.push(
-      `${name} operates in the ${sector} sector${evidenceTag(ev.sector)}, positioning it within an industry where market entry dynamics are shaped by regulatory standards, channel structures, and competitive density.`
+      `${name} operates in the ${sector} sector${evidenceTag(ev.sector)}, positioning it within an industry where market ${entryOrExpansion} dynamics are shaped by regulatory standards, channel structures, and competitive density.`
     );
   } else {
-    sentences.push(`${name} is being assessed for market entry or expansion potential.`);
+    sentences.push(`${name} is being assessed for market ${entryOrExpansion} potential.`);
   }
 
   if (marketSize) {
@@ -130,7 +136,7 @@ export function buildOrgContextSummary(data: CompanySnapshot): string {
     const expLower = exportExp.toLowerCase();
     if (expLower.includes("no experience")) {
       sentences.push(
-        `The organization has no prior international or export experience${evidenceTag(ev.exportExperience)}, which means the assessment should place particular emphasis on operational feasibility, partner access, and the learning curve associated with first-market entry.`
+        `The organization has no prior international or export experience${evidenceTag(ev.exportExperience)}, which means the assessment should place particular emphasis on operational feasibility, partner access, and the learning curve associated with first-market ${entryOrExpansion}.`
       );
     } else if (expLower.includes("limited") || expLower.includes("indirect")) {
       sentences.push(
@@ -138,7 +144,7 @@ export function buildOrgContextSummary(data: CompanySnapshot): string {
       );
     } else if (expLower.includes("active")) {
       sentences.push(
-        `As an active international exporter${evidenceTag(ev.exportExperience)}, the company is likely to have existing logistics, compliance, and distribution capabilities that may accelerate market entry timelines.`
+        `As an active international exporter${evidenceTag(ev.exportExperience)}, the company is likely to have existing logistics, compliance, and distribution capabilities that may accelerate market ${entryOrExpansion} timelines.`
       );
     }
   }
