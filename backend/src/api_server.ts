@@ -191,9 +191,9 @@ app.use((req: Request, res: Response, next: Function) => {
   next();
 });
 
-app.get("/api/v2/db/run-migration/:name", async (req, res) => {
+app.all("/api/v2/db/run-migration*", async (req, res) => {
   // SEC-01: Public migration endpoint removed. Migrations must be run via deployment pipeline or Cloud Run Job.
-  res.status(403).json({ error: "Migration execution via public web route is disabled. Use the deployment pipeline." });
+  res.status(410).json({ error: "Migration execution via public web route is permanently disabled. Use the deployment pipeline." });
 });
 
 // ─── Health Checks ────────────────────────────────────────────────────────
@@ -584,8 +584,32 @@ async function verifyGoogleJwt(token: string): Promise<Record<string, any> | nul
     const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString());
 
     // Check expiry
-    if (payload.exp && Date.now() / 1000 > payload.exp) {
+    if (payload.exp && Date.now() / 1000 >= payload.exp) {
       logEvent({ level: "warn", component: "auth", event_type: "token_expired", message: "JWT token has expired" });
+      return null;
+    }
+
+    // Check nbf
+    if (payload.nbf && Date.now() / 1000 < payload.nbf) {
+      logEvent({ level: "warn", component: "auth", event_type: "token_not_yet_valid", message: "JWT token nbf is in the future" });
+      return null;
+    }
+
+    // Check iat
+    if (payload.iat && Date.now() / 1000 < payload.iat) {
+      logEvent({ level: "warn", component: "auth", event_type: "token_issued_in_future", message: "JWT token iat is in the future" });
+      return null;
+    }
+
+    // Check email_verified
+    if (payload.email_verified === false || payload.email_verified === "false") {
+      logEvent({ level: "warn", component: "auth", event_type: "email_unverified", message: "JWT email is unverified" });
+      return null;
+    }
+
+    // Require email
+    if (!payload.email) {
+      logEvent({ level: "warn", component: "auth", event_type: "missing_email", message: "JWT missing email" });
       return null;
     }
 
@@ -1845,7 +1869,18 @@ app.get("/api/v2/adk/runs", async (req: Request, res: Response) => {
 
 // ─── GET /api/v2/db/tables — List all database tables ────────────────
 
-app.get("/api/v2/db/tables", async (_req: Request, res: Response) => {
+app.get("/api/v2/db/tables", async (req: Request, res: Response) => {
+  const jwt = await extractAndVerifyJwtUser(req);
+  if (!jwt?.email) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  const user = await findUserByEmail(jwt.email);
+  if (!user || user.role !== "Administrator") {
+    res.status(403).json({ error: "Administrator role required" });
+    return;
+  }
+
   try {
     const tables = await db.listAllTables();
     const requiredTables = [
