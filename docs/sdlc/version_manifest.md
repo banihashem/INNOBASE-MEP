@@ -7,6 +7,25 @@
 
 ---
 
+## Unreleased — Demo Scenario v0.2 candidate
+
+> **Not released, not deployed, not tagged.** Local development activity on branch
+> `feature/demo-scenario-v0.2`, held for independent QA. The accepted v4.3.7 production
+> release below is **unchanged** (revision `market-entry-prioritizer-00041-dqw`).
+
+| Field | Value |
+|-------|-------|
+| Work item | MEP-light Demo Scenario v0.2 (spec SHA-256 `8f33266cb1d607cf60fe6d584b1e00eeba0d186134955266d83d4987377c097b`) |
+| Base commit | `c25a037a9745c505b6608a6b7f993bcce5272663` (v4.3.7 closure) |
+| Product version | **unchanged (4.3.7)** — no version bump; no new tag selected |
+| Client-facing label | **unchanged** (`MEP-light Beta Demo v1.6`), now centralized in `CLIENT_FACING_LABEL` |
+| Development identifier | `demo-scenario-v0.2` (branch name; non-release convention) |
+| Migration | none created / none required |
+| Local verification | 492 tests pass; production build OK; see `demo_scenario_v0.2_test_report.md` |
+| Requires before any deploy | separate **Human GO** for push / staging / migration / production / tag |
+
+---
+
 ## Version Artifacts
 
 | Artifact | Value |

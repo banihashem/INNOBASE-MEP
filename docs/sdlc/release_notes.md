@@ -7,6 +7,29 @@
 
 ---
 
+## Unreleased — Demo Scenario v0.2 candidate (NOT DEPLOYED)
+
+**Branch**: `feature/demo-scenario-v0.2` (local, unpushed) · **Base**: `c25a037` (v4.3.7 closure)
+**Status**: local implementation complete, held for independent QA. Product version unchanged (4.3.7);
+client label unchanged (`MEP-light Beta Demo v1.6`). No tag, no deploy, no migration.
+
+Implements `MEP-light_Demo_Scenario_v0.2.docx` (all 25 P0/P1 checklist items + updated success criteria):
+- Repositioned as an evidence-aware market entry & expansion **decision-support** demo (no prediction claims;
+  removed Charter/enterprise-overclaim copy; exact public disclaimer).
+- Seven-step free flow refined; **Step 8 locked** as a full/Pro preview with the 7 modules + 3 CTAs.
+- **Input-derived AI-assisted draft scoring** (rule-based, schema-validated, fail-safe, confirm-before-regenerate).
+- Dashboard: **letter-grade tiers (77 → A-)**, separated Potential/Confidence/Risk, per-option Recommended Action,
+  sector-specific Diagnostic Weight Framework.
+- Sector adaptation (4 active sectors + coming-soon), market-specific notes, 30-60-90 roadmap with exact decision
+  gates, five assumption cards incl. Internal capability.
+- Backward-compatible legacy-session hydration; label centralized.
+- New pure libs: `src/lib/{scoring,draftScoring,narrative}.ts`; new gate `test:demo-v0.2` (83 tests).
+
+See `demo_scenario_v0.2_gap_matrix.md`, `demo_scenario_v0.2_implementation_report.md`,
+`demo_scenario_v0.2_test_report.md`. **Requires separate Human GO before any push/deploy/tag.**
+
+---
+
 ## v4.3.7 — Demo Refinement Sprint (PRODUCTION)
 
 **Branch**: `feature/demo-refinement-sprint`  
