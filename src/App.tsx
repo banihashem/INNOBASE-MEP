@@ -119,6 +119,7 @@ export default function App() {
       sha: __BUILD_SHA__,
       timestamp: __BUILD_TIMESTAMP__,
       label: __BUILD_LABEL__,
+      runtimeMode: import.meta.env.MODE || 'unknown',
     };
     console.info("[MEP-light™ Build]", window.__MEP_BUILD__);
   }, []);

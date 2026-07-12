@@ -224,9 +224,11 @@ assert(envDts.includes("declare const __BUILD_TIMESTAMP__: string"), "MARKER-TYP
 assert(envDts.includes("declare const __BUILD_LABEL__: string"), "MARKER-TYPE-LABEL: Label type declared");
 assert(envDts.includes("__MEP_BUILD__"), "MARKER-WINDOW-TYPE: window.__MEP_BUILD__ typed");
 assert(envDts.includes("version: string") && envDts.includes("sha: string") && envDts.includes("timestamp: string") && envDts.includes("label: string"), "MARKER-SHAPE: Correct shape");
+assert(envDts.includes("runtimeMode: string"), "MARKER-RUNTIMEMODE: runtimeMode in type");
 
 assert(appSrc.includes("window.__MEP_BUILD__"), "MARKER-SET: App.tsx sets window.__MEP_BUILD__");
 assert(appSrc.includes("console.info") && appSrc.includes("MEP-light"), "MARKER-LOG: Logs build info on mount");
+assert(appSrc.includes("import.meta.env.MODE"), "MARKER-MODE: App uses import.meta.env.MODE");
 
 assert(!envDts.includes("token") && !envDts.includes("secret") && !envDts.includes("password"), "MARKER-NO-SECRETS: No secret fields");
 
@@ -252,6 +254,51 @@ assert(ebSrc.includes("this.state = { hasError: false, error: null, errorInfo: n
 assert(ebSrc.includes("getDerivedStateFromError"), "EB-DERIVED: Lifecycle present");
 assert(ebSrc.includes("componentDidCatch"), "EB-CATCH: Error catch present");
 assert(!ebSrc.includes("@ts-ignore") && !ebSrc.includes("@ts-nocheck"), "EB-NO-SUPPRESS: No TS suppressions");
+
+
+// ====================================================================
+//  5.7 BUILD SHA RESOLUTION & FAIL-FAST
+// ====================================================================
+section("5.7 Build SHA resolution & fail-fast");
+
+// Verify the vite config structure for SHA resolution
+assert(viteConfigSrc.includes("resolveBuildSha"), "SHA-FN: resolveBuildSha function exists");
+assert(viteConfigSrc.includes("VITE_BUILD_SHA"), "SHA-CI: CI env var VITE_BUILD_SHA checked");
+assert(viteConfigSrc.includes("execSync('git rev-parse --short HEAD'"), "SHA-LOCAL: Local git fallback exists");
+assert(!viteConfigSrc.includes("'unknown'"), "SHA-NO-UNKNOWN: No 'unknown' fallback in SHA resolution");
+assert(viteConfigSrc.includes("throw new Error"), "SHA-FAILFAST: Fail-fast throws when no SHA");
+assert(viteConfigSrc.includes("ciSha.length >= 7"), "SHA-MINLEN: CI SHA minimum length 7 enforced");
+assert(viteConfigSrc.includes("gitSha.length >= 7"), "SHA-GITLEN: Git SHA minimum length 7 enforced");
+
+// Verify CI SHA takes precedence over local git
+const ciPrecedenceIdx = viteConfigSrc.indexOf("VITE_BUILD_SHA");
+const gitFallbackIdx = viteConfigSrc.indexOf("git rev-parse");
+assert(ciPrecedenceIdx < gitFallbackIdx, "SHA-PRIORITY: CI SHA checked before git fallback");
+
+// Verify the import of execSync at top level (not inline require)
+assert(viteConfigSrc.includes("import { execSync }"), "SHA-IMPORT: execSync imported at top level (reliable)");
+assert(!viteConfigSrc.includes("require('child_process')"), "SHA-NO-REQUIRE: No inline require (was unreliable)");
+
+// Verify built bundle has real SHA, not 'unknown'
+if (existsSync(resolve(__dirname, "..", "dist", "assets"))) {
+  const jsFiles = readdirSync(resolve(__dirname, "..", "dist", "assets")).filter(f => f.endsWith(".js"));
+  const bundleContent = jsFiles.map(f => readFileSync(resolve(__dirname, "..", "dist", "assets", f), "utf-8")).join("\n");
+  const markerMatch = bundleContent.match(/sha:"([^"]+)"/);
+  assert(!!markerMatch, "SHA-BUNDLE-PRESENT: Bundle contains sha field");
+  if (markerMatch) {
+    assert(markerMatch[1] !== "unknown", "SHA-BUNDLE-NOT-UNKNOWN: Bundle SHA is not 'unknown'");
+    assert(markerMatch[1].length >= 7, "SHA-BUNDLE-LEN: Bundle SHA has valid length");
+    assert(/^[0-9a-f]+$/.test(markerMatch[1]), "SHA-BUNDLE-HEX: Bundle SHA is valid hex");
+  }
+  // Verify safe fields: no secrets, tokens, passwords in marker
+  const markerBlock = bundleContent.match(/__MEP_BUILD__=\{[^}]+\}/)?.[0] || "";
+  assert(!markerBlock.includes("token"), "SHA-SAFE-NO-TOKEN: Marker has no token field");
+  assert(!markerBlock.includes("secret"), "SHA-SAFE-NO-SECRET: Marker has no secret field");
+  assert(!markerBlock.includes("password"), "SHA-SAFE-NO-PASSWORD: Marker has no password field");
+  assert(!markerBlock.includes("GOOGLE_CLIENT_ID"), "SHA-SAFE-NO-CLIENTID: Marker has no client ID");
+} else {
+  console.log("  ! dist/ not found - skipping bundle SHA checks");
+}
 
 
 // ====================================================================
