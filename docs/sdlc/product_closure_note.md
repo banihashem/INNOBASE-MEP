@@ -1,10 +1,10 @@
 # MEP-light™ — Product Closure Note (v4.3.7)
 
 **Date**: 2026-07-13
-**Version**: 4.3.7  
-**Status**: PRODUCTION-CLOSED-PASS  
-**Independent Smoke**: PRODUCTION-SMOKE-PASS  
-**Tag**: v4.3.7-demo-refinement  
+**Version**: 4.3.7
+**Status**: PRODUCTION-CLOSED-PASS
+**Independent Smoke**: PRODUCTION-SMOKE-PASS
+**Tag**: v4.3.7-demo-refinement
 **Canonical Current State**: See [CURRENT_STATE.md](CURRENT_STATE.md)
 
 ---

@@ -1,8 +1,8 @@
 # MEP-light™ — Rollback Plan
 
-**Version**: 4.3.7  
-**Date**: 2026-07-13  
-**Classification**: Internal  
+**Version**: 4.3.7
+**Date**: 2026-07-13
+**Classification**: Internal
 **Canonical Current State**: See [CURRENT_STATE.md](CURRENT_STATE.md)
 
 ---

@@ -1,7 +1,7 @@
 # MEP-light™ — Risk Register
 
-**Version**: 4.3.7  
-**Date**: 2026-07-13  
+**Version**: 4.3.7
+**Date**: 2026-07-13
 **Classification**: Internal
 
 ---

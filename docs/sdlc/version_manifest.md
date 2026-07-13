@@ -1,9 +1,9 @@
 # MEP-light™ — Version Manifest
 
-**Release**: v4.3.7  
-**Date**: 2026-07-13  
-**Classification**: Production  
-**Client-Facing Label**: MEP-light Beta Demo v1.6  
+**Release**: v4.3.7
+**Date**: 2026-07-13
+**Classification**: Production
+**Client-Facing Label**: MEP-light Beta Demo v1.6
 **Canonical Current State**: See [CURRENT_STATE.md](CURRENT_STATE.md) for live production/staging metadata.
 
 ---
