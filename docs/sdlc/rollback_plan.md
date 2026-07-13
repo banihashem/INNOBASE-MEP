@@ -1,8 +1,9 @@
 # MEP-light™ — Rollback Plan
 
-**Version**: 4.1.0  
-**Date**: 2026-07-03  
-**Classification**: Internal
+**Version**: 4.3.7  
+**Date**: 2026-07-13  
+**Classification**: Internal  
+**Canonical Current State**: See [CURRENT_STATE.md](CURRENT_STATE.md)
 
 ---
 
@@ -11,10 +12,10 @@
 ### Current Production
 | Item | Value |
 |------|-------|
-| Active Version | v4.1.0 |
-| Rollback Target | v4.0.2 |
-| Rollback Revision | market-entry-prioritizer-00022-hdg |
-| Current Revision | *(populated after deploy)* |
+| Active Version | v4.3.7 |
+| Current Revision | `market-entry-prioritizer-00042-s4m` |
+| Immediate Rollback Target | `market-entry-prioritizer-00041-dqw` |
+| Secondary Fallback | `market-entry-prioritizer-00040-x7z` |
 
 ---
 
@@ -27,8 +28,9 @@ Route 100% traffic to the previous revision:
 ```bash
 gcloud run services update-traffic market-entry-prioritizer \
   --region=europe-west2 \
-  --to-revisions=market-entry-prioritizer-00022-hdg=100
+  --to-revisions=market-entry-prioritizer-00041-dqw=100
 ```
+
 
 ### Full Redeploy Rollback
 

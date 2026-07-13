@@ -1,38 +1,37 @@
 # MEP-light™ — Version Manifest
 
 **Release**: v4.3.7  
-**Date**: 2026-07-11  
+**Date**: 2026-07-13  
 **Classification**: Production  
-**Client-Facing Label**: MEP-light Beta Demo v1.6
+**Client-Facing Label**: MEP-light Beta Demo v1.6  
+**Canonical Current State**: See [CURRENT_STATE.md](CURRENT_STATE.md) for live production/staging metadata.
 
 ---
 
-## Unreleased — Demo Scenario v0.2 candidate (+ Cure-01)
+## Demo Scenario v0.2 — Development History (Now Deployed)
 
-> **Not released, not deployed, not tagged.** Local development activity on branch
-> `feature/demo-scenario-v0.2-cure-01`, held for push and staging authorization. The accepted v4.3.7
-> production release below is **unchanged** (revision `market-entry-prioritizer-00041-dqw`).
+> **Deployed to Production and Staging.** The v0.2 demo scenario refinement, originally developed
+> on `feature/demo-scenario-v0.2-cure-01`, has been merged forward and deployed. The final
+> authoritative source is commit `efd61c6eaad22cfdc075a1044c3975b762bb9330` on branch
+> `feature/demo-scenario-v0.2-step5-generated-state-cure`. Production is on revision
+> `market-entry-prioritizer-00042-s4m`.
 
 | Field | Value |
 |-------|-------|
 | Work item | MEP-light Demo Scenario v0.2 (spec SHA-256 `8f33266cb1d607cf60fe6d584b1e00eeba0d186134955266d83d4987377c097b`) |
-| Base commit | `c25a037a9745c505b6608a6b7f993bcce5272663` (v4.3.7 closure) |
+| Base commit | `c25a037a9745c505b6608a6b7f993bcce5272663` (v4.3.7 initial closure) |
 | v0.2 feature commit | `702df58` feat(demo): implement MEP-light Demo Scenario v0.2 |
 | v0.2 docs commit | `cf7233c` docs(sdlc): Demo Scenario v0.2 traceability, reports, and local evidence |
 | Cure-01 initial commit | `0ac38da` fix(demo): cure v0.2 scoring UX, TS gate, narrative, identity marker |
 | Cure-01 precision commit | `1a91492` fix(cure): TS precision + narrative consistency + cure regression tests |
 | Cure-01 evidence commit | `bb6a5a5` docs(sdlc): cure-v0.2-01 evidence report + SHA-256 manifest |
 | Cure-01 docs reconciliation | `90575b5` docs(sdlc): cure-01 final reconciliation |
-| **STAGING_SOURCE_CANDIDATE** | **`3661d6b`** fix(build): make v0.2 runtime marker commit-exact |
-| Final docs/evidence commit | *(recorded after this document is committed)* |
-| Product version | **unchanged (4.3.7)** — no version bump; no new tag selected |
-| Client-facing label | **unchanged** (`MEP-light Beta Demo v1.6`), now centralized in `CLIENT_FACING_LABEL` |
-| Development identifier | `demo-scenario-v0.2-cure-01` (branch name; non-release convention) |
-| Runtime marker | `{ version: "4.3.7", sha: "3661d6b", label: "demo-scenario-v0.2-cure-01", runtimeMode: "production" }` |
-| Migration | none created / none required |
-| Local verification | 464 TS/Node + 8 Governance + 133 Python = **605 unique assertions**; TypeScript zero errors; production build OK |
-| Requires before any deploy | separate **Human GO** for push / staging / migration / production / tag |
-
+| Step 5 generated-state cure | `efd61c6` fix(demo): persist generated scores and unblock step 5 |
+| Product version | **unchanged (4.3.7)** — no version bump |
+| Client-facing label | **unchanged** (`MEP-light Beta Demo v1.6`), centralized in `CLIENT_FACING_LABEL` |
+| Final authoritative commit | `efd61c6eaad22cfdc075a1044c3975b762bb9330` |
+| Production revision | `market-entry-prioritizer-00042-s4m` |
+| Staging revision | `mep-light-demo-refinement-staging-00011-c4d` |
 
 
 ---
@@ -45,18 +44,17 @@
 | **Client-Facing Label** | MEP-light Beta Demo v1.6 |
 | **Product Mode** | free-demo |
 | **Role Name and Value** | Demo Participant (`demo_participant`) |
-| **Final Production Release Commit SHA** | `320fcc1e3a6f8ff3aecafa69d8207b04feb85d53` |
+| **v4.3.7 Initial Release Commit SHA** | `320fcc1e3a6f8ff3aecafa69d8207b04feb85d53` |
 | **Tag Name** | v4.3.7-demo-refinement |
 | **Exact Tag Target SHA** | `320fcc1e3a6f8ff3aecafa69d8207b04feb85d53` |
-| **Docs-Only Closure Commit SHA** | *Will be recorded in Git history after this update* |
-| **Full Image Reference** | `gcr.io/innobase-mep-light/market-entry-prioritizer@sha256:581d4fc7f9bb5a7d0b9b1b9b37104b314393b03c7b4100ff2d871f5a9be4016f` |
-| **Full Image Digest** | `sha256:581d4fc7f9bb5a7d0b9b1b9b37104b314393b03c7b4100ff2d871f5a9be4016f` |
+| **Authoritative Source Commit** | `efd61c6eaad22cfdc075a1044c3975b762bb9330` |
 | **Cloud Run Service** | market-entry-prioritizer |
 | **Cloud Run Region** | europe-west2 |
-| **Current Production Revision** | `market-entry-prioritizer-00041-dqw` |
-| **Rollback Revision** | `market-entry-prioritizer-00040-x7z` |
+| **Current Production Revision** | `market-entry-prioritizer-00042-s4m` |
+| **Immediate Rollback Revision** | `market-entry-prioritizer-00041-dqw` |
+| **Secondary Fallback Revision** | `market-entry-prioritizer-00040-x7z` |
 | **Production URL** | `https://mep.innobase.app` |
-| **Final Release Verdict** | DEMO-REFINEMENT-PRODUCTION-DEPLOYED-PASS |
+| **Final Closure Verdict** | PRODUCTION-CLOSED-PASS |
 | **Final Smoke Verdict** | PRODUCTION-SMOKE-PASS |
 | **Migration 005 State** | Applied successfully via Cloud Run Job during deploy (No execution during closure) |
 | **ADK Version** | 4.3.7 (controlled-deterministic) |

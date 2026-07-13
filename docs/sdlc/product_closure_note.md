@@ -1,10 +1,11 @@
 # MEP-light™ — Product Closure Note (v4.3.7)
 
-**Date**: 2026-07-12
+**Date**: 2026-07-13
 **Version**: 4.3.7  
-**Status**: DEMO-REFINEMENT-PRODUCTION-DEPLOYED-PASS  
-**Independent Smoke**: PRODUCTION-SMOKE-PASS (2026-07-11)  
-**Tag**: v4.3.7-demo-refinement
+**Status**: PRODUCTION-CLOSED-PASS  
+**Independent Smoke**: PRODUCTION-SMOKE-PASS  
+**Tag**: v4.3.7-demo-refinement  
+**Canonical Current State**: See [CURRENT_STATE.md](CURRENT_STATE.md)
 
 ---
 
@@ -14,14 +15,18 @@ MEP-light™ v4.3.7 is the Demo Refinement Sprint production release. It introdu
 
 ## Final Release Identity
 
-- **Final Production Release Commit**: `320fcc1e3a6f8ff3aecafa69d8207b04feb85d53`
+- **Authoritative Source Commit**: `efd61c6eaad22cfdc075a1044c3975b762bb9330`
+- **Source Branch**: `feature/demo-scenario-v0.2-step5-generated-state-cure`
+- **v4.3.7 Initial Release Commit**: `320fcc1e3a6f8ff3aecafa69d8207b04feb85d53`
 - **Exact Tag Target SHA**: `320fcc1e3a6f8ff3aecafa69d8207b04feb85d53`
-- **Full Production Image Digest**: `sha256:581d4fc7f9bb5a7d0b9b1b9b37104b314393b03c7b4100ff2d871f5a9be4016f`
 - **Cloud Run Service**: `market-entry-prioritizer`
 - **Region**: `europe-west2`
-- **Current Revision**: `market-entry-prioritizer-00041-dqw`
-- **Rollback Revision**: `market-entry-prioritizer-00040-x7z`
+- **Current Production Revision**: `market-entry-prioritizer-00042-s4m`
+- **Immediate Rollback Revision**: `market-entry-prioritizer-00041-dqw`
+- **Secondary Fallback Revision**: `market-entry-prioritizer-00040-x7z`
 - **Production URL**: `https://mep.innobase.app`
+- **Staging Service**: `mep-light-demo-refinement-staging`
+- **Staging Revision**: `mep-light-demo-refinement-staging-00011-c4d`
 
 ## What's New
 
@@ -71,8 +76,9 @@ Independent production smoke verification (PRODUCTION-SMOKE-PASS) confirmed:
 
 ## Known Non-Blocking Follow-ups
 
-1. **Demo Step 5 to Step 6 behavior**: Document the observed behavior for demo accounts when the confidence cap prevents or limits "Continue" from Step 5 to Step 6. Clarify whether this limitation is intentional, required UX or product documentation, and whether an explanatory message should be added in a future change.
-2. **Migration endpoint security review**: Review and either secure, disable, remove, or formally close the potential public endpoint: `/api/v2/db/run-migration/:name`. Database migrations should be performed only through the governed deployment pipeline or an authorized Cloud Run Job. Migration execution should not be exposed as an unrestricted public API. This requires a separate security/code activity and separate authorization.
+1. **Cloud Build `VITE_BUILD_SHA` pass-through**: The standard Production `cloudbuild.yaml` does not yet pass the full `VITE_BUILD_SHA` into the Docker build. The successful Production deployment used a temporary uncommitted deployment configuration, which was removed afterward. This requires correction and Staging validation before the next Production release.
+2. **Demo Step 5 to Step 6 behavior**: Document the observed behavior for demo accounts when the confidence cap prevents or limits "Continue" from Step 5 to Step 6. Clarify whether this limitation is intentional, required UX or product documentation, and whether an explanatory message should be added in a future change.
+3. **Migration endpoint security review**: Review and either secure, disable, remove, or formally close the potential public endpoint: `/api/v2/db/run-migration/:name`. Database migrations should be performed only through the governed deployment pipeline or an authorized Cloud Run Job. Migration execution should not be exposed as an unrestricted public API. This requires a separate security/code activity and separate authorization.
 
 ## Formal Closure Statement
-MEP-light™ v4.3.7 Demo Refinement is formally closed as DEMO-REFINEMENT-PRODUCTION-DEPLOYED-PASS with independent production verification status PRODUCTION-SMOKE-PASS. No rollback is required. Remaining items are non-blocking follow-ups and do not affect production acceptance.
+MEP-light™ v4.3.7 with Demo Scenario v0.2 is formally closed as PRODUCTION-CLOSED-PASS with independent production verification status PRODUCTION-SMOKE-PASS. No rollback is required. Remaining items are non-blocking follow-ups and do not affect production acceptance.

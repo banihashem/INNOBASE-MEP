@@ -1,15 +1,15 @@
 # MEP-light™ Demo Scenario v0.2 — Test & Verification Report
 
-> **Status: Unreleased / Demo Scenario v0.2 candidate + Cure-01.** Local verification only.
-> No cloud resource was mutated; production remains on v4.3.7 / revision
-> `market-entry-prioritizer-00041-dqw`.
+> **Status: Deployed.** Originally developed as v0.2 candidate + Cure-01, now deployed to
+> Production (`market-entry-prioritizer-00042-s4m`) and Staging (`mep-light-demo-refinement-staging-00011-c4d`).
+> Authoritative source: `efd61c6eaad22cfdc075a1044c3975b762bb9330`.
 >
 > **Cure branch**: `feature/demo-scenario-v0.2-cure-01`
-> **STAGING_SOURCE_CANDIDATE_COMMIT**: `3661d6b` (`3661d6b740a32751f9207046aa3a881cd230d351`)
+> **Final branch**: `feature/demo-scenario-v0.2-step5-generated-state-cure`
 
 ## 1. Commands, counts & results
 
-All gates run against STAGING_SOURCE_CANDIDATE_COMMIT `3661d6b`.
+Test gates below were run against the Cure-01 source (`3661d6b`). The final Step 5 generated-state cure (`efd61c6`) was validated separately.
 
 | # | Gate | Command | Assertions | Exit | Status |
 |---|------|---------|-----------|------|--------|

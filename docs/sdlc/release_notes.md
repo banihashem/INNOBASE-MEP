@@ -7,12 +7,13 @@
 
 ---
 
-## Unreleased — Demo Scenario v0.2 candidate + Cure-01 (NOT DEPLOYED)
+## Demo Scenario v0.2 — Step 5 Generated-State Cure (DEPLOYED)
 
-**Branch**: `feature/demo-scenario-v0.2-cure-01` (local, unpushed) · **Base**: `c25a037` (v4.3.7 closure)
-**Status**: cure complete, held for push and staging authorization. Product version unchanged (4.3.7);
-client label unchanged (`MEP-light Beta Demo v1.6`). No tag, no deploy, no migration.
-**STAGING_SOURCE_CANDIDATE_COMMIT**: `3661d6b`
+**Branch**: `feature/demo-scenario-v0.2-step5-generated-state-cure`
+**Authoritative commit**: `efd61c6eaad22cfdc075a1044c3975b762bb9330`
+**Status**: Deployed to Production (`market-entry-prioritizer-00042-s4m`) and Staging (`mep-light-demo-refinement-staging-00011-c4d`).
+Product version unchanged (4.3.7); client label unchanged (`MEP-light Beta Demo v1.6`).
+**Closure verdict**: PRODUCTION-CLOSED-PASS
 
 Implements `MEP-light_Demo_Scenario_v0.2.docx` (all 25 P0/P1 checklist items + updated success criteria):
 - Repositioned as an evidence-aware market entry & expansion **decision-support** demo (no prediction claims;
@@ -29,13 +30,17 @@ Implements `MEP-light_Demo_Scenario_v0.2.docx` (all 25 P0/P1 checklist items + u
 **Cure-01** (commits `0ac38da`, `1a91492`, `bb6a5a5`, `90575b5`, `3661d6b`):
 - TypeScript zero-error gate achieved (21 errors → 0): ErrorBoundary declare, Toast React.FC, apiClient precise typing, auth test widening.
 - Narrative mode consistency fix (buildOrgContextSummary constraints section now mode-aware).
-- Runtime identity marker (`window.__MEP_BUILD__` with commit-exact SHA `3661d6b`, no placeholder fallback, CI override via `VITE_BUILD_SHA`, fail-fast guard).
+- Runtime identity marker (`window.__MEP_BUILD__` with commit-exact SHA, no placeholder fallback, CI override via `VITE_BUILD_SHA`, fail-fast guard).
 - Dead landing CSS removal (108 orphaned selectors); adverse-dimension label UX.
 - Cure regression test suite: 87 assertions across 7 sections (incl. build SHA resolution).
-- Total local verification: **464 TS/Node + 8 Governance + 133 Python = 605 unique assertions** passing.
+
+**Step 5 generated-state cure** (commit `efd61c6`):
+- Persisted generated scores and unblocked Step 5 progression.
+- Validated score persistence across market switching, autosave, refresh, and resume.
 
 See `demo_scenario_v0.2_gap_matrix.md`, `demo_scenario_v0.2_implementation_report.md`,
-`demo_scenario_v0.2_test_report.md`, `evidence/cure-v0.2-01/`. **Requires separate Human GO before any push/deploy/tag.**
+`demo_scenario_v0.2_test_report.md`. See [CURRENT_STATE.md](CURRENT_STATE.md) for live deployment metadata.
+
 
 ---
 
@@ -62,7 +67,7 @@ Demo Participant role RBAC implementation with AI-assisted scoring, user adjustm
   - Administrator account (`ehsan.banihashem@gmail.com`) protection verified; Administrator cannot change own role (self-demotion prevention)
   - Last remaining Administrator cannot be demoted or deleted (last-admin preservation)
   - Audit events logged for blocked self-role-change and last-admin-change attempts
-- **Deployment Identity**: Cloud Run Service `market-entry-prioritizer` on revision `market-entry-prioritizer-00041-dqw` (Region: `europe-west2`)
+- **Deployment Identity**: Cloud Run Service `market-entry-prioritizer`. Initially deployed as revision `market-entry-prioritizer-00041-dqw`; current Production revision is `market-entry-prioritizer-00042-s4m` (see [CURRENT_STATE.md](CURRENT_STATE.md)).
 
 ### Demo Access Restrictions
 - Step 5 heading successfully corrected to `Strategic Metric Scoring`

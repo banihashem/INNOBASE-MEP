@@ -46,7 +46,7 @@ export default defineConfig(({ mode }) => {
       __GOOGLE_CLIENT_ID__: JSON.stringify(env.GOOGLE_CLIENT_ID || ''),
       __BUILD_SHA__: JSON.stringify(BUILD_SHA),
       __BUILD_TIMESTAMP__: JSON.stringify(new Date().toISOString()),
-      __BUILD_LABEL__: JSON.stringify('demo-scenario-v0.2-cure-01'),
+      __BUILD_LABEL__: JSON.stringify('demo-scenario-v0.2-step5-generated-state-cure'),
     },
     resolve: {
       alias: {

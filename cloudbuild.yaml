@@ -48,6 +48,9 @@ steps:
       - 'npm ci && npm test && npx tsx tests/auth_regression.test.ts'
 
   # Step 2: Build production Docker image
+  # NOTE (backlog): VITE_BUILD_SHA is not yet passed as a build arg here.
+  # The staging pipeline (cloudbuild-staging.yaml) does pass it correctly.
+  # This should be corrected and validated on Staging before the next Production release.
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-image'
     waitFor: ['test']

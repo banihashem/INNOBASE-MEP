@@ -1,21 +1,23 @@
 # MEP-light™ — Production Verification Report (v4.3.7)
 
-**Date**: 2026-07-12  
+**Date**: 2026-07-13  
 **Version**: 4.3.7  
 **Tag**: v4.3.7-demo-refinement  
-**Status**: PRODUCTION-VERIFIED-PASS / PRODUCTION-SMOKE-PASS
+**Status**: PRODUCTION-CLOSED-PASS  
+**Canonical Current State**: See [CURRENT_STATE.md](CURRENT_STATE.md)
 
 ---
 
 ## Deployment Summary
 
 | Item | Value |
-|------|-------|
+|------| ------|
 | **Service** | market-entry-prioritizer |
 | **Region** | europe-west2 |
-| **Previous Revision** | market-entry-prioritizer-00040-x7z |
-| **New Revision** | market-entry-prioritizer-00041-dqw |
-| **Production Image Digest** | `sha256:581d4fc7f9bb5a7d0b9b1b9b37104b314393b03c7b4100ff2d871f5a9be4016f` |
+| **Authoritative Source Commit** | `efd61c6eaad22cfdc075a1044c3975b762bb9330` |
+| **Current Production Revision** | `market-entry-prioritizer-00042-s4m` |
+| **Immediate Rollback Revision** | `market-entry-prioritizer-00041-dqw` |
+| **Secondary Fallback Revision** | `market-entry-prioritizer-00040-x7z` |
 | **Production URL** | https://mep.innobase.app |
 
 ---
@@ -75,7 +77,8 @@ This matrix distinguishes clearly between previously completed independent produ
 ## Rollback Plan
 
 | Item | Value |
-|------|-------|
-| **Rollback Revision** | market-entry-prioritizer-00040-x7z |
-| **Rollback Command** | `gcloud run services update-traffic market-entry-prioritizer --to-revisions=market-entry-prioritizer-00040-x7z=100 --region=europe-west2` |
-| **Action** | No rollback is recommended or required based on the accepted production smoke result. |
+|------| ------|
+| **Immediate Rollback Revision** | `market-entry-prioritizer-00041-dqw` |
+| **Secondary Fallback Revision** | `market-entry-prioritizer-00040-x7z` |
+| **Immediate Rollback Command** | `gcloud run services update-traffic market-entry-prioritizer --to-revisions=market-entry-prioritizer-00041-dqw=100 --region=europe-west2` |
+| **Action** | No rollback is recommended or required based on the accepted production closure result. |

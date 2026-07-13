@@ -1,17 +1,18 @@
 # MEP-light™ Demo Scenario v0.2 — Implementation Report
 
-> **Status: Unreleased / Demo Scenario v0.2 candidate + Cure-01.** Held locally for staging authorization.
-> This does **not** change the accepted v4.3.7 production release. Production remains on
-> Cloud Run revision `market-entry-prioritizer-00041-dqw` (`https://mep.innobase.app`).
+> **Status: Deployed.** Originally developed as v0.2 candidate + Cure-01, now deployed to
+> Production (`market-entry-prioritizer-00042-s4m`) and Staging (`mep-light-demo-refinement-staging-00011-c4d`).
+> Authoritative source: `efd61c6eaad22cfdc075a1044c3975b762bb9330`.
 
 | | |
 |---|---|
 | Specification | `MEP-light_Demo_Scenario_v0.2.docx` (SHA-256 `8f33266cb1d607cf60fe6d584b1e00eeba0d186134955266d83d4987377c097b`) |
-| Baseline commit | `c25a037a9745c505b6608a6b7f993bcce5272663` (v4.3.7 closure) |
+| Baseline commit | `c25a037a9745c505b6608a6b7f993bcce5272663` (v4.3.7 initial closure) |
 | Feature branch | `feature/demo-scenario-v0.2` (v0.2 implementation) |
-| Cure branch | `feature/demo-scenario-v0.2-cure-01` (cure + evidence; current HEAD) |
-| STAGING_SOURCE_CANDIDATE | `3661d6b` fix(build): make v0.2 runtime marker commit-exact |
-| Client-facing label | `MEP-light Beta Demo v1.6` (retained; now centralized) |
+| Cure branch | `feature/demo-scenario-v0.2-cure-01` (cure + evidence) |
+| Final branch | `feature/demo-scenario-v0.2-step5-generated-state-cure` |
+| Authoritative commit | `efd61c6eaad22cfdc075a1044c3975b762bb9330` |
+| Client-facing label | `MEP-light Beta Demo v1.6` (retained; centralized) |
 
 ## 1. Architecture & UX changes
 

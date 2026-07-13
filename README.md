@@ -12,13 +12,17 @@ MEP-light™ is a sector-agnostic, multi-market diagnostic tool that helps organ
 
 ## Features
 
-- **8-Step Diagnostic Workflow** — Decision Setup → Company Snapshot → Product Strategy → Potential Markets → Score & Evidence → Comparative Dashboard → Roadmap → Entry Readiness
-- **9-Dimension Scoring Engine** — Market Attractiveness, Offering Fit, Channel Access, Operational Feasibility, Strategic Value, Financial Logic, Brand Transferability, Competitive Intensity, Regulatory Complexity
+- **8-Step Diagnostic Workflow** — Decision Setup → Company Snapshot → Offering Strategy Selection → Potential Markets → Strategic Metric Scoring → Comparative Dashboard → Roadmap → Entry Readiness
+- **Two Decision Modes** — New Market Entry Readiness and Existing Market Expansion Readiness
+- **9-Dimension Scoring Engine** — Market Attractiveness, Offering Fit, Channel Access, Operational Feasibility, Strategic Value, Financial Logic, Brand Transferability, Competitive Intensity, Regulatory / Institutional Complexity
+- **AI-Assisted Draft Scoring** — Input-derived generated scores with review/adjust workflow and User Adjusted markers
 - **Evidence Confidence Framework** — Per-dimension evidence tagging (Direct Evidence / Market Reports / Expert Judgment) with computed confidence scoring and discrepancy alerts
-- **Tier Classification** — Automatic Tier A (Priority) / Tier B (Promising) / Tier C (Postpone) with confidence-based capping
+- **Tier Classification** — Letter-grade tiers (A- through C) with confidence-based capping and sector-specific Diagnostic Weight Framework
+- **Sector Support** — 4 active sectors + 4 Coming Soon sectors; 3–5 market selection with editable market names
 - **Entry Readiness Workspace** — 5-tab operational workspace: Regulatory & Compliance, Offering & Localization, Packaging / Delivery / Operations, Commercial & Pricing, Channel & Partner Readiness
-- **PDF Export** — Downloadable Strategic Prioritisation Report via ReportLab backend
-- **Demo / Consultant Modes** — Pre-loaded demo data vs. blank consultant workspace
+- **Export Brief & Full Report** — Downloadable Strategic Prioritisation Report (Full Report gated behind Step 8)
+- **Demo Participant / Free Demo Mode** — 7-step demo experience with Step 8, Full Report, and Consultant features locked
+- **Administrator Role** — Full access with self-demotion prevention and last-admin preservation
 
 ---
 
@@ -117,11 +121,14 @@ npm run lint
 
 ## Default Demo Markets
 
+Demo Participant accounts receive starter markets with AI-assisted generated draft scores.
+Custom markets are supported (3–5 markets; editable names; no pre-loaded scores).
+
 | Market | Type | Description |
 |--------|------|-------------|
 | UAE | Country | Regional trade hub, premium retail, high competitor density |
-| EU | Market Bloc | Large single market with harmonized regulations |
-| North America | Region | High purchasing power, mature distribution infrastructure |
+| Iraq | Country | Emerging market with growing consumer demand |
+| Germany | Country | Mature European market with stringent regulatory standards |
 
 ---
 
