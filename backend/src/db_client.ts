@@ -160,6 +160,10 @@ class MepDatabase {
     return this.config.type;
   }
 
+  get isReady(): boolean {
+    return this.initialized;
+  }
+
   // ─── Initialization ─────────────────────────────────────────────
 
   async initialize(): Promise<void> {

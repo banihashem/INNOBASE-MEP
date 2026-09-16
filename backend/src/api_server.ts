@@ -134,6 +134,51 @@ function logEvent(event: {
   }
 }
 
+// ─── Database Resilience & Connection State ──────────────────────────
+let dbConnected = false;
+let dbLastError: string | null = null;
+let dbReconnectTimer: NodeJS.Timeout | null = null;
+
+async function attemptDbConnection(isRetry = false): Promise<boolean> {
+  try {
+    await db.initialize();
+    dbConnected = true;
+    dbLastError = null;
+    logEvent({
+      level: "info",
+      component: "persistence",
+      event_type: isRetry ? "db_reconnected" : "db_initialized",
+      message: `Database connection established (${db.dbType})`,
+    });
+    if (dbReconnectTimer) {
+      clearInterval(dbReconnectTimer);
+      dbReconnectTimer = null;
+    }
+    return true;
+  } catch (err: any) {
+    dbConnected = false;
+    dbLastError = err?.message || String(err);
+    logEvent({
+      level: "warn",
+      component: "persistence",
+      event_type: "db_connection_failed",
+      message: `Database connection failed (${db.dbType}): ${dbLastError}. Server running with degraded persistence.`,
+    });
+    // Schedule periodic background retry (every 10 seconds)
+    if (!dbReconnectTimer) {
+      dbReconnectTimer = setInterval(() => {
+        attemptDbConnection(true).catch(() => {});
+      }, 10000);
+    }
+    return false;
+  }
+}
+
+// Initial connection attempt on startup (non-fatal, auto-reconnecting)
+attemptDbConnection(false).catch((err) => {
+  console.warn("Initial DB connection attempt yielded:", err?.message || err);
+});
+
 // ─── Audit Event Logger ──────────────────────────────────────────────
 
 interface AuditEvent {
@@ -204,6 +249,12 @@ app.get("/api/health", (_req: Request, res: Response) => {
     status: "healthy",
     service: "MEP-light™ Scoring Engine API",
     version: PKG_VERSION,
+    database: {
+      type: db.dbType,
+      connected: dbConnected,
+      status: dbConnected ? "connected" : "degraded",
+      ...(dbLastError ? { error: dbLastError.slice(0, 150) } : {}),
+    },
     timestamp: new Date().toISOString(),
   });
 });
@@ -224,6 +275,8 @@ app.get("/api/v2/auth/config-status", (_req: Request, res: Response) => {
     authProvider: "google",
     oauthOriginExpected: "https://mep.innobase.app",
     dbUserPersistence: "postgresql",
+    databaseConnected: dbConnected,
+    databaseStatus: dbConnected ? "connected" : "degraded",
     productionGuard: IS_PRODUCTION ? (hasClientId ? "OK" : "WARN_NO_CLIENT_ID") : "DEV",
     seedAdminConfigured: !!SEED_ADMIN_EMAIL,
     adkEnabled: ADK_ENABLED,
@@ -720,29 +773,7 @@ interface UserRecord {
 // Seed admin user from environment variable
 const SEED_ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || "";
 
-// Initialize database on startup
-(async () => {
-  try {
-    await db.initialize();
-    logEvent({
-      level: "info",
-      component: "persistence",
-      event_type: "db_initialized",
-      message: `Database initialized (${db.dbType})`,
-    });
-  } catch (err) {
-    logEvent({
-      level: "error",
-      component: "persistence",
-      event_type: "db_init_error",
-      message: `Failed to initialize database: ${err}`,
-    });
-    if (IS_PRODUCTION) {
-      console.error("FATAL: Database initialization failed in production. Exiting.");
-      process.exit(1);
-    }
-  }
-})();
+// (Database initialization handled above via resilient attemptDbConnection)
 
 async function findUserByEmail(email: string): Promise<UserRecord | null> {
   const dbUser = await db.findUserByEmail(email);
